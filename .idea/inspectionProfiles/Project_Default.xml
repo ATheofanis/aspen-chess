@@ -1,0 +1,20 @@
+<component name="InspectionProjectProfileManager">
+  <profile version="1.0">
+    <option name="myName" value="Project Default" />
+    <inspection_tool class="ClangTidy" enabled="false" level="WARNING" enabled_by_default="false" />
+    <inspection_tool class="Clazy" enabled="false" level="WARNING" enabled_by_default="false" />
+    <inspection_tool class="CppAwaiterTypeIsNotClass" enabled="false" level="WARNING" enabled_by_default="false" />
+    <inspection_tool class="CppCStyleCast" enabled="false" level="WEAK WARNING" enabled_by_default="false" />
+    <inspection_tool class="CppCoroutineCallResolveError" enabled="false" level="WARNING" enabled_by_default="false" />
+    <inspection_tool class="CppEvaluationFailure" enabled="false" level="ERROR" enabled_by_default="false" />
+    <inspection_tool class="PyPep8NamingInspection" enabled="true" level="WEAK WARNING" enabled_by_default="true">
+      <option name="ignoredErrors">
+        <list>
+          <option value="N806" />
+          <option value="N802" />
+        </list>
+      </option>
+    </inspection_tool>
+    <inspection_tool class="RadGlobal" enabled="false" level="WARNING" enabled_by_default="false" />
+  </profile>
+</component>
