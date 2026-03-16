@@ -198,18 +198,8 @@ void pawnAdvances(const legalityInformation& info, Bitboard oneSqAdvanceQuiet, B
 
         if (!(info.pinned & (1ULL << startSquare)))
         {
-            //std::cout << "INSERTING MOVE: " << move << std::endl;
-
-            //printMove(move);
-
             moves[numOfMoves++] = move;
 
-            //std::cout << "\n TOTAL LEGAL MOVES:\n";
-            //for (int i = 0; i < numOfMoves; i++)
-            //{
-            //    printMove(moves[i]);
-            //}
-            //std::cout << "NUMBER OF LEGAL MOVES: " << numOfMoves;
         } else
         {
 
@@ -296,9 +286,6 @@ void generateWhitePawnMoves(const Position& pos, const legalityInformation& info
             moves[numOfMoves++] = move;
         } else
         {
-            //std::cout << "PINNED : two sq adv printing info.pinnedPieceLegalSquares[startSquare]\n";
-
-
             if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
             {
                 moves[numOfMoves++] = move;
@@ -554,8 +541,6 @@ void generateBlackPawnMoves(const Position& pos, const legalityInformation& info
             moves[numOfMoves++] = move;
         } else
         {
-            //std::cout << "PINNED : two sq adv printing info.pinnedPieceLegalSquares[startSquare]\n";
-
 
             if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
             {
@@ -1175,7 +1160,6 @@ void generateLegalMoves(const legalityInformation& info, Position& pos, Move mov
     }
     else
     {
-        assert(pos.getOccupiedBitboard() == (pos.getWhiteBitboard() | pos.getBlackBitboard()));
         if (pos.isWhiteToMove())
         {
             //std::cout << "checking legal moves for white:" << std::endl;

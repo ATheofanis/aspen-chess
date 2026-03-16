@@ -15,6 +15,10 @@ struct positionInfo
     //int eval{};
     //int pstScore{};
     int enPassantSquare{};
+    int mgScore;
+    int egScore;
+    int gamePhase;
+
     Piece pieceCaptured;
     Move prevMove{};
     CastlingRights castleRights{};
@@ -35,8 +39,10 @@ private:
 
     Piece Board[64]{};
 
-    int eval{};
-    int pstScore{};
+    int mgPstAndMaterialScore{};
+    int egPstAndMaterialScore{};
+    int gamePhase{};
+
     int enPassantSquare{};
     int positionLogTop;
 
@@ -100,5 +106,20 @@ public:
 
     // returns the square where enpassant can be played (otherwise returns NO_SQUARE)
     [[nodiscard]] int getEnpassantSquare() const { return enPassantSquare; }
+
+    inline void calculatePstAndMaterialScore();
+
+    constexpr int getMGPstAndMaterialScore() const { return mgPstAndMaterialScore; }
+    constexpr int getEGPstAndMaterialScore() const { return egPstAndMaterialScore; }
+
+    int getTotalPSTAndMaterialScore() const
+    {
+        int mgPhase = gamePhase;
+        if (mgPhase > 24) mgPhase = 24; // in case of early promotion
+        int egPhase = 24 - mgPhase;
+
+        return (mgPstAndMaterialScore * mgPhase + egPstAndMaterialScore * egPhase) / 24;
+    }
+
 
 };

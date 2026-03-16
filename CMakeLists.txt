@@ -22,4 +22,6 @@ add_executable(AChess main.cpp
         Score.h
         Perft.cpp
         Perft.h
+        Search.cpp
+        Search.h
 )

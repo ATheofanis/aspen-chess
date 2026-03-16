@@ -35,22 +35,11 @@ Bitboard bishopAttacks(int square, Bitboard block);
 // get bishop attacks based on board occupancy
 [[nodiscard]] inline Bitboard getBishopAttacks(int square, Bitboard occupancy)
 {
-    Bitboard o_occupancy = occupancy;
 
     occupancy &= bishopMasks[square];
     occupancy *= bishopMagicNumbers[square];
     occupancy >>= 64 - bishopRelevantBits[square];
 
-    if (!(bishopAttacksTable[square][occupancy] == bishopAttacks(square, o_occupancy)))
-    {
-        printBitboard(occupancy);
-
-        std::cout << "ROOK ATTACKS TABLE\n";
-        printBitboard(bishopAttacksTable[square][occupancy]);
-        std::cout << "ROOK ATTACKS\n";
-        printBitboard(bishopAttacks(square, occupancy));
-        assert(false);
-    }
 
 
     return bishopAttacksTable[square][occupancy];
@@ -65,28 +54,10 @@ Bitboard rookAttacks(int square, Bitboard block);
 [[nodiscard]] inline Bitboard getRookAttacks(int square, Bitboard occupancy)
 {
 
-    Bitboard o_occupancy = occupancy;
-
     occupancy &= rookMasks[square];
     occupancy *= rookMagicNumbers[square];
     occupancy >>= 64 - rookRelevantBits[square];
 
-    // TEST - ASSERT
-    rookMasks[square] = rookAttacksMask(square);
-    int relevantBits = bitCount(rookMasks[square]);
-    assert(relevantBits == rookRelevantBits[square]);
-    // TEST
-
-    if (!(rookAttacksTable[square][occupancy] == rookAttacks(square, o_occupancy)))
-    {
-        printBitboard(occupancy);
-
-        std::cout << "ROOK ATTACKS TABLE\n";
-        printBitboard(rookAttacksTable[square][occupancy]);
-        std::cout << "ROOK ATTACKS\n";
-        printBitboard(rookAttacks(square, occupancy));
-        assert(false);
-    }
 
     return rookAttacksTable[square][occupancy];
 }

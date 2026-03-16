@@ -8,6 +8,7 @@
 
 #include "MoveGen.h"
 #include "Position.h"
+#include "Search.h"
 
 class Position;
 
@@ -102,24 +103,6 @@ long long Perft(Position& pos, int depth)
         //printMove(moves[i]);
         pos.makeMove(moves[i]);
 
-        if (squareUnderAttack(pos.isWhiteToMove() ? lsbIndex(pos.getPieceBitboard(bK)) : lsbIndex(pos.getPieceBitboard(wK)), pos.isWhiteToMove() ? White : Black, pos, pos.getOccupiedBitboard()))
-        {
-            std::cout << "ATTACKED ERRORRRRRRR\n";
-            std::cout << "\n PRINTING BLACK BITBOARD" << std::endl;
-            printBitboard(pos.getBlackBitboard());
-            std::cout << "\n PRINTING WHITE BITBOARD" << std::endl;
-            printBitboard(pos.getWhiteBitboard());
-            std::cout << "\n PRINTING OCCUPIED BITBOARD" << std::endl;
-            printBitboard(pos.getOccupiedBitboard());
-            std::cout << "\n PRINTING WHITE PAWN BITBOARD" << std::endl;
-            printBitboard(pos.getPieceBitboard(wp));
-            std::cout << "\n PRINTING BLACK PAWN BITBOARD" << std::endl;
-            printBitboard(pos.getPieceBitboard(bp));
-            printBitboard(pos.getPieceBitboard(wK));
-            std::cout << "\n PRINTING THE BOARD: " << std::endl;
-            printBoard(pos);
-            break;
-        }
 
         nodes += Perft(pos, depth - 1);
         pos.unmakeMove();
@@ -157,10 +140,11 @@ void dividePerft(Position& pos, int depth)
 
 }
 
-int depth = 4;
+int depth = 5;
 // TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
 int main()
 {
+    initPSTtables();
     SetConsoleOutputCP(CP_UTF8);
     initPawnAttacks();
     initKnightAttacks();
@@ -173,12 +157,25 @@ int main()
 
     Position pos;
 
-    pos.loadFen("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8");
+
+    pos.loadFen("rnb2k1r/ppppp2p/2q2p2/8/NPP2P2/2Q4B/1RKBP2P/7R b - - 0 1");
 
 
-    dividePerft(pos, depth);
+    auto startTime = std::chrono::high_resolution_clock::now();
+    Move bestMove = (findBestMove(pos));
+    printMove(bestMove);
+    auto endTime = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
+    std::cout << duration.count() << " ms" << std::endl;
 
-
+    pos.makeMove(bestMove);
+    printBoard(pos);
+    pos.makeMove((findBestMove(pos)));
+    printBoard(pos);
+    pos.makeMove((findBestMove(pos)));
+    printBoard(pos);
+    pos.makeMove((findBestMove(pos)));
+    printBoard(pos);
 
 
 

@@ -25,6 +25,7 @@ void Position::clearPosition()
     whiteToMoveFlag = true;
     enPassantSquare = NO_SQUARE;
     castleRights = 0;
+
 }
 
 
@@ -37,8 +38,9 @@ void Position::setStartPos()
     isStalemate = false;
     enPassantSquare = NO_SQUARE;
     castleRights = 15;
-    pstScore = 0;
-    eval = 0;
+    egPstAndMaterialScore = 0;
+    mgPstAndMaterialScore = 0;
+    gamePhase = 24;
 
 
     // Bitboard pieces[12]; // wp, wN, wB, wR, wQ, wK - bp, bN, bB, bR, bQ, bK
@@ -204,27 +206,26 @@ void Position::loadFen(const std::string& fenString)
     int fullMoveCounter;
     sscanf(fenString.c_str() + charIndex, "%d %d", &halfMoveClock, &fullMoveCounter);
 
+    calculatePstAndMaterialScore();
 }
 
 
 void Position::makeMove(Move move)
 {
-    assert(whitePiecesBitboard == (pieceBitboard[wp]|pieceBitboard[wN]|pieceBitboard[wB]|pieceBitboard[wR]|pieceBitboard[wQ]|pieceBitboard[wK]));
-    assert(blackPiecesBitboard == (pieceBitboard[bp]|pieceBitboard[bN]|pieceBitboard[bB]|pieceBitboard[bR]|pieceBitboard[bQ]|pieceBitboard[bK]));
-
-    assert(occupiedSquaresBitboard = whitePiecesBitboard | blackPiecesBitboard);
-
-
     positionInfo prevPosInfo;
     prevPosInfo.prevMove = move;
     prevPosInfo.blackPiecesBitboard = blackPiecesBitboard;
     prevPosInfo.whitePiecesBitboard = whitePiecesBitboard;
-    prevPosInfo.occupiedSquaresBitboard = occupiedSquaresBitboard;
     prevPosInfo.pieceCaptured = NO_PIECE;
     //prevPosInfo.eval = eval;
     //prevPosInfo.pstScore = pstScore;
     prevPosInfo.enPassantSquare = enPassantSquare;
     prevPosInfo.castleRights = castleRights;
+
+    prevPosInfo.mgScore = mgPstAndMaterialScore;
+    prevPosInfo.egScore = egPstAndMaterialScore;
+    prevPosInfo.gamePhase = gamePhase;
+
 
 
 
@@ -238,6 +239,8 @@ void Position::makeMove(Move move)
     Bitboard fromMask = 1ULL << fromSquare;
     Bitboard toMask = 1ULL << toSquare;
     Bitboard moveMask = fromMask | toMask;
+
+    Piece pieceMoved = Board[fromSquare];
 
     // update white or black piece bitboard for the piece that moved
     int colorDelta; // we add this to easily calculate the piece index without checking whose turn it is down the line
@@ -260,7 +263,23 @@ void Position::makeMove(Move move)
         {
             castleRights &= 12;
         }
-    } else
+
+        // adjust incremental score from the piece that moved by subtracting the score from its original square and adding the score from the new square (promotions handled differently)
+        mgPstAndMaterialScore -= mgTable[pieceMoved][fromSquare];
+        egPstAndMaterialScore -= egTable[pieceMoved][fromSquare];
+        if (!(flag & 8))
+        {
+            mgPstAndMaterialScore += mgTable[pieceMoved][toSquare];
+            egPstAndMaterialScore += egTable[pieceMoved][toSquare];
+        }
+        //else
+        //{
+        //    // remove pawn score
+        //    mgPstAndMaterialScore -= mgPieceScore[0];
+        //    egPstAndMaterialScore -= egPieceScore[0];
+        //}
+    }
+    else
     {
         colorDelta = 6;
         blackPiecesBitboard ^= moveMask;
@@ -270,6 +289,20 @@ void Position::makeMove(Move move)
         {
             castleRights &= 3;
         }
+
+        mgPstAndMaterialScore += mgTable[pieceMoved][fromSquare];
+        egPstAndMaterialScore += egTable[pieceMoved][fromSquare];
+        if (!(flag & 8))
+        {
+            mgPstAndMaterialScore -= mgTable[pieceMoved][toSquare];
+            egPstAndMaterialScore -= egTable[pieceMoved][toSquare];
+        }
+        //else
+        //{
+        //    // remove pawn score
+        //    mgPstAndMaterialScore += mgPieceScore[0];
+        //    egPstAndMaterialScore += egPieceScore[0];
+        //}
     }
 
     if (flag != 1)
@@ -279,7 +312,6 @@ void Position::makeMove(Move move)
 
 
     // update mailbox ( remove piece moved from its starting position )
-    Piece pieceMoved = Board[fromSquare];
 
     Board[fromSquare] = NO_PIECE;
 
@@ -291,9 +323,10 @@ void Position::makeMove(Move move)
         // CORRECT ----------------------------------------------------------------
         if (flag == 4)
         {
-            //std::cout << "ENTERED NON EP CAPTURES\n";
 
             Piece capPiece = Board[toSquare];
+            gamePhase -= gamephaseInc[capPiece];
+
             prevPosInfo.pieceCaptured = capPiece; // store cap piece
 
             // update bitboards of moved and captured pieces
@@ -306,18 +339,23 @@ void Position::makeMove(Move move)
             // update white/black/occupied (remove captured piece)
             if (whiteToMoveFlag)
             {
+                mgPstAndMaterialScore += mgTable[capPiece][toSquare];
+                egPstAndMaterialScore += egTable[capPiece][toSquare];
+
                 blackPiecesBitboard &= ~toMask;
             } else
             {
+                mgPstAndMaterialScore -= mgTable[capPiece][toSquare];
+                egPstAndMaterialScore -= egTable[capPiece][toSquare];
+
                 whitePiecesBitboard &= ~toMask;
             }
 
         } // CORRECT ----------------------------------------------------------------
 
-        // INCORRECT (?) ----------------------------------------------------------------
+        // CORRECT  ----------------------------------------------------------------
         else if (flag == 5) // en passant
         {
-            //std::cout << "\nMAKING EN PASSANT MOVE\n";
             //Piece capPawn;
             if (whiteToMoveFlag)
             {
@@ -330,6 +368,10 @@ void Position::makeMove(Move move)
                 Board[toSquare] = wp;
                 // also remove from black piece bb and occupied squares bb
                 blackPiecesBitboard &= ~capPawnMask;
+
+                mgPstAndMaterialScore += mgTable[bp][toSquare - 8];
+                egPstAndMaterialScore += egTable[bp][toSquare - 8];
+                gamePhase -= gamephaseInc[bp];
 
             } else
             {
@@ -344,10 +386,12 @@ void Position::makeMove(Move move)
                 // also remove from white piece bb and occupied squares bb
                 whitePiecesBitboard &= ~capPawnMask;
 
-
+                mgPstAndMaterialScore -= mgTable[wp][toSquare + 8];
+                egPstAndMaterialScore -= egTable[wp][toSquare + 8];
+                gamePhase -= gamephaseInc[wp];
             }
 
-        } // (IN)CORRECT ----------------------------------------------------------------
+        } // CORRECT ----------------------------------------------------------------
 
 
         // captures are done , now handle promotions and promo-captures
@@ -356,30 +400,53 @@ void Position::makeMove(Move move)
             // add promoted piece to mailbox
             // (colorDelta + flag % 4 + 1) gives the index of promoted piece based on the 16 bit move encoding i am using
             Piece promotedPiece = static_cast<Piece>(colorDelta + flag % 4 + 1);
-            Piece capturedPiece = Board[toSquare];
 
-            prevPosInfo.pieceCaptured = capturedPiece;
+            //Piece capturedPiece = Board[toSquare];
+            //prevPosInfo.pieceCaptured = capturedPiece;
 
+
+            if (flag & 4) // if move is promo-capture
+            {
+                Piece capturedPiece = Board[toSquare];
+                prevPosInfo.pieceCaptured = capturedPiece;
+
+                pieceBitboard[capturedPiece] &= ~toMask;
+                gamePhase -= gamephaseInc[capturedPiece];
+
+                if (whiteToMoveFlag)
+                {
+                    mgPstAndMaterialScore += mgTable[capturedPiece][toSquare];
+                    egPstAndMaterialScore += egTable[capturedPiece][toSquare];
+
+
+                    blackPiecesBitboard &= ~toMask;
+                } else
+                {
+                    mgPstAndMaterialScore -= mgTable[capturedPiece][toSquare];
+                    egPstAndMaterialScore -= egTable[capturedPiece][toSquare];
+
+                    whitePiecesBitboard &= ~toMask;
+                }
+            }
 
             Board[toSquare] = promotedPiece; // add promoted piece to the board
             pieceBitboard[promotedPiece] |= toMask; // add promoted piece to its bitboard
             pieceBitboard[pieceMoved] &= ~fromMask;
 
-            if (flag & 4) // if move is promo-capture
+            gamePhase += (gamephaseInc[promotedPiece] - gamephaseInc[0]);
+            if (whiteToMoveFlag)
             {
-                pieceBitboard[capturedPiece] &= ~toMask;
-                if (whiteToMoveFlag)
-                {
-                    blackPiecesBitboard &= ~toMask;
-                } else
-                {
-                    whitePiecesBitboard &= ~toMask;
-                }
+                mgPstAndMaterialScore += mgTable[promotedPiece][toSquare];
+                egPstAndMaterialScore += egTable[promotedPiece][toSquare];
+            } else
+            {
+                mgPstAndMaterialScore -= mgTable[promotedPiece][toSquare];
+                egPstAndMaterialScore -= egTable[promotedPiece][toSquare];
             }
         }
+
         else if (flag == 1)
         {
-            //std::cout << "FLAG 1 --------------------------------------------";
             pieceBitboard[pieceMoved] ^= moveMask;
             Board[toSquare] = pieceMoved;
             enPassantSquare = whiteToMoveFlag ? (toSquare - 8) : (toSquare + 8);
@@ -409,6 +476,13 @@ void Position::makeMove(Move move)
                 Board[toSquare] = wK;
                 whitePiecesBitboard ^= rookMoveMask;
 
+                // add score from rook's new position
+                mgPstAndMaterialScore += mgTable[wR][rookEndSq];
+                egPstAndMaterialScore += egTable[wR][rookEndSq];
+                // remove score from rook's previous position
+                mgPstAndMaterialScore -= mgTable[wR][rookStartSq];
+                egPstAndMaterialScore -= egTable[wR][rookStartSq];
+
             }
 
             else // Black castles
@@ -431,6 +505,14 @@ void Position::makeMove(Move move)
                 Board[rookEndSq] = bR;
                 Board[toSquare] = bK;
                 blackPiecesBitboard ^= rookMoveMask;
+
+                // add score from rook's new position
+                mgPstAndMaterialScore -= mgTable[bR][rookEndSq];
+                egPstAndMaterialScore -= egTable[bR][rookEndSq];
+                // remove score from rook's previous position
+                mgPstAndMaterialScore += mgTable[bR][rookStartSq];
+                egPstAndMaterialScore += egTable[bR][rookStartSq];
+
             }
         }
 
@@ -446,35 +528,33 @@ void Position::makeMove(Move move)
 
 
 
-    assert(whitePiecesBitboard == (pieceBitboard[wp]|pieceBitboard[wN]|pieceBitboard[wB]|pieceBitboard[wR]|pieceBitboard[wQ]|pieceBitboard[wK]));
-    assert(blackPiecesBitboard == (pieceBitboard[bp]|pieceBitboard[bN]|pieceBitboard[bB]|pieceBitboard[bR]|pieceBitboard[bQ]|pieceBitboard[bK]));
-
     occupiedSquaresBitboard = whitePiecesBitboard | blackPiecesBitboard;
-
-
 
 }
 
 
 void Position::unmakeMove()
 {
-    assert(whitePiecesBitboard == (pieceBitboard[wp]|pieceBitboard[wN]|pieceBitboard[wB]|pieceBitboard[wR]|pieceBitboard[wQ]|pieceBitboard[wK]));
+
     whiteToMoveFlag = !whiteToMoveFlag;
 
     positionLogTop--;
     positionInfo prevPosInfo = prevPositionsLog[positionLogTop];
 
     // use the info from previous position to reset bitboards, castle rights and ep square
-    occupiedSquaresBitboard = prevPosInfo.occupiedSquaresBitboard;
     blackPiecesBitboard = prevPosInfo.blackPiecesBitboard;
     whitePiecesBitboard = prevPosInfo.whitePiecesBitboard;
+    occupiedSquaresBitboard = blackPiecesBitboard | whitePiecesBitboard;
     enPassantSquare = prevPosInfo.enPassantSquare;
     castleRights = prevPosInfo.castleRights;
+
+    mgPstAndMaterialScore = prevPosInfo.mgScore;
+    egPstAndMaterialScore = prevPosInfo.egScore;
+    gamePhase = prevPosInfo.gamePhase;
 
     Piece pieceCaptured = prevPosInfo.pieceCaptured;
     Move move = prevPosInfo.prevMove;
 
-    //printMove(move);
 
     // extract move info
     int fromSquare = move & 0x3F;
@@ -495,9 +575,7 @@ void Position::unmakeMove()
         // ALL PROMOTIONS (AND PROMO-CAPS)
         if (flag & 8)
         {
-            //std::cout << "INSIDE PROMO s----------------------------------------------------------------";
-            //std::cout << pieceCaptured;
-            //std::cout << "\n";
+
             int colorDelta = whiteToMoveFlag ? 0 : 6;
             int promoPieceIndex = colorDelta + 1 + flag % 4;
 
@@ -510,7 +588,7 @@ void Position::unmakeMove()
             // and also add it to the mailbox
             if (pieceCaptured != NO_PIECE)
             {
-                //std::cout << "INSIDE PROMO CAP----------------------------------------------------------------";
+
                 pieceBitboard[pieceCaptured] |= toMask;
                 Board[toSquare] = pieceCaptured;
 
@@ -593,15 +671,39 @@ void Position::unmakeMove()
     else // QUIET MOVES AND TWO SQUARE ADVANCES
     {
 
-        //if (flag == 1) std::cout << "FLAG IS 1";
-        //std::cout << Board[toSquare] << std::endl;
         Piece pieceMoved = Board[toSquare];
         pieceBitboard[pieceMoved] ^= moveMask;
         Board[toSquare] = NO_PIECE;
         Board[fromSquare] = pieceMoved;
 
     }
-    assert(whitePiecesBitboard == (pieceBitboard[wp]|pieceBitboard[wN]|pieceBitboard[wB]|pieceBitboard[wR]|pieceBitboard[wQ]|pieceBitboard[wK]));
-    assert(blackPiecesBitboard == (pieceBitboard[bp]|pieceBitboard[bN]|pieceBitboard[bB]|pieceBitboard[bR]|pieceBitboard[bQ]|pieceBitboard[bK]));
 
+}
+
+
+void Position::calculatePstAndMaterialScore()
+{
+    gamePhase = 0;
+    mgPstAndMaterialScore = 0;
+    egPstAndMaterialScore = 0;
+    for (int sq = 0; sq < 64; sq++)
+    {
+        Piece p = Board[sq];
+        if (p != NO_PIECE)
+        {
+            gamePhase += gamephaseInc[p];
+            // white
+            if (p < 6)
+            {
+                mgPstAndMaterialScore += mgTable[p][sq];
+                egPstAndMaterialScore += egTable[p][sq];
+            }
+            // black
+            else
+            {
+                mgPstAndMaterialScore -= mgTable[p][sq];
+                egPstAndMaterialScore -= egTable[p][sq];
+            }
+        }
+    }
 }

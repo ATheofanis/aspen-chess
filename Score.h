@@ -3,6 +3,13 @@
 //
 
 #pragma once
+#include "Position.h"
+
+class Position;
+
+constexpr int CHECKMATE = 1000000;
+constexpr int STALEMATE = 0;
+
 
 // PeSTO's middlegame piece score values
 constexpr int mgPieceScore[6] = { 82, 337, 365, 477, 1025,  0};
@@ -13,7 +20,7 @@ constexpr int egPieceScore[6] = { 94, 281, 297, 512,  936,  0};
 
 // PeSTO's PST's values for middlegame and endgame:
 
-
+//82 + (-15) //  pawn in e2
 // MIDDLE GAME PAWN
 constexpr int mgPawnPST[64] = {
     0,   0,   0,   0,   0,   0,  0,   0,
@@ -158,7 +165,6 @@ constexpr int mgKingPST[64] = {
 
 
 
-
 // MIDDLE GAME KING PST
 constexpr int egKingPST[64] = {
     -74, -35, -18, -18, -11,  15,   4, -17,
@@ -178,7 +184,7 @@ constexpr const int *mgPST[6] = {
     mgBishopPST,
     mgRookPST,
     mgQueenPST,
-    mgKnightPST
+    mgKingPST
 };
 
 constexpr const int *egPST[6] = {
@@ -187,5 +193,35 @@ constexpr const int *egPST[6] = {
     egBishopPST,
     egRookPST,
     egQueenPST,
-    egKnightPST
+    egKingPST
 };
+
+
+constexpr int gamephaseInc[12] = {
+// wp, wN, wB, wR, wQ, wK
+    0,  1,  1,  2,  4, 0,
+// bp, bN, bB, bR, bQ, bK
+    0,  1,  1,  2,  4, 0
+};
+
+inline int mgTable[12][64];
+inline int egTable[12][64];
+
+inline void initPSTtables()
+{
+    for (int piece = 0; piece <= 5; piece++)
+    {
+        for (int sq = 0; sq < 64; sq++)
+        {
+            mgTable[piece + 6][sq] = mgPST[piece][sq] + mgPieceScore[piece];
+            egTable[piece + 6][sq] = egPST[piece][sq] + egPieceScore[piece];
+
+            mgTable[piece][sq] = mgPST[piece][sq^56] + mgPieceScore[piece];
+            egTable[piece][sq] = egPST[piece][sq^56] + egPieceScore[piece];
+
+        }
+    }
+}
+
+
+int scoreBoard(const Position& pos);
