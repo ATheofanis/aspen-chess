@@ -7,7 +7,7 @@
 
 class Position;
 
-constexpr int CHECKMATE = 1000000;
+constexpr int CHECKMATE = 32000;
 constexpr int STALEMATE = 0;
 
 

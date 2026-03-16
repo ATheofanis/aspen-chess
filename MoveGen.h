@@ -34,6 +34,7 @@ void generateBlackKingMoves(const Position& pos, Move moves[], int& numOfMoves);
 void generateLegalMoves(const legalityInformation& info, Position& pos, Move moves[], int &numOfMoves);
 
 
+void generateCaptures(const legalityInformation& info, Position& pos, Move moves[], int &numOfMoves);
 //inline void printUnicode(UnicodePiece uP) {
 //    std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t> conv;
 //    std::cout << conv.to_bytes(static_cast<char32_t>(uP));

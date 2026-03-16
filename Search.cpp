@@ -9,7 +9,8 @@
 
 int nodes = 0;
 
-int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMove)
+// takes a position, alpha and beta for pruning, current depth, keeps track of best move found, and ply for stuff such as killer moves, checkmate detection and for cleaner design
+int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMove, int ply)
 {
     // call quie at leaf nodes
     nodes++;
@@ -41,11 +42,21 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
     // generate legal moves using previously calculated legality info
     generateLegalMoves(info, pos, moves, numOfMoves);
 
+    if (numOfMoves == 0)
+    {
+        if (info.numOfChecks)
+        {
+            return ply - CHECKMATE;
+        }
+
+        return 0;
+    }
+
     for (int i = 0; i < numOfMoves; i++)
     {
 
         pos.makeMove(moves[i]);
-        int score = -negaMaxAlphaBeta(pos, -beta, -alpha, depth - 1, bestMove);
+        int score = -negaMaxAlphaBeta(pos, -beta, -alpha, depth - 1, bestMove, ply+1);
         pos.unmakeMove();
         //std::cout << "score: " << score << std::endl;
 
@@ -63,6 +74,8 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
                 bestMove = moves[i];
             }
         }
+
+
     }
     return alpha;
 }
@@ -71,7 +84,7 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
 Move findBestMove(Position& pos)
 {
     Move bestMove = 0;
-    negaMaxAlphaBeta(pos, -CHECKMATE, CHECKMATE, MAX_DEPTH, bestMove);
+    negaMaxAlphaBeta(pos, -CHECKMATE, CHECKMATE, MAX_DEPTH, bestMove, 0);
 
     std::cout << "Nodes: " << nodes << std::endl;
     return bestMove;

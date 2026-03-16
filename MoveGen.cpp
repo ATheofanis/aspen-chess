@@ -499,6 +499,228 @@ void generateWhitePawnMoves(const Position& pos, const legalityInformation& info
 
 }
 
+// WHITE PAWN CAPTURES
+void generateWhitePawnCaptures(const Position& pos, const legalityInformation& info, Move moves[], int &numOfMoves)
+{
+    Bitboard whitePawns = pos.getPieceBitboard(wp);
+    Bitboard blackPieces = pos.getBlackBitboard();
+    Bitboard occupied = pos.getOccupiedBitboard();
+    //Bitboard empty = ~occupied;
+
+
+    if (info.numOfChecks == 1)
+    {
+        blackPieces &= info.legalSquaresMask; // later for captures
+    }
+
+
+
+    // captures
+
+    // left captures
+
+    Bitboard whitePawnLeftCaptures = ((whitePawns & ~fileA) << 7) & blackPieces;
+
+    Bitboard whitePawnLeftQuietCaptures = whitePawnLeftCaptures & ~rank8;
+    Bitboard whitePawnLeftPromoCaptures = whitePawnLeftCaptures & rank8;
+
+
+
+    //std::cout << "CALLING PAWN LEFT CAPTURES\n";
+
+    while (whitePawnLeftQuietCaptures)
+    {
+        Move endSquare = static_cast<Move>(popLsbAndReturnIndex(whitePawnLeftQuietCaptures));
+        Move startSquare = endSquare - 7;
+
+
+        Move move = startSquare | (endSquare << 6) | (4 << 12);
+
+        if (!(info.pinned & (1ULL << startSquare)))
+        {
+            moves[numOfMoves++] = move;
+        } else
+        {
+            if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
+            {
+                moves[numOfMoves++] = move;
+            }
+        }
+    }
+    // capture with promotion
+    while (whitePawnLeftPromoCaptures)
+    {
+        Move endSquare = static_cast<Move>(popLsbAndReturnIndex(whitePawnLeftPromoCaptures));
+        Move startSquare = endSquare - 7;
+
+        for (Move flag = 12; flag < 16; flag++)
+        {
+            Move move = startSquare | (endSquare << 6) | (flag << 12);
+
+            if (!(info.pinned & (1ULL << startSquare)))
+            {
+                moves[numOfMoves++] = move;
+            } else
+            {
+                if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
+                {
+                    moves[numOfMoves++] = move;
+                }
+            }
+        }
+    }
+
+
+    // right captures
+    Bitboard whitePawnRightCaptures = ((whitePawns & ~fileH) << 9) & blackPieces;
+    Bitboard whitePawnRightQuietCaptures = whitePawnRightCaptures & ~rank8;
+    Bitboard whitePawnRightPromoCaptures = whitePawnRightCaptures & rank8;
+
+
+
+    while (whitePawnRightQuietCaptures)
+    {
+        Move endSquare = static_cast<Move>(popLsbAndReturnIndex(whitePawnRightQuietCaptures));
+        Move startSquare = endSquare - 9;
+        Move move = startSquare | (endSquare << 6) | (4 << 12);
+
+        if (!(info.pinned & (1ULL << startSquare)))
+        {
+            moves[numOfMoves++] = move;
+        } else
+        {
+            if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
+            {
+                moves[numOfMoves++] = move;
+            }
+        }
+
+    }
+
+    // store right promo captures
+    while (whitePawnRightPromoCaptures)
+    {
+        Move endSquare = static_cast<Move>(popLsbAndReturnIndex(whitePawnRightPromoCaptures));
+        Move startSquare = endSquare - 9;
+        for (Move flag = 12; flag < 16; flag++)
+        {
+            Move move = startSquare | (endSquare << 6) | (flag << 12);
+
+
+            if (!(info.pinned & (1ULL << startSquare)))
+            {
+                moves[numOfMoves++] = move;
+            } else
+            {
+                if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
+                {
+                    moves[numOfMoves++] = move;
+                }
+            }
+        }
+    }
+
+
+    // EN-PASSANT WITH LEGALITY
+    if (pos.getEnpassantSquare() != NO_SQUARE)
+    {
+        int epEndSquare = pos.getEnpassantSquare();
+        Bitboard epMask = 1ULL << epEndSquare;
+
+        Bitboard leftEpCap = ((whitePawns & ~fileA) << 7) & epMask;
+
+
+        // left white ep
+        if (leftEpCap)
+        {
+            int epStartSquare = epEndSquare - 7;
+
+            Move move = epStartSquare | (epEndSquare << 6) | (5 << 12);
+
+            // first check if pawn is pinned
+            if (info.pinned & (1ULL << epStartSquare))
+            {
+                if ((info.pinnedPieceLegalSquares[epStartSquare] & (1ULL << epEndSquare)))
+                {
+                    moves[numOfMoves++] = move;
+                }
+            }
+            // not pinned : we need to check if king is under attack then we can only do en passant if it is in the info.legal squares
+            // the other case is the rook pin, we need to check if making ep gets king in check by rook type of piece
+            else
+            {
+                // if king in check once
+                if (info.numOfChecks)
+                {
+                    if ((info.legalSquaresMask & (1ULL << epEndSquare)) | (info.checkers & (1ULL << (epStartSquare - 1))  )  )
+                    {
+                        moves[numOfMoves++] = move;
+                    }
+                }
+                // other case: rook type piece pin
+                else
+                {
+                    if (!(squareUnderAttackByRookPiece(lsbIndex(pos.getPieceBitboard(wK)), Black, pos, (occupied & ~(1ULL << epStartSquare) & ~(1ULL << (epStartSquare - 1))   )    )  )   )
+                    {
+                        moves[numOfMoves++] = move;
+                    }
+                }
+
+            }
+
+        }
+
+        // right white ep captures
+
+
+        Bitboard rightEpCap = ((whitePawns & ~fileH) << 9) & epMask;
+
+
+        // left white ep
+        if (rightEpCap)
+        {
+            int epStartSquare = epEndSquare - 9;
+
+            Move move = epStartSquare | (epEndSquare << 6) | (5 << 12);
+
+            // first check if pawn is pinned
+            if (info.pinned & (1ULL << epStartSquare))
+            {
+                //std::cout << "PINNED, START SQUARE: " << epStartSquare;
+                if ((info.pinnedPieceLegalSquares[epStartSquare] & (1ULL << epEndSquare)))
+                {
+                    moves[numOfMoves++] = move;
+                }
+            }
+            // not pinned : we need to check if king is under attack then we can only do en passant if it is in the info.legal squares
+            // the other case is the rook pin, we need to check if making ep gets king in check by rook type of piece
+            else
+            {
+                // if king in check once
+                if (info.numOfChecks)
+                {
+                    if ((info.legalSquaresMask & (1ULL << epEndSquare)) | (info.checkers & (1ULL << (epStartSquare + 1))  )  )
+                    {
+                        moves[numOfMoves++] = move;
+                    }
+                }
+                // other case: rook type piece pin
+                else
+                {
+                    if (!(squareUnderAttackByRookPiece(lsbIndex(pos.getPieceBitboard(wK)), Black, pos, (occupied & ~(1ULL << epStartSquare) & ~(1ULL << (epStartSquare + 1))   )    )  )   )
+                    {
+                        moves[numOfMoves++] = move;
+                    }
+                }
+
+            }
+
+        }
+
+    }
+}
+// WHITE PAWN CAPTURES
+
 
 // generate every legal black pawn move
 void generateBlackPawnMoves(const Position& pos, const legalityInformation& info, Move moves[], int &numOfMoves)
@@ -757,6 +979,230 @@ void generateBlackPawnMoves(const Position& pos, const legalityInformation& info
 
 }
 
+// CAPTURES FOR BLACK PAWNS
+void generateBlackPawnCaptures(const Position& pos, const legalityInformation& info, Move moves[], int &numOfMoves)
+{
+    Bitboard blackPawns = pos.getPieceBitboard(bp);
+    Bitboard whitePieces = pos.getWhiteBitboard();
+    Bitboard occupied = pos.getOccupiedBitboard();
+    //Bitboard empty = ~occupied;
+
+
+    if (info.numOfChecks == 1)
+    {
+        whitePieces &= info.legalSquaresMask; // store for captutes later
+    }
+
+
+
+
+    // left captures
+    Bitboard blackPawnLeftCaptures = ((blackPawns & ~fileA) >> 9) & whitePieces;
+
+    Bitboard blackPawnLeftQuietCaptures = blackPawnLeftCaptures & ~rank1;
+    Bitboard blackPawnLeftPromoCaptures = blackPawnLeftCaptures & rank1;
+
+
+
+    while (blackPawnLeftQuietCaptures) // non-promo left captures
+    {
+        Move endSquare = static_cast<Move>(popLsbAndReturnIndex(blackPawnLeftQuietCaptures));
+        Move startSquare = endSquare + 9;
+
+        Move move = startSquare | (endSquare << 6) | (4 << 12);
+
+        if (!(info.pinned & (1ULL << startSquare)))
+        {
+            moves[numOfMoves++] = move;
+        } else
+        {
+            if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
+            {
+                moves[numOfMoves++] = move;
+            }
+        }
+    }
+
+    // capture with promotion
+    while (blackPawnLeftPromoCaptures)
+    {
+        Move endSquare = static_cast<Move>(popLsbAndReturnIndex(blackPawnLeftPromoCaptures));
+        Move startSquare = endSquare + 9;
+
+        for (Move flag = 12; flag < 16; flag++)
+        {
+            Move move = startSquare | (endSquare << 6) | (flag << 12);
+
+            if (!(info.pinned & (1ULL << startSquare)))
+            {
+                moves[numOfMoves++] = move;
+            } else
+            {
+                if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
+                {
+                    moves[numOfMoves++] = move;
+                }
+            }
+        }
+    }
+
+
+    // right captures
+    Bitboard blackPawnRightCaptures = ((blackPawns & ~fileH) >> 7) & whitePieces;
+    Bitboard blackPawnRightQuietCaptures = blackPawnRightCaptures & ~rank1;
+    Bitboard blackPawnRightPromoCaptures = blackPawnRightCaptures & rank1;
+
+
+
+    while (blackPawnRightQuietCaptures)
+    {
+        Move endSquare = static_cast<Move>(popLsbAndReturnIndex(blackPawnRightQuietCaptures));
+        Move startSquare = endSquare + 7;
+        Move move = startSquare | (endSquare << 6) | (4 << 12);
+
+
+        if (!(info.pinned & (1ULL << startSquare)))
+        {
+            moves[numOfMoves++] = move;
+        } else
+        {
+            if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
+            {
+                moves[numOfMoves++] = move;
+            }
+        }
+    }
+
+
+    // store right promo captures
+    while (blackPawnRightPromoCaptures)
+    {
+        //std::cout << "BLACK PAWN RIGHT PROMO CAPTURES:";
+
+        Move endSquare = static_cast<Move>(popLsbAndReturnIndex(blackPawnRightPromoCaptures));
+        Move startSquare = endSquare + 7;
+        for (Move flag = 12; flag < 16; flag++)
+        {
+
+            Move move = startSquare | (endSquare << 6) | (flag << 12);
+            //printMove(move);
+
+            if (!(info.pinned & (1ULL << startSquare)))
+            {
+                moves[numOfMoves++] = move;
+            } else
+            {
+                if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
+                {
+                    moves[numOfMoves++] = move;
+                }
+            }
+        }
+    }
+
+
+
+    // en-passant captures for black pawns
+    if (pos.getEnpassantSquare() != NO_SQUARE)
+    {
+        int epEndSquare = pos.getEnpassantSquare();
+        Bitboard epMask = 1ULL << epEndSquare;
+
+        Bitboard leftEpCap = ((blackPawns & ~fileA) >> 9) & epMask;
+
+
+        // left white ep
+        if (leftEpCap)
+        {
+            int epStartSquare = epEndSquare + 9;
+
+            Move move = epStartSquare | (epEndSquare << 6) | (5 << 12);
+
+            // first check if pawn is pinned
+            if (info.pinned & (1ULL << epStartSquare))
+            {
+                if (info.pinnedPieceLegalSquares[epStartSquare] & (1ULL << epEndSquare))
+                {
+                    moves[numOfMoves++] = move;
+                }
+            }
+            // not pinned : we need to check if king is under attack then we can only do en passant if it is in the info.legal squares
+            // the other case is the rook pin, we need to check if making ep gets king in check by rook type of piece
+            else
+            {
+                // if king in check once
+                if (info.numOfChecks)
+                {
+                    if ((info.legalSquaresMask & (1ULL << epEndSquare)) | (info.checkers & (1ULL << (epStartSquare - 1))  )  )
+                    {
+                        moves[numOfMoves++] = move;
+                    }
+                }
+                // other case: rook type piece pin
+                else
+                {
+                    if (!(squareUnderAttackByRookPiece(lsbIndex(pos.getPieceBitboard(bK)), White, pos, (occupied & ~(1ULL << epStartSquare) & ~(1ULL << (epStartSquare - 1))   )    )  )   )
+                    {
+                        moves[numOfMoves++] = move;
+                    }
+                }
+
+            }
+
+        }
+
+        // right white ep captures
+
+
+        Bitboard rightEpCap = ((blackPawns & ~fileH) >> 7) & epMask;
+
+
+        // left white ep
+        if (rightEpCap)
+        {
+            int epStartSquare = epEndSquare + 7;
+
+            Move move = epStartSquare | (epEndSquare << 6) | (5 << 12);
+
+            // first check if pawn is pinned
+            if (info.pinned & (1ULL << epStartSquare))
+            {
+                if (info.pinnedPieceLegalSquares[epStartSquare] & (1ULL << epEndSquare))
+                {
+                    moves[numOfMoves++] = move;
+                }
+            }
+            // not pinned : we need to check if king is under attack then we can only do en passant if it is in the info.legal squares
+            // the other case is the rook pin, we need to check if making ep gets king in check by rook type of piece
+            else
+            {
+                // if king in check once
+                if (info.numOfChecks)
+                {
+                    if ((info.legalSquaresMask & (1ULL << epEndSquare)) | (info.checkers & (1ULL << (epStartSquare + 1))  )  )
+                    {
+                        moves[numOfMoves++] = move;
+                    }
+                }
+                // other case: rook type piece pin
+                else
+                {
+                    if (!(squareUnderAttackByRookPiece(lsbIndex(pos.getPieceBitboard(bK)), White, pos, (occupied & ~(1ULL << epStartSquare) & ~(1ULL << (epStartSquare + 1))   )    )  )   )
+                    {
+                        moves[numOfMoves++] = move;
+                    }
+                }
+
+            }
+
+        }
+
+    }
+
+
+}
+// CAPTURES FOR BLACK PAWNS
+
 // PAWN MOVES ----------------------------------------------------------------------------------------------------------------------------
 
 
@@ -769,20 +1215,22 @@ void generateBlackPawnMoves(const Position& pos, const legalityInformation& info
 // generate every legal knight move for either black or white
 void generateKnightMoves(const legalityInformation& info, Bitboard knightPos, Bitboard allyPieces, Bitboard enemyPieces, Move moves[], int& numOfMoves)
 {
+    // loop for every knight in the board
     while (knightPos)
     {
         int startSquare = popLsbAndReturnIndex(knightPos);
+        // if a knight is pinned it can not move anywhere so move on to the next knight
         if (info.pinned & (1ULL << startSquare)) continue;
 
-        if (info.numOfChecks == 1)
-        {
 
-        }
         Bitboard knightMoves = knightAttacks[startSquare] & ~allyPieces;
+        // first check if king is in check, then the knight can only move to the legal squares that cover the check (or capture the attacker)
         if (info.numOfChecks == 1)
         {
             knightMoves &= info.legalSquaresMask;
         }
+
+        // store quiet and capture moves
         Bitboard knightCaptures = knightMoves & enemyPieces;
         Bitboard knightQuietMoves = knightMoves & ~enemyPieces;
 
@@ -804,6 +1252,40 @@ void generateKnightMoves(const legalityInformation& info, Bitboard knightPos, Bi
     }
 }
 
+
+// generate every legal knight capture move for either black or white
+void generateKnightCaptures(const legalityInformation& info, Bitboard knightPos, Bitboard enemyPieces, Move moves[], int& numOfMoves)
+
+{
+    // loop for every knight in the board
+    while (knightPos)
+    {
+        int startSquare = popLsbAndReturnIndex(knightPos);
+        // if a knight is pinned it can not move anywhere so move on to the next knight
+        if (info.pinned & (1ULL << startSquare)) continue;
+
+
+        // we are only looking for captures for the quiescence
+        Bitboard knightCaptures = knightAttacks[startSquare] & enemyPieces;
+        // if king is in check, then the only available move if it exists is to capture the attacker with the knight
+        if (info.numOfChecks == 1)
+        {
+            // leave only the square of the attacker (checker)
+            knightCaptures &= info.legalSquaresMask;
+        }
+
+        // store capture moves
+        while (knightCaptures)
+        {
+            int endSquare = popLsbAndReturnIndex(knightCaptures);
+            Move move = (startSquare) | (endSquare << 6) | (4 << 12);
+            moves[numOfMoves++] = move;
+        }
+
+
+    }
+}
+
 // KNIGHT MOVES ----------------------------------------------------------------------------------------------------------------------------
 
 
@@ -817,11 +1299,12 @@ void generateKnightMoves(const legalityInformation& info, Bitboard knightPos, Bi
 // generate every legal bishop move for either black or white
 void generateBishopMoves(const legalityInformation& info, Bitboard bishopPos, Bitboard allyPieces, Bitboard enemyPieces, Bitboard occupied, Move moves[], int& numOfMoves)
 {
-
+    // loop for every bishop in the board
     while (bishopPos)
     {
         int startSquare = popLsbAndReturnIndex(bishopPos);
         Bitboard bishopMoves = getBishopAttacks(startSquare, occupied) & ~allyPieces;
+        // if king in check the bishop can cover the squares between king and attacker, or it can capture the attacker
         if (info.numOfChecks == 1)
         {
             bishopMoves &= info.legalSquaresMask;
@@ -830,7 +1313,8 @@ void generateBishopMoves(const legalityInformation& info, Bitboard bishopPos, Bi
         Bitboard bishopQuietMoves = bishopMoves & ~enemyPieces;
 
 
-
+        // store captures and quiet moves
+        // if bishop is pinned make sure it moves to the legal squares for the pin
         while (bishopCaptures)
         {
             int endSquare = popLsbAndReturnIndex(bishopCaptures);
@@ -870,6 +1354,44 @@ void generateBishopMoves(const legalityInformation& info, Bitboard bishopPos, Bi
     }
 }
 
+// generate every legal bishop capture move for either black or white
+void generateBishopCaptures(const legalityInformation& info, Bitboard bishopPos, Bitboard enemyPieces, Bitboard occupied, Move moves[], int& numOfMoves)
+{
+    // loop for every bishop in the board
+    while (bishopPos)
+    {
+        int startSquare = popLsbAndReturnIndex(bishopPos);
+        Bitboard bishopCaptures = getBishopAttacks(startSquare, occupied) & enemyPieces;
+        // if king in check the bishop can only capture the attacker (for this specific function)
+        if (info.numOfChecks == 1)
+        {
+            bishopCaptures &= info.legalSquaresMask;
+        }
+
+
+        // store captures
+        // if bishop is pinned it can only capture the pinner
+        while (bishopCaptures)
+        {
+            int endSquare = popLsbAndReturnIndex(bishopCaptures);
+            Move move = (startSquare) | (endSquare << 6) | (4 << 12);
+
+            if (!(info.pinned & (1ULL << startSquare)))
+            {
+                moves[numOfMoves++] = move;
+            } else
+            {
+                if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
+                {
+                    moves[numOfMoves++] = move;
+                }
+            }
+        }
+
+
+    }
+}
+
 // BISHOP MOVES ----------------------------------------------------------------------------------------------------------------------------
 
 
@@ -882,14 +1404,14 @@ void generateBishopMoves(const legalityInformation& info, Bitboard bishopPos, Bi
 // generate every legal rook move for either black or white
 void generateRookMoves(const legalityInformation& info, Bitboard rookPos, Bitboard allyPieces, Bitboard enemyPieces, Bitboard occupied, Move moves[], int& numOfMoves)
 {
-
+    // loop for every rook in the board
     while (rookPos)
     {
         int startSquare = popLsbAndReturnIndex(rookPos);
 
         Bitboard rookMoves = getRookAttacks(startSquare, occupied) & ~allyPieces;
 
-
+        // if king in check cover the check or capture the checker
         if (info.numOfChecks == 1)
         {
             rookMoves &= info.legalSquaresMask;
@@ -898,7 +1420,7 @@ void generateRookMoves(const legalityInformation& info, Bitboard rookPos, Bitboa
         Bitboard rookCaptures = rookMoves & enemyPieces;
         Bitboard rookQuietMoves = rookMoves & ~enemyPieces;
 
-
+        // store captures and quiet moves for the rook
         while (rookCaptures)
         {
             int endSquare = popLsbAndReturnIndex(rookCaptures);
@@ -937,6 +1459,44 @@ void generateRookMoves(const legalityInformation& info, Bitboard rookPos, Bitboa
     }
 }
 
+
+// generate every legal rook capture for either black or white
+void generateRookCaptures(const legalityInformation& info, Bitboard rookPos, Bitboard enemyPieces, Bitboard occupied, Move moves[], int& numOfMoves)
+{
+    // loop for every rook in the board
+    while (rookPos)
+    {
+        int startSquare = popLsbAndReturnIndex(rookPos);
+
+        Bitboard rookCaptures = getRookAttacks(startSquare, occupied) & enemyPieces;
+
+        // if king in check the rook can only capture the checker
+        if (info.numOfChecks == 1)
+        {
+            rookCaptures &= info.legalSquaresMask;
+        }
+
+
+        // store captures for the rook
+        while (rookCaptures)
+        {
+            int endSquare = popLsbAndReturnIndex(rookCaptures);
+            Move move = (startSquare) | (endSquare << 6) | (4 << 12);
+
+            if (!(info.pinned & (1ULL << startSquare)))
+            {
+                moves[numOfMoves++] = move;
+            } else
+            {
+                if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
+                {
+                    moves[numOfMoves++] = move;
+                }
+            }
+        }
+    }
+}
+
 // ROOK MOVES ----------------------------------------------------------------------------------------------------------------------------
 
 
@@ -950,6 +1510,13 @@ void generateQueenMoves(const legalityInformation& info, Bitboard queenPos, Bitb
 {
     generateRookMoves(info, queenPos, allyPieces, enemyPieces, occupied, moves, numOfMoves);
     generateBishopMoves(info, queenPos, allyPieces, enemyPieces, occupied, moves, numOfMoves);
+}
+
+// generate every legal queen capture for either black or white using the rook and bishop captures generator functions
+void generateQueenCaptures(const legalityInformation& info, Bitboard queenPos, Bitboard enemyPieces, Bitboard occupied, Move moves[], int& numOfMoves)
+{
+    generateRookCaptures(info, queenPos, enemyPieces, occupied, moves, numOfMoves);
+    generateBishopCaptures(info, queenPos, enemyPieces, occupied, moves, numOfMoves);
 }
 
 // QUEEN MOVES ----------------------------------------------------------------------------------------------------------------------------
@@ -1066,6 +1633,27 @@ void generateWhiteKingMoves(const Position& pos, Move moves[], int& numOfMoves)
     }
 }
 
+// white king captures
+void generateWhiteKingCaptures(const Position& pos, Move moves[], int& numOfMoves)
+{
+    Bitboard kingPos = pos.getPieceBitboard(wK);
+    int startSquare = popLsbAndReturnIndex(kingPos);
+
+    Bitboard startSqMask = 1ULL << startSquare;
+
+    Bitboard kingCaptures = kingAttacks[startSquare] & pos.getBlackBitboard();
+
+
+    while (kingCaptures)
+    {
+        int endSquare = popLsbAndReturnIndex(kingCaptures);
+        Move move = (startSquare) | (endSquare << 6) | (4 << 12);
+
+        if (! (squareUnderAttack(endSquare, Black, pos, ((pos.getOccupiedBitboard()) & ~(startSqMask) )))) {moves[numOfMoves++] = move;}
+    }
+}
+
+
 // legal black king moves and castling
 void generateBlackKingMoves(const Position& pos, Move moves[], int& numOfMoves)
 {
@@ -1140,6 +1728,26 @@ void generateBlackKingMoves(const Position& pos, Move moves[], int& numOfMoves)
     }
 }
 
+// all legal black king captures
+void generateBlackKingCaptures(const Position& pos, Move moves[], int& numOfMoves)
+{
+    Bitboard kingPos = pos.getPieceBitboard(bK);
+    int startSquare = popLsbAndReturnIndex(kingPos);
+
+    Bitboard startSqMask = 1ULL << startSquare;
+
+    Bitboard kingCaptures = kingAttacks[startSquare] & pos.getWhiteBitboard();
+
+
+    while (kingCaptures)
+    {
+        int endSquare = popLsbAndReturnIndex(kingCaptures);
+        Move move = (startSquare) | (endSquare << 6) | (4 << 12);
+
+        if (! (squareUnderAttack(endSquare, White, pos, ((pos.getOccupiedBitboard()) & ~(startSqMask) )))) {moves[numOfMoves++] = move;}
+    }
+}
+
 // KING MOVES ----------------------------------------------------------------------------------------------------------------------------
 
 
@@ -1152,8 +1760,6 @@ void generateBlackKingMoves(const Position& pos, Move moves[], int& numOfMoves)
 void generateLegalMoves(const legalityInformation& info, Position& pos, Move moves[], int &numOfMoves)
 {
     Bitboard occupied = pos.getOccupiedBitboard();
-
-
     if (info.numOfChecks == 2)
     {
         pos.isWhiteToMove() ? generateWhiteKingMoves(pos, moves, numOfMoves) : generateBlackKingMoves(pos, moves, numOfMoves);
@@ -1162,7 +1768,6 @@ void generateLegalMoves(const legalityInformation& info, Position& pos, Move mov
     {
         if (pos.isWhiteToMove())
         {
-            //std::cout << "checking legal moves for white:" << std::endl;
             Bitboard allyPieces = pos.getWhiteBitboard();
             Bitboard enemyPieces = pos.getBlackBitboard();
 
@@ -1185,7 +1790,7 @@ void generateLegalMoves(const legalityInformation& info, Position& pos, Move mov
             generateWhiteKingMoves(pos, moves, numOfMoves);
         } else
         {
-            //std::cout << "checking legal moves for black:" << std::endl;
+
             Bitboard allyPieces = pos.getBlackBitboard();
             Bitboard enemyPieces = pos.getWhiteBitboard();
 
@@ -1212,3 +1817,52 @@ void generateLegalMoves(const legalityInformation& info, Position& pos, Move mov
 }
 
 // ALL LEGAL MOVES ----------------------------------------------------------------------------------------------------------------------------
+
+// generate *LEGAL* CAPTURE MOVES for quiescence search
+void generateCaptures(const legalityInformation& info, Position& pos, Move moves[], int &numOfMoves)
+{
+    Bitboard occupied = pos.getOccupiedBitboard();
+
+
+    if (info.numOfChecks == 2)
+    {
+        pos.isWhiteToMove() ? generateWhiteKingCaptures(pos, moves, numOfMoves) : generateBlackKingCaptures(pos, moves, numOfMoves);
+    }
+    else
+    {
+        if (pos.isWhiteToMove())
+        {
+
+            Bitboard enemyPieces = pos.getBlackBitboard();
+
+
+            generateWhitePawnCaptures(pos, info, moves, numOfMoves);
+
+            generateKnightCaptures(info, pos.getPieceBitboard(wN), enemyPieces, moves, numOfMoves);
+
+            generateBishopCaptures(info, pos.getPieceBitboard(wB), enemyPieces, occupied, moves, numOfMoves);
+
+            generateRookCaptures(info, pos.getPieceBitboard(wR), enemyPieces, occupied, moves, numOfMoves);
+
+            generateQueenCaptures(info, pos.getPieceBitboard(wQ), enemyPieces, occupied, moves, numOfMoves);
+
+            generateWhiteKingCaptures(pos, moves, numOfMoves);
+        } else
+        {
+
+            Bitboard enemyPieces = pos.getWhiteBitboard();
+
+            generateBlackPawnCaptures(pos, info, moves, numOfMoves);
+
+            generateKnightCaptures(info, pos.getPieceBitboard(bN), enemyPieces, moves, numOfMoves);
+
+            generateBishopCaptures(info, pos.getPieceBitboard(bB), enemyPieces, occupied, moves, numOfMoves);
+
+            generateRookCaptures(info, pos.getPieceBitboard(bR), enemyPieces, occupied, moves, numOfMoves);
+
+            generateQueenCaptures(info, pos.getPieceBitboard(bQ), enemyPieces, occupied, moves, numOfMoves);
+
+            generateBlackKingCaptures(pos, moves, numOfMoves);
+        }
+    }
+}
