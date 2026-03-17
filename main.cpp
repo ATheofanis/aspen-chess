@@ -144,6 +144,9 @@ int depth = 4;
 // TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
 int main()
 {
+    std::string startPos = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    std::string veryTrickyCapturesPos = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
+
     initPSTtables();
     SetConsoleOutputCP(CP_UTF8);
     initPawnAttacks();
@@ -158,7 +161,7 @@ int main()
     Position pos;
 
     //Q7/ppp2k1p/3p2p1/5b2/4P1nq/2P4P/PP1P1bP1/RNB2R1K b - - 0 1
-    pos.loadFen("k7/8/8/1b3b2/8/3K4/8/8 w - - 0 1");
+    pos.loadFen(    veryTrickyCapturesPos    );
 
 
     //Move moves[256];
@@ -192,13 +195,13 @@ int main()
 
 
 
-//    std::cout << pos.getTotalPSTAndMaterialScore() << std::endl;
-//    auto startTime = std::chrono::high_resolution_clock::now();
-//    Move bestMove = (findBestMove(pos));
-//    printMove(bestMove);
-//    auto endTime = std::chrono::high_resolution_clock::now();
-//    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
-//    std::cout << duration.count() << " ms" << std::endl;
+    std::cout << pos.getTotalPSTAndMaterialScore() << std::endl;
+    auto startTime = std::chrono::high_resolution_clock::now();
+  Move bestMove = (findBestMove(pos));
+  printMove(bestMove);
+    auto endTime = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
+    std::cout << duration.count() << " ms" << std::endl;
 //
 //    std::cout << pos.getTotalPSTAndMaterialScore() << std::endl;
 //bestMove = (findBestMove(pos));

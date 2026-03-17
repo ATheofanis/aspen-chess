@@ -63,8 +63,10 @@ public:
     Position();
 
     void makeMove(Move move);
+    void makeCapture(Move capture);
 
     void unmakeMove();
+    void unmakeCapture();
 
     // return the bitboard of a given piece
     [[nodiscard]] constexpr Bitboard getPieceBitboard(int pieceIndex) const

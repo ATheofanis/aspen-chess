@@ -223,5 +223,8 @@ inline void initPSTtables()
     }
 }
 
+int scoreQuiescenceMove(const Move& move, const Position& pos);
+
+int scoreMove(const Move& move, const Position& pos, const Move& bestMove);
 
 int scoreBoard(const Position& pos);

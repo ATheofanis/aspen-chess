@@ -6,6 +6,6 @@
 #include "Position.h"
 
 
-constexpr int MAX_DEPTH = 4;
+constexpr int MAX_DEPTH = 8;
 
 Move findBestMove(Position& pos);

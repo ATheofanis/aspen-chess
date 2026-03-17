@@ -532,6 +532,228 @@ void Position::makeMove(Move move)
 
 }
 
+// MAKE CAPTURE -----------------==============================
+void Position::makeCapture(Move move)
+{
+    positionInfo prevPosInfo;
+    prevPosInfo.prevMove = move;
+    prevPosInfo.blackPiecesBitboard = blackPiecesBitboard;
+    prevPosInfo.whitePiecesBitboard = whitePiecesBitboard;
+    prevPosInfo.pieceCaptured = NO_PIECE;
+    //prevPosInfo.eval = eval;
+    //prevPosInfo.pstScore = pstScore;
+    prevPosInfo.enPassantSquare = enPassantSquare;
+    prevPosInfo.castleRights = castleRights;
+
+    prevPosInfo.mgScore = mgPstAndMaterialScore;
+    prevPosInfo.egScore = egPstAndMaterialScore;
+    prevPosInfo.gamePhase = gamePhase;
+
+
+
+
+    // extract move info
+    int fromSquare = move & 0x3F;
+    int toSquare = (move >> 6) & 0x3F;
+    int flag = (move >> 12) & 0x3F;
+
+
+    // create square masks for later
+    Bitboard fromMask = 1ULL << fromSquare;
+    Bitboard toMask = 1ULL << toSquare;
+    Bitboard moveMask = fromMask | toMask;
+
+    Piece pieceMoved = Board[fromSquare];
+
+    // update white or black piece bitboard for the piece that moved
+    int colorDelta; // we add this to easily calculate the piece index without checking whose turn it is down the line
+    if (whiteToMoveFlag)
+    {
+        colorDelta = 0;
+        whitePiecesBitboard ^= moveMask;
+
+        // for WK : if the from square was from the white kingside rook's starting position then castling rights for WK sohuld be disabled, same logic for queenside
+
+        //auto updatedCastleRights = (((fromMask & wkRookMask) >> 7) | ((fromMask & wqRookMask) << 1));
+        //updatedCastleRights |= (((toMask & bkRookMask) >> 61) | ((toMask & bqRookMask) >> 56));
+
+        // if enemy rook was captured update black's castle rights, if own rook moved update the corresponding castle side right
+        // if a move was made that corresponds to one of the 4 rook square masks then that means we need to update a castling right, that happens by
+        // shifting the bit that becomes 1 after the bitwise OR operation x amount of times to fit the castle rights 4bit encoding
+        // then to properly update the castling rights just do a bitwise AND NOT operation with the current castle rights
+        castleRights &= ~ ((((fromMask & wkRookMask) >> 7) | ((fromMask & wqRookMask) << 1)) | ((toMask & bkRookMask) >> 61) | ((toMask & bqRookMask) >> 53));
+        if ((fromMask & e1Mask))
+        {
+            castleRights &= 12;
+        }
+
+        // adjust incremental score from the piece that moved by subtracting the score from its original square and adding the score from the new square (promotions handled differently)
+        mgPstAndMaterialScore -= mgTable[pieceMoved][fromSquare];
+        egPstAndMaterialScore -= egTable[pieceMoved][fromSquare];
+        if (!(flag & 8))
+        {
+            mgPstAndMaterialScore += mgTable[pieceMoved][toSquare];
+            egPstAndMaterialScore += egTable[pieceMoved][toSquare];
+        }
+
+    }
+    else
+    {
+        colorDelta = 6;
+        blackPiecesBitboard ^= moveMask;
+
+        castleRights &= ~ ((((fromMask & bkRookMask) >> 61) | ((fromMask & bqRookMask) >> 53)) | ((toMask & wkRookMask) >> 7) | ((toMask & wqRookMask) << 1));
+        if ((fromMask & e8Mask))
+        {
+            castleRights &= 3;
+        }
+
+        mgPstAndMaterialScore += mgTable[pieceMoved][fromSquare];
+        egPstAndMaterialScore += egTable[pieceMoved][fromSquare];
+        if (!(flag & 8))
+        {
+            mgPstAndMaterialScore -= mgTable[pieceMoved][toSquare];
+            egPstAndMaterialScore -= egTable[pieceMoved][toSquare];
+        }
+
+    }
+
+    enPassantSquare = NO_SQUARE; // en passant square is set to NONE since we are making a capture move
+
+
+    // update mailbox ( remove piece moved from its starting position )
+
+    Board[fromSquare] = NO_PIECE;
+
+    // quiet moves are the most common with flag == 0 so adding this check will prevent a lot of unecessary checks down the line
+    // without this a quiet move will have to go through all the below checks for no reason
+
+    // handle normal captures
+    if (flag == 4)
+    {
+
+        Piece capPiece = Board[toSquare];
+        gamePhase -= gamephaseInc[capPiece];
+
+        prevPosInfo.pieceCaptured = capPiece; // store cap piece
+
+        // update bitboards of moved and captured pieces
+        pieceBitboard[capPiece] &= ~toMask;
+        pieceBitboard[pieceMoved] ^= moveMask;
+
+        // update mailbox
+        Board[toSquare] = pieceMoved;
+
+        // update white/black/occupied (remove captured piece)
+        if (whiteToMoveFlag)
+        {
+            mgPstAndMaterialScore += mgTable[capPiece][toSquare];
+            egPstAndMaterialScore += egTable[capPiece][toSquare];
+
+            blackPiecesBitboard &= ~toMask;
+        } else
+        {
+            mgPstAndMaterialScore -= mgTable[capPiece][toSquare];
+            egPstAndMaterialScore -= egTable[capPiece][toSquare];
+
+            whitePiecesBitboard &= ~toMask;
+        }
+
+    }
+    else if (flag == 5) // en passant
+    {
+        //Piece capPawn;
+        if (whiteToMoveFlag)
+        {
+            prevPosInfo.pieceCaptured = bp;
+            // remove captured pawn from bp bitboard and Board mailbox:
+            Bitboard capPawnMask = 1ULL << (toSquare - 8);
+            pieceBitboard[bp] &= ~capPawnMask;
+            pieceBitboard[wp] ^= moveMask;
+            Board[toSquare - 8] = NO_PIECE;
+            Board[toSquare] = wp;
+            // also remove from black piece bb and occupied squares bb
+            blackPiecesBitboard &= ~capPawnMask;
+            mgPstAndMaterialScore += mgTable[bp][toSquare - 8];
+            egPstAndMaterialScore += egTable[bp][toSquare - 8];
+            gamePhase -= gamephaseInc[bp];
+
+        } else
+        {
+            // black makes ep
+            prevPosInfo.pieceCaptured = wp;
+            // remove captured pawn from bp bitboard and Board mailbox:
+            Bitboard capPawnMask = 1ULL << (toSquare + 8);
+            pieceBitboard[wp] &= ~capPawnMask;
+            pieceBitboard[bp] ^= moveMask;
+            Board[toSquare + 8] = NO_PIECE;
+            Board[toSquare] = bp;
+            // also remove from white piece bb and occupied squares bb
+            whitePiecesBitboard &= ~capPawnMask;
+            mgPstAndMaterialScore -= mgTable[wp][toSquare + 8];
+            egPstAndMaterialScore -= egTable[wp][toSquare + 8];
+            gamePhase -= gamephaseInc[wp];
+        }
+    }
+
+    // captures are done , now handle promotions and promo-captures
+    else // handle promotions
+    {
+        // add promoted piece to mailbox
+        // (colorDelta + flag % 4 + 1) gives the index of promoted piece based on the 16 bit move encoding i am using
+        Piece promotedPiece = static_cast<Piece>(colorDelta + flag % 4 + 1);
+        //Piece capturedPiece = Board[toSquare];
+        //prevPosInfo.pieceCaptured = capturedPiece;
+
+
+        if (flag & 4) // if move is promo-capture
+        {
+            Piece capturedPiece = Board[toSquare];
+            prevPosInfo.pieceCaptured = capturedPiece;
+
+            pieceBitboard[capturedPiece] &= ~toMask;
+            gamePhase -= gamephaseInc[capturedPiece];
+
+            if (whiteToMoveFlag)
+            {
+                mgPstAndMaterialScore += mgTable[capturedPiece][toSquare];
+                egPstAndMaterialScore += egTable[capturedPiece][toSquare];
+
+                blackPiecesBitboard &= ~toMask;
+            } else
+            {
+                mgPstAndMaterialScore -= mgTable[capturedPiece][toSquare];
+                egPstAndMaterialScore -= egTable[capturedPiece][toSquare];
+
+                whitePiecesBitboard &= ~toMask;
+            }
+        }
+
+        Board[toSquare] = promotedPiece; // add promoted piece to the board
+        pieceBitboard[promotedPiece] |= toMask; // add promoted piece to its bitboard
+        pieceBitboard[pieceMoved] &= ~fromMask;
+
+        gamePhase += (gamephaseInc[promotedPiece] - gamephaseInc[0]);
+        if (whiteToMoveFlag)
+        {
+            mgPstAndMaterialScore += mgTable[promotedPiece][toSquare];
+            egPstAndMaterialScore += egTable[promotedPiece][toSquare];
+        } else
+        {
+            mgPstAndMaterialScore -= mgTable[promotedPiece][toSquare];
+            egPstAndMaterialScore -= egTable[promotedPiece][toSquare];
+        }
+    }
+
+    whiteToMoveFlag = !whiteToMoveFlag;
+    prevPositionsLog[positionLogTop++] = prevPosInfo;
+
+    occupiedSquaresBitboard = whitePiecesBitboard | blackPiecesBitboard;
+
+}
+// MAKE CAPTURE -----------------==============================
+
+
 
 void Position::unmakeMove()
 {
@@ -679,6 +901,142 @@ void Position::unmakeMove()
     }
 
 }
+
+
+
+// UNMAKE CAPTURE -------------------------================================
+void Position::unmakeCapture()
+{
+
+    whiteToMoveFlag = !whiteToMoveFlag;
+
+    positionLogTop--;
+    positionInfo prevPosInfo = prevPositionsLog[positionLogTop];
+
+    // use the info from previous position to reset bitboards, castle rights and ep square
+    blackPiecesBitboard = prevPosInfo.blackPiecesBitboard;
+    whitePiecesBitboard = prevPosInfo.whitePiecesBitboard;
+    occupiedSquaresBitboard = blackPiecesBitboard | whitePiecesBitboard;
+    enPassantSquare = prevPosInfo.enPassantSquare;
+    castleRights = prevPosInfo.castleRights;
+
+    mgPstAndMaterialScore = prevPosInfo.mgScore;
+    egPstAndMaterialScore = prevPosInfo.egScore;
+    gamePhase = prevPosInfo.gamePhase;
+
+    Piece pieceCaptured = prevPosInfo.pieceCaptured;
+    Move move = prevPosInfo.prevMove;
+
+
+    // extract move info
+    int fromSquare = move & 0x3F;
+    int toSquare = (move >> 6) & 0x3F;
+    int flag = (move >> 12) & 0x3F;
+
+
+    // create square masks for later
+    Bitboard fromMask = 1ULL << fromSquare;
+    Bitboard toMask = 1ULL << toSquare;
+    Bitboard moveMask = fromMask | toMask;
+
+
+
+
+
+    // ALL PROMOTIONS (AND PROMO-CAPS)
+    if (flag & 8)
+    {
+        int colorDelta = whiteToMoveFlag ? 0 : 6;
+        int promoPieceIndex = colorDelta + 1 + flag % 4;
+
+        // remove promoted piece from its bitboard
+        pieceBitboard[promoPieceIndex] &= ~toMask;
+        // update pawn bitboard using color delta (0 for wp, 6 for bp)
+        pieceBitboard[colorDelta] |= fromMask;
+
+        // if promo capture remove add captured piece to its bitboard
+        // and also add it to the mailbox
+        if (pieceCaptured != NO_PIECE)
+        {
+            pieceBitboard[pieceCaptured] |= toMask;
+            Board[toSquare] = pieceCaptured;
+        } else
+        {
+            Board[toSquare] = NO_PIECE;
+        }
+        Board[fromSquare] = static_cast<Piece>(colorDelta);
+    }
+    else // non-promotion moves, the most common case
+    {
+        Piece pieceMoved = Board[toSquare];
+        pieceBitboard[pieceMoved] ^= moveMask;
+        Board[fromSquare] = pieceMoved;
+        // restore bitboard of enemy piece captured if move was a capture
+        if (pieceCaptured != NO_PIECE)
+        {
+            if (flag == 5)
+            {
+                if (whiteToMoveFlag)
+                {
+                    int epCapturedPawnSq = toSquare - 8;
+                    pieceBitboard[bp] |= (1ULL << epCapturedPawnSq);
+                    Board[epCapturedPawnSq] = bp;
+                    Board[toSquare] = NO_PIECE;
+                }
+                else
+                {
+                    int epCapturedPawnSq = toSquare + 8;
+                    pieceBitboard[wp] |= (1ULL << epCapturedPawnSq);
+                    Board[epCapturedPawnSq] = wp;
+                    Board[toSquare] = NO_PIECE;
+                }
+            }
+            else
+            {
+                pieceBitboard[pieceCaptured] |= toMask;
+                Board[toSquare] = pieceCaptured;
+            }
+        }
+        else
+        {
+            Board[toSquare] = NO_PIECE;
+
+            if (whiteToMoveFlag)
+            {
+                if (flag == 2)
+                {
+                    pieceBitboard[wR] ^= wkRookMoveMask;
+                    Board[7] = wR;
+                    Board[5] = NO_PIECE;
+                } else if (flag == 3)
+                {
+                    pieceBitboard[wR] ^= wqRookMoveMask;
+                    Board[0] = wR;
+                    Board[3] = NO_PIECE;
+                }
+                // black castles
+            }
+            else
+            {
+                if (flag == 2)
+                {
+                    pieceBitboard[bR] ^= bkRookMoveMask;
+                    Board[63] = bR;
+                    Board[61] = NO_PIECE;
+                } else if (flag == 3)
+                {
+                    pieceBitboard[bR] ^= bqRookMoveMask;
+                    Board[56] = bR;
+                    Board[59] = NO_PIECE;
+                }
+            }
+
+
+
+        }
+    }
+}
+// UNMAKE CAPTURE -----------------------------------====================================
 
 
 void Position::calculatePstAndMaterialScore()
