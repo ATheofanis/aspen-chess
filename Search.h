@@ -5,7 +5,10 @@
 #pragma once
 #include "Position.h"
 
+class Position;
 
 constexpr int MAX_DEPTH = 8;
+
+
 
 Move findBestMove(Position& pos);

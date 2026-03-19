@@ -7,6 +7,7 @@
 #include <cassert>
 
 #include "MoveGen.h"
+#include "Zobrist.h"
 
 // clears everything regarding a position
 void Position::clearPosition()
@@ -217,16 +218,12 @@ void Position::makeMove(Move move)
     prevPosInfo.blackPiecesBitboard = blackPiecesBitboard;
     prevPosInfo.whitePiecesBitboard = whitePiecesBitboard;
     prevPosInfo.pieceCaptured = NO_PIECE;
-    //prevPosInfo.eval = eval;
-    //prevPosInfo.pstScore = pstScore;
     prevPosInfo.enPassantSquare = enPassantSquare;
     prevPosInfo.castleRights = castleRights;
 
     prevPosInfo.mgScore = mgPstAndMaterialScore;
     prevPosInfo.egScore = egPstAndMaterialScore;
     prevPosInfo.gamePhase = gamePhase;
-
-
 
 
     // extract move info
@@ -241,6 +238,7 @@ void Position::makeMove(Move move)
     Bitboard moveMask = fromMask | toMask;
 
     Piece pieceMoved = Board[fromSquare];
+    zobristHash ^= zobristPieces[fromSquare][pieceMoved];
 
     // update white or black piece bitboard for the piece that moved
     int colorDelta; // we add this to easily calculate the piece index without checking whose turn it is down the line
@@ -1064,4 +1062,44 @@ void Position::calculatePstAndMaterialScore()
             }
         }
     }
+}
+
+// for now return zobrist hash for easier debugging might change later to set the hash directly
+ZobristHash Position::computeZobristHash()
+{
+    ZobristHash hash = 0;
+
+    // get hash from board pieces
+    for (int sq = 0; sq < 64; sq++)
+    {
+        if (Board[sq] != NO_PIECE)
+        {
+            hash ^= zobristPieces[sq][Board[sq]];
+        }
+    }
+
+    // castling rights
+    // WK:
+    hash ^= (castleRights & WK) * zobristCastleRights[0];
+
+    // WQ:
+    hash ^= ((castleRights & WQ) >> 1) * zobristCastleRights[1];
+
+    // BK:
+    hash ^= ((castleRights & BK) >> 2) * zobristCastleRights[2];
+
+    // BQ:
+    hash ^= ((castleRights & BQ) >> 3) * zobristCastleRights[3];
+
+    // enpassant file
+    hash ^= zobristEnpassantFile[enPassantSquare % 8];
+
+    // black to move
+    if (whiteToMoveFlag)
+    {
+        return hash;
+    }
+
+    hash ^= zobristBlackToMove;
+    return hash;
 }

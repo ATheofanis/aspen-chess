@@ -4,8 +4,12 @@
 
 #pragma once
 #include "Position.h"
+#include "Search.h"
 
 class Position;
+
+extern Move killerMoves[15][2];
+extern int historyMoves[64][64];
 
 constexpr int CHECKMATE = 32000;
 constexpr int STALEMATE = 0;
@@ -13,6 +17,9 @@ constexpr int STALEMATE = 0;
 
 // PeSTO's middlegame piece score values
 constexpr int mgPieceScore[6] = { 82, 337, 365, 477, 1025,  0};
+
+// average piece score for SEE , MVVLVA and other stuff
+constexpr int averagePieceScore[6] = {88, 309, 331, 494, 980, 0};
 
 // PeSTO's endgame piece score values
 constexpr int egPieceScore[6] = { 94, 281, 297, 512,  936,  0};
@@ -223,8 +230,8 @@ inline void initPSTtables()
     }
 }
 
-int scoreQuiescenceMove(const Move& move, const Position& pos);
+int scoreQuiescenceMove(const Move& move, const Position& pos, const Move& bestMove);
 
-int scoreMove(const Move& move, const Position& pos, const Move& bestMove);
+int scoreMove(const Move& move, const Position& pos, const Move& bestMove, const int& ply);
 
 int scoreBoard(const Position& pos);

@@ -24,4 +24,6 @@ add_executable(AChess main.cpp
         Perft.h
         Search.cpp
         Search.h
+        Zobrist.cpp
+        Zobrist.h
 )

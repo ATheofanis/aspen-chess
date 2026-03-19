@@ -4,6 +4,9 @@
 
 #include "Score.h"
 
+Move killerMoves[15][2];
+int historyMoves[64][64];
+
 int scoreBoard(const Position& pos)
 {
     int score = 0;
@@ -11,8 +14,14 @@ int scoreBoard(const Position& pos)
     return pos.isWhiteToMove() ? score : -score;
 }
 
-int scoreQuiescenceMove(const Move& move, const Position& pos)
+int scoreQuiescenceMove(const Move& move, const Position& pos, const Move& bestMove)
 {
+
+    if (move == bestMove)
+    {
+        return 10000;
+    }
+
     int fromSquare = move & 0x3F;
     int toSquare = (move >> 6) & 0x3F;
     int flag = (move >> 12) & 0x3F;
@@ -30,21 +39,25 @@ int scoreQuiescenceMove(const Move& move, const Position& pos)
         }
         Piece attacker = pos.getPieceFromBoard(fromSquare);
 
-        return 1000 + 10 * mgPieceScore[(int)(victim) % 6] - mgPieceScore[(int)(attacker) % 6];
+        return 1000 + 10 * averagePieceScore[(int)(victim) % 6] - averagePieceScore[(int)(attacker) % 6];
+
     }
+
+
     return 0;
 }
 
-int scoreMove(const Move& move, const Position& pos, const Move& bestMove)
+int scoreMove(const Move& move, const Position& pos, const Move& bestMove, const int& ply)
 {
     if (move == bestMove)
     {
         return 10000;
     }
 
+
     int flag = (move >> 12) & 0x3F;
 
-    // MVV-LVA for quiescence
+    // MVV-LVA for capture moves
     if (flag & 4)
     {
         int fromSquare = move & 0x3F;
@@ -60,7 +73,17 @@ int scoreMove(const Move& move, const Position& pos, const Move& bestMove)
         }
         Piece attacker = pos.getPieceFromBoard(fromSquare);
 
-        return 1000 + 10 * mgPieceScore[(int)(victim) % 6] - mgPieceScore[(int)(attacker) % 6];
+        return 1500 + 10 * averagePieceScore[(int)(victim) % 6] - averagePieceScore[(int)(attacker) % 6];
     }
-    return 0;
+
+    // killer moves (only non captures here)
+    if (move == killerMoves[ply][0])
+        return 900;
+    if (move == killerMoves[ply][1])
+        return 850;
+
+    int fromSquare = move & 0x3F;
+    int toSquare = (move >> 6) & 0x3F;
+
+    return historyMoves[fromSquare][toSquare];
 }

@@ -37,6 +37,8 @@ private:
     Bitboard whitePiecesBitboard{};
     Bitboard occupiedSquaresBitboard{};
 
+    ZobristHash zobristHash{};
+
     Piece Board[64]{};
 
     int mgPstAndMaterialScore{};
@@ -122,6 +124,8 @@ public:
 
         return (mgPstAndMaterialScore * mgPhase + egPstAndMaterialScore * egPhase) / 24;
     }
+
+    ZobristHash computeZobristHash();
 
 
 };

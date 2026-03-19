@@ -1,6 +1,7 @@
 #include <cassert>
 #include <iostream>
 
+
 #include "Attacks.h"
 #include "Bitboard.h"
 
@@ -9,6 +10,7 @@
 #include "MoveGen.h"
 #include "Position.h"
 #include "Search.h"
+#include "Zobrist.h"
 
 class Position;
 
@@ -155,19 +157,24 @@ int main()
     initRookAttacks();
     initBishopAttacks();
     initLineBetween();
+    initZobrist();
+
+
 
     //initMagicNumbers();
 
     Position pos;
 
     //Q7/ppp2k1p/3p2p1/5b2/4P1nq/2P4P/PP1P1bP1/RNB2R1K b - - 0 1
-    pos.loadFen(    veryTrickyCapturesPos    );
+    pos.loadFen(    startPos    );
+    //pos.loadFen(    startPos    );
 
-
+    ZobristHash hash = pos.computeZobristHash();
+    std::cout << "Hash:" << hash << std::endl;
     //Move moves[256];
     //int numOfMoves = 0;
-//
-//
+
+
     //Color allyColor;
     //int kingSquare;
     //// store ally color and king location for legality info
@@ -193,7 +200,9 @@ int main()
     //}
 
 
-
+    std::cout << (WQ >> 1);
+    std::cout << (BK >> 2);
+    std::cout << (BQ >> 3);
 
     std::cout << pos.getTotalPSTAndMaterialScore() << std::endl;
     auto startTime = std::chrono::high_resolution_clock::now();
