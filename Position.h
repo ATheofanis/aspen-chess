@@ -3,8 +3,11 @@
 //
 
 #pragma once
+#include <cassert>
+
 #include "Bitboard.h"
 #include "Score.h"
+#include "Zobrist.h"
 
 
 struct positionInfo
@@ -12,6 +15,8 @@ struct positionInfo
     Bitboard occupiedSquaresBitboard{};
     Bitboard blackPiecesBitboard{};
     Bitboard whitePiecesBitboard{};
+
+    ZobristHash zobrist{};
     //int eval{};
     //int pstScore{};
     int enPassantSquare{};
@@ -64,11 +69,37 @@ public:
 
     Position();
 
-    void makeMove(Move move);
-    void makeCapture(Move capture);
+    // make (move) functions
+    void makeMove(Move move); // any legal move
+    void makeCapture(Move capture); // any legal capture
+    // for now pass epSq to update zobrist ep file
+    void makeNullMove(int epSq) // null move for null move pruning
+    {
+        whiteToMoveFlag = !whiteToMoveFlag;
+        zobristHash ^= zobristBlackToMove;
+        enPassantSquare = NO_SQUARE;
 
+        if (epSq != NO_SQUARE) zobristHash ^= zobristEnpassantFile[epSq % 8];
+
+        // ASSERT
+        //assert(zobristHash == computeZobristHash());
+    }
+
+
+    // unmake (move) functions
     void unmakeMove();
     void unmakeCapture();
+    void unmakeNullMove(int epSq) // undo null move for null move pruning
+    {
+        whiteToMoveFlag = !whiteToMoveFlag;
+        zobristHash ^= zobristBlackToMove;
+        enPassantSquare = epSq;
+
+        if (epSq != NO_SQUARE) zobristHash ^= zobristEnpassantFile[epSq % 8];
+
+        // ASSERT
+        //assert(zobristHash == computeZobristHash());
+    }
 
     // return the bitboard of a given piece
     [[nodiscard]] constexpr Bitboard getPieceBitboard(int pieceIndex) const
@@ -94,10 +125,13 @@ public:
         return occupiedSquaresBitboard;
     }
 
-   //Piece* getBoard()
-   //{
-   //    return Board;
-   //}
+    [[nodiscard]] constexpr ZobristHash getZobristHash() const
+    {
+        return zobristHash;
+    }
+
+    // returns game phase for testing
+    [[nodiscard]] int getGamePhase() const { return gamePhase; }
 
     // returns the piece that is in square using the Board[64] mailbox
     [[nodiscard]] Piece getPieceFromBoard(int square) const { return Board[square]; }
@@ -116,12 +150,16 @@ public:
     constexpr int getMGPstAndMaterialScore() const { return mgPstAndMaterialScore; }
     constexpr int getEGPstAndMaterialScore() const { return egPstAndMaterialScore; }
 
+    // return total PST and static eval using phases and mg and eg evaluations
     int getTotalPSTAndMaterialScore() const
     {
         int mgPhase = gamePhase;
         if (mgPhase > 24) mgPhase = 24; // in case of early promotion
         int egPhase = 24 - mgPhase;
 
+        //std::cout << "mgPstAndMaterialScore:" << mgPstAndMaterialScore * mgPhase / 24 << std::endl;
+        //std::cout << "egPstAndMaterialScore:" << egPstAndMaterialScore * egPhase / 24 << std::endl;
+        //std::cout << "Total eval: " << (mgPstAndMaterialScore * mgPhase + egPstAndMaterialScore * egPhase) / 24 << std::endl;
         return (mgPstAndMaterialScore * mgPhase + egPstAndMaterialScore * egPhase) / 24;
     }
 

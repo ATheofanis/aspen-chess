@@ -97,6 +97,7 @@ void Position::setStartPos()
             }
         }
     }
+    zobristHash = computeZobristHash();
 }
 
 Position::Position()
@@ -144,7 +145,7 @@ void Position::loadFen(const std::string& fenString)
             occupiedSquaresBitboard |= sqMask;
 
             // if piece is white
-            if (static_cast<int>(piece) <= 5)
+            if (static_cast<int>(piece) < 6)
             {
                 whitePiecesBitboard |= sqMask;
             } else
@@ -208,6 +209,7 @@ void Position::loadFen(const std::string& fenString)
     sscanf(fenString.c_str() + charIndex, "%d %d", &halfMoveClock, &fullMoveCounter);
 
     calculatePstAndMaterialScore();
+    zobristHash = computeZobristHash();
 }
 
 
@@ -217,6 +219,9 @@ void Position::makeMove(Move move)
     prevPosInfo.prevMove = move;
     prevPosInfo.blackPiecesBitboard = blackPiecesBitboard;
     prevPosInfo.whitePiecesBitboard = whitePiecesBitboard;
+
+    prevPosInfo.zobrist = zobristHash;
+
     prevPosInfo.pieceCaptured = NO_PIECE;
     prevPosInfo.enPassantSquare = enPassantSquare;
     prevPosInfo.castleRights = castleRights;
@@ -225,6 +230,7 @@ void Position::makeMove(Move move)
     prevPosInfo.egScore = egPstAndMaterialScore;
     prevPosInfo.gamePhase = gamePhase;
 
+    CastlingRights oldCastleRights = castleRights;
 
     // extract move info
     int fromSquare = move & 0x3F;
@@ -238,6 +244,7 @@ void Position::makeMove(Move move)
     Bitboard moveMask = fromMask | toMask;
 
     Piece pieceMoved = Board[fromSquare];
+    // update board-piece zobrist value
     zobristHash ^= zobristPieces[fromSquare][pieceMoved];
 
     // update white or black piece bitboard for the piece that moved
@@ -270,12 +277,6 @@ void Position::makeMove(Move move)
             mgPstAndMaterialScore += mgTable[pieceMoved][toSquare];
             egPstAndMaterialScore += egTable[pieceMoved][toSquare];
         }
-        //else
-        //{
-        //    // remove pawn score
-        //    mgPstAndMaterialScore -= mgPieceScore[0];
-        //    egPstAndMaterialScore -= egPieceScore[0];
-        //}
     }
     else
     {
@@ -295,25 +296,23 @@ void Position::makeMove(Move move)
             mgPstAndMaterialScore -= mgTable[pieceMoved][toSquare];
             egPstAndMaterialScore -= egTable[pieceMoved][toSquare];
         }
-        //else
-        //{
-        //    // remove pawn score
-        //    mgPstAndMaterialScore += mgPieceScore[0];
-        //    egPstAndMaterialScore += egPieceScore[0];
-        //}
     }
 
-    if (flag != 1)
+
+    // only XOR for zobrist enpassant file key if en passant square is valid
+    if (enPassantSquare != NO_SQUARE)
     {
+        zobristHash ^= zobristEnpassantFile[enPassantSquare % 8];
         enPassantSquare = NO_SQUARE;
     }
+
 
 
     // update mailbox ( remove piece moved from its starting position )
 
     Board[fromSquare] = NO_PIECE;
 
-    // quiet moves are the most common with flag == 0 so adding this check will prevent a lot of unecessary checks down the line
+    // quiet moves are the most common with flag == 0 so adding this check will prevent a lot of necessary checks down the line
     // without this a quiet move will have to go through all the below checks for no reason
     if (flag)
     {
@@ -334,6 +333,9 @@ void Position::makeMove(Move move)
             // update mailbox
             Board[toSquare] = pieceMoved;
 
+            // update zobrist, xor captured piece in to square
+            zobristHash ^= zobristPieces[toSquare][capPiece];
+
             // update white/black/occupied (remove captured piece)
             if (whiteToMoveFlag)
             {
@@ -349,47 +351,58 @@ void Position::makeMove(Move move)
                 whitePiecesBitboard &= ~toMask;
             }
 
-        } // CORRECT ----------------------------------------------------------------
+            zobristHash ^= zobristPieces[toSquare][pieceMoved];
 
-        // CORRECT  ----------------------------------------------------------------
+        } //  ----------------------------------------------------------------
+
+        //   ----------------------------------------------------------------
         else if (flag == 5) // en passant
         {
             //Piece capPawn;
             if (whiteToMoveFlag)
             {
                 prevPosInfo.pieceCaptured = bp;
+                int epCapSq = toSquare - 8;
                 // remove captured pawn from bp bitboard and Board mailbox:
-                Bitboard capPawnMask = 1ULL << (toSquare - 8);
+                Bitboard capPawnMask = 1ULL << (epCapSq);
                 pieceBitboard[bp] &= ~capPawnMask;
                 pieceBitboard[wp] ^= moveMask;
-                Board[toSquare - 8] = NO_PIECE;
+                Board[epCapSq] = NO_PIECE;
                 Board[toSquare] = wp;
                 // also remove from black piece bb and occupied squares bb
                 blackPiecesBitboard &= ~capPawnMask;
 
-                mgPstAndMaterialScore += mgTable[bp][toSquare - 8];
-                egPstAndMaterialScore += egTable[bp][toSquare - 8];
+                mgPstAndMaterialScore += mgTable[bp][epCapSq];
+                egPstAndMaterialScore += egTable[bp][epCapSq];
                 gamePhase -= gamephaseInc[bp];
+
+                // update zobrist by removing ep relevant black pawn
+                zobristHash ^= zobristPieces[epCapSq][bp];
+                zobristHash ^= zobristPieces[toSquare][wp];
 
             } else
             {
                 // black makes ep
                 prevPosInfo.pieceCaptured = wp;
+                int epCapSq = toSquare + 8;
                 // remove captured pawn from bp bitboard and Board mailbox:
-                Bitboard capPawnMask = 1ULL << (toSquare + 8);
+                Bitboard capPawnMask = 1ULL << (epCapSq);
                 pieceBitboard[wp] &= ~capPawnMask;
                 pieceBitboard[bp] ^= moveMask;
-                Board[toSquare + 8] = NO_PIECE;
+                Board[epCapSq] = NO_PIECE;
                 Board[toSquare] = bp;
                 // also remove from white piece bb and occupied squares bb
                 whitePiecesBitboard &= ~capPawnMask;
 
-                mgPstAndMaterialScore -= mgTable[wp][toSquare + 8];
-                egPstAndMaterialScore -= egTable[wp][toSquare + 8];
+                mgPstAndMaterialScore -= mgTable[wp][epCapSq];
+                egPstAndMaterialScore -= egTable[wp][epCapSq];
                 gamePhase -= gamephaseInc[wp];
+
+                zobristHash ^= zobristPieces[epCapSq][wp];
+                zobristHash ^= zobristPieces[toSquare][bp];
             }
 
-        } // CORRECT ----------------------------------------------------------------
+        } // ----------------------------------------------------------------
 
 
         // captures are done , now handle promotions and promo-captures
@@ -411,6 +424,9 @@ void Position::makeMove(Move move)
                 pieceBitboard[capturedPiece] &= ~toMask;
                 gamePhase -= gamephaseInc[capturedPiece];
 
+                // remove captured piece with xor
+                zobristHash ^= zobristPieces[toSquare][capturedPiece];
+
                 if (whiteToMoveFlag)
                 {
                     mgPstAndMaterialScore += mgTable[capturedPiece][toSquare];
@@ -431,6 +447,9 @@ void Position::makeMove(Move move)
             pieceBitboard[promotedPiece] |= toMask; // add promoted piece to its bitboard
             pieceBitboard[pieceMoved] &= ~fromMask;
 
+            // update zobrist with promoted piece
+            zobristHash ^= zobristPieces[toSquare][promotedPiece];
+
             gamePhase += (gamephaseInc[promotedPiece] - gamephaseInc[0]);
             if (whiteToMoveFlag)
             {
@@ -447,7 +466,13 @@ void Position::makeMove(Move move)
         {
             pieceBitboard[pieceMoved] ^= moveMask;
             Board[toSquare] = pieceMoved;
-            enPassantSquare = whiteToMoveFlag ? (toSquare - 8) : (toSquare + 8);
+
+            int newEpSq = whiteToMoveFlag ? (toSquare-8) : (toSquare + 8);
+            enPassantSquare = newEpSq;
+
+            // add corresponding ep file to zobrist
+            zobristHash ^= zobristEnpassantFile[newEpSq % 8];
+            zobristHash ^= zobristPieces[toSquare][pieceMoved];
         }
         else
         {
@@ -481,6 +506,11 @@ void Position::makeMove(Move move)
                 mgPstAndMaterialScore -= mgTable[wR][rookStartSq];
                 egPstAndMaterialScore -= egTable[wR][rookStartSq];
 
+
+                zobristHash ^= zobristPieces[rookStartSq][wR];
+                zobristHash ^= zobristPieces[rookEndSq][wR];
+                zobristHash ^= zobristPieces[toSquare][wK];
+
             }
 
             else // Black castles
@@ -511,6 +541,10 @@ void Position::makeMove(Move move)
                 mgPstAndMaterialScore += mgTable[bR][rookStartSq];
                 egPstAndMaterialScore += egTable[bR][rookStartSq];
 
+                zobristHash ^= zobristPieces[rookStartSq][bR];
+                zobristHash ^= zobristPieces[rookEndSq][bR];
+                zobristHash ^= zobristPieces[toSquare][bK];
+
             }
         }
 
@@ -519,7 +553,10 @@ void Position::makeMove(Move move)
     {
         pieceBitboard[pieceMoved] ^= moveMask;
         Board[toSquare] = pieceMoved;
+        zobristHash ^= zobristPieces[toSquare][pieceMoved];
     }
+
+    zobristHash ^= zobristBlackToMove;
 
     whiteToMoveFlag = !whiteToMoveFlag;
     prevPositionsLog[positionLogTop++] = prevPosInfo;
@@ -527,6 +564,28 @@ void Position::makeMove(Move move)
 
 
     occupiedSquaresBitboard = whitePiecesBitboard | blackPiecesBitboard;
+
+    // update zobrist castling rights , we only xor one castle right if the old differs from the new
+    CastlingRights updatedRights = oldCastleRights ^ castleRights;
+    if (updatedRights & WK)
+    {
+        zobristHash ^= zobristCastleRights[0];
+    }
+    if (updatedRights & WQ)
+    {
+        zobristHash ^= zobristCastleRights[1];
+    }
+    if (updatedRights & BK)
+    {
+        zobristHash ^= zobristCastleRights[2];
+    }
+    if (updatedRights & BQ)
+    {
+        zobristHash ^= zobristCastleRights[3];
+    }
+
+    // ASSERT
+    //assert(zobristHash == computeZobristHash());
 
 }
 
@@ -537,9 +596,10 @@ void Position::makeCapture(Move move)
     prevPosInfo.prevMove = move;
     prevPosInfo.blackPiecesBitboard = blackPiecesBitboard;
     prevPosInfo.whitePiecesBitboard = whitePiecesBitboard;
+
+    prevPosInfo.zobrist = zobristHash;
+
     prevPosInfo.pieceCaptured = NO_PIECE;
-    //prevPosInfo.eval = eval;
-    //prevPosInfo.pstScore = pstScore;
     prevPosInfo.enPassantSquare = enPassantSquare;
     prevPosInfo.castleRights = castleRights;
 
@@ -547,6 +607,7 @@ void Position::makeCapture(Move move)
     prevPosInfo.egScore = egPstAndMaterialScore;
     prevPosInfo.gamePhase = gamePhase;
 
+    CastlingRights oldCastleRights = castleRights;
 
 
 
@@ -562,6 +623,9 @@ void Position::makeCapture(Move move)
     Bitboard moveMask = fromMask | toMask;
 
     Piece pieceMoved = Board[fromSquare];
+
+    // update board-piece zobrist value
+    zobristHash ^= zobristPieces[fromSquare][pieceMoved];
 
     // update white or black piece bitboard for the piece that moved
     int colorDelta; // we add this to easily calculate the piece index without checking whose turn it is down the line
@@ -616,8 +680,13 @@ void Position::makeCapture(Move move)
 
     }
 
-    enPassantSquare = NO_SQUARE; // en passant square is set to NONE since we are making a capture move
+    // en passant square is set to NONE since we are making a capture move
 
+    if (enPassantSquare != NO_SQUARE)
+    {
+        zobristHash ^= zobristEnpassantFile[enPassantSquare % 8];
+        enPassantSquare = NO_SQUARE;
+    }
 
     // update mailbox ( remove piece moved from its starting position )
 
@@ -642,6 +711,10 @@ void Position::makeCapture(Move move)
         // update mailbox
         Board[toSquare] = pieceMoved;
 
+        // update zobrist, xor captured piece in to square
+        zobristHash ^= zobristPieces[toSquare][capPiece];
+
+
         // update white/black/occupied (remove captured piece)
         if (whiteToMoveFlag)
         {
@@ -657,40 +730,51 @@ void Position::makeCapture(Move move)
             whitePiecesBitboard &= ~toMask;
         }
 
+        zobristHash ^= zobristPieces[toSquare][pieceMoved];
     }
     else if (flag == 5) // en passant
     {
-        //Piece capPawn;
         if (whiteToMoveFlag)
         {
             prevPosInfo.pieceCaptured = bp;
+            int epCapSq = toSquare - 8;
             // remove captured pawn from bp bitboard and Board mailbox:
-            Bitboard capPawnMask = 1ULL << (toSquare - 8);
+            Bitboard capPawnMask = 1ULL << (epCapSq);
             pieceBitboard[bp] &= ~capPawnMask;
             pieceBitboard[wp] ^= moveMask;
-            Board[toSquare - 8] = NO_PIECE;
+            Board[epCapSq] = NO_PIECE;
             Board[toSquare] = wp;
             // also remove from black piece bb and occupied squares bb
             blackPiecesBitboard &= ~capPawnMask;
-            mgPstAndMaterialScore += mgTable[bp][toSquare - 8];
-            egPstAndMaterialScore += egTable[bp][toSquare - 8];
+
+            mgPstAndMaterialScore += mgTable[bp][epCapSq];
+            egPstAndMaterialScore += egTable[bp][epCapSq];
             gamePhase -= gamephaseInc[bp];
+
+            // update zobrist by removing ep relevant black pawn
+            zobristHash ^= zobristPieces[epCapSq][bp];
+            zobristHash ^= zobristPieces[toSquare][wp];
 
         } else
         {
             // black makes ep
             prevPosInfo.pieceCaptured = wp;
+            int epCapSq = toSquare + 8;
             // remove captured pawn from bp bitboard and Board mailbox:
-            Bitboard capPawnMask = 1ULL << (toSquare + 8);
+            Bitboard capPawnMask = 1ULL << (epCapSq);
             pieceBitboard[wp] &= ~capPawnMask;
             pieceBitboard[bp] ^= moveMask;
-            Board[toSquare + 8] = NO_PIECE;
+            Board[epCapSq] = NO_PIECE;
             Board[toSquare] = bp;
             // also remove from white piece bb and occupied squares bb
             whitePiecesBitboard &= ~capPawnMask;
-            mgPstAndMaterialScore -= mgTable[wp][toSquare + 8];
-            egPstAndMaterialScore -= egTable[wp][toSquare + 8];
+
+            mgPstAndMaterialScore -= mgTable[wp][epCapSq];
+            egPstAndMaterialScore -= egTable[wp][epCapSq];
             gamePhase -= gamephaseInc[wp];
+
+            zobristHash ^= zobristPieces[epCapSq][wp];
+            zobristHash ^= zobristPieces[toSquare][bp];
         }
     }
 
@@ -700,9 +784,6 @@ void Position::makeCapture(Move move)
         // add promoted piece to mailbox
         // (colorDelta + flag % 4 + 1) gives the index of promoted piece based on the 16 bit move encoding i am using
         Piece promotedPiece = static_cast<Piece>(colorDelta + flag % 4 + 1);
-        //Piece capturedPiece = Board[toSquare];
-        //prevPosInfo.pieceCaptured = capturedPiece;
-
 
         if (flag & 4) // if move is promo-capture
         {
@@ -711,6 +792,9 @@ void Position::makeCapture(Move move)
 
             pieceBitboard[capturedPiece] &= ~toMask;
             gamePhase -= gamephaseInc[capturedPiece];
+
+            // remove captured piece with xor
+            zobristHash ^= zobristPieces[toSquare][capturedPiece];
 
             if (whiteToMoveFlag)
             {
@@ -731,6 +815,9 @@ void Position::makeCapture(Move move)
         pieceBitboard[promotedPiece] |= toMask; // add promoted piece to its bitboard
         pieceBitboard[pieceMoved] &= ~fromMask;
 
+        // update zobrist with promoted piece
+        zobristHash ^= zobristPieces[toSquare][promotedPiece];
+
         gamePhase += (gamephaseInc[promotedPiece] - gamephaseInc[0]);
         if (whiteToMoveFlag)
         {
@@ -743,10 +830,34 @@ void Position::makeCapture(Move move)
         }
     }
 
+    zobristHash ^= zobristBlackToMove;
+
     whiteToMoveFlag = !whiteToMoveFlag;
     prevPositionsLog[positionLogTop++] = prevPosInfo;
 
     occupiedSquaresBitboard = whitePiecesBitboard | blackPiecesBitboard;
+
+    // update zobrist castling rights , we only xor one castle right if the old differs from the new
+    CastlingRights updatedRights = oldCastleRights ^ castleRights;
+    if (updatedRights & WK)
+    {
+        zobristHash ^= zobristCastleRights[0];
+    }
+    if (updatedRights & WQ)
+    {
+        zobristHash ^= zobristCastleRights[1];
+    }
+    if (updatedRights & BK)
+    {
+        zobristHash ^= zobristCastleRights[2];
+    }
+    if (updatedRights & BQ)
+    {
+        zobristHash ^= zobristCastleRights[3];
+    }
+
+    // ASSERT
+    //assert(zobristHash == computeZobristHash());
 
 }
 // MAKE CAPTURE -----------------==============================
@@ -765,6 +876,9 @@ void Position::unmakeMove()
     blackPiecesBitboard = prevPosInfo.blackPiecesBitboard;
     whitePiecesBitboard = prevPosInfo.whitePiecesBitboard;
     occupiedSquaresBitboard = blackPiecesBitboard | whitePiecesBitboard;
+
+    zobristHash = prevPosInfo.zobrist;
+
     enPassantSquare = prevPosInfo.enPassantSquare;
     castleRights = prevPosInfo.castleRights;
 
@@ -898,6 +1012,9 @@ void Position::unmakeMove()
 
     }
 
+    // ASSERT
+    //assert(zobristHash == computeZobristHash());
+
 }
 
 
@@ -915,6 +1032,9 @@ void Position::unmakeCapture()
     blackPiecesBitboard = prevPosInfo.blackPiecesBitboard;
     whitePiecesBitboard = prevPosInfo.whitePiecesBitboard;
     occupiedSquaresBitboard = blackPiecesBitboard | whitePiecesBitboard;
+
+    zobristHash = prevPosInfo.zobrist;
+
     enPassantSquare = prevPosInfo.enPassantSquare;
     castleRights = prevPosInfo.castleRights;
 
@@ -1033,6 +1153,9 @@ void Position::unmakeCapture()
 
         }
     }
+
+    // ASSERT
+    //assert(zobristHash == computeZobristHash());
 }
 // UNMAKE CAPTURE -----------------------------------====================================
 
@@ -1062,6 +1185,8 @@ void Position::calculatePstAndMaterialScore()
             }
         }
     }
+    std::cout << "Total pst and mat score:" << getTotalPSTAndMaterialScore() << std::endl;
+    std::cout << "GAME PHASE AFTER CALCULATE PST AND MAT SCORE: " << gamePhase << std::endl;
 }
 
 // for now return zobrist hash for easier debugging might change later to set the hash directly
@@ -1092,7 +1217,10 @@ ZobristHash Position::computeZobristHash()
     hash ^= ((castleRights & BQ) >> 3) * zobristCastleRights[3];
 
     // enpassant file
-    hash ^= zobristEnpassantFile[enPassantSquare % 8];
+    if (enPassantSquare != NO_SQUARE)
+    {
+        hash ^= zobristEnpassantFile[enPassantSquare % 8];
+    }
 
     // black to move
     if (whiteToMoveFlag)

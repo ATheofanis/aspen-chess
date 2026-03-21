@@ -26,4 +26,8 @@ add_executable(AChess main.cpp
         Search.h
         Zobrist.cpp
         Zobrist.h
+        PRNG.cpp
+        PRNG.h
+        TranspositionTable.cpp
+        TranspositionTable.h
 )

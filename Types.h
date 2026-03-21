@@ -126,4 +126,6 @@ inline Color pieceColor(Piece p)
     return Black;
 }
 
-// convert piece enum to integer
+
+// enum type for transposition table hash entry
+enum class Bound { LOWERBOUND, EXACT, UPPERBOUND };

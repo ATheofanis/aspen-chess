@@ -109,7 +109,7 @@ int quiescence(Position& pos, int alpha, int beta, Move bestMove, int ply)
 
 
 // takes a position, alpha and beta for pruning, current depth, keeps track of best move found, and ply for stuff such as killer moves, checkmate detection and for cleaner design
-int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMove, int ply, int rootDepth)
+int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMove, int ply, int rootDepth, bool allowNullMove)
 {
     // call quie at leaf nodes
     nodes++;
@@ -165,8 +165,30 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
 
 
 
+    // null move pruning
 
-
+    if (allowNullMove) // NMP Conditions
+    {
+        if (info.numOfChecks == 0) // not in check
+        {
+            if (depth > 3) // depth more than 3
+            {
+                if (pos.getGamePhase()) // game phase is 0 when no major pieces are left (only pawns) - for zugzwang
+                {
+                    if (beta == alpha + 1) // not a PV node
+                    {
+                        int r = 3; // NMP Reduction
+                        int epSq = pos.getEnpassantSquare();
+                        pos.makeNullMove(epSq);
+                        int v = -negaMaxAlphaBeta(pos, -beta, -(beta - 1), std::max(1, depth - r), bestMove, ply+1, rootDepth, false);
+                        pos.unmakeNullMove(epSq);
+                        if (v >= beta)
+                            return v;
+                    }
+                }
+            }
+        }
+    }
 
     // ***************************************************************
     // PVS: first search the first move at full window length, the rest will be searched at null window length
@@ -188,7 +210,7 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
 
     pos.makeMove(firstMove);
     // full window for first move
-    int score = -negaMaxAlphaBeta(pos, -beta, -alpha, depth - 1, bestMove, ply+1, rootDepth);
+    int score = -negaMaxAlphaBeta(pos, -beta, -alpha, depth - 1, bestMove, ply+1, rootDepth, true);
     pos.unmakeMove();
 
     if (score >= beta)
@@ -246,13 +268,23 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
         //Move move = moves[i];
 
         pos.makeMove(moves[i]);
+        // LMR: set the depth reduction based on move index, current depth and if king is in check reduce depth by less
+        int depthReduction = 1;
+        // we start from i = 1, so (1) i = 1, (2) i = 2, (3) i = 3 - so atleast 3  moves searched before LMR plus the hash move so 3 + 1
+        if (depth > 3 && i > 3)
+        {
+            depthReduction = 2 - info.numOfChecks; // reduce by less if king in check
+        }
+
+        int reducedDepth = std::max(0, depth - depthReduction);
+
         // null window to first check if the move is good enough to warrant a full window search which happens when the move's score is above alpha
-        int score = -negaMaxAlphaBeta(pos, -alpha-1, -alpha, depth - 1, bestMove, ply+1, rootDepth);
+        score = -negaMaxAlphaBeta(pos, -alpha-1, -alpha, reducedDepth, bestMove, ply+1, rootDepth, true);
 
         // research if move score stayed within the window
         if ((score > alpha) && (score < beta))
         {
-            score = -negaMaxAlphaBeta(pos, -beta, -alpha, depth - 1, bestMove, ply+1, rootDepth);
+            score = -negaMaxAlphaBeta(pos, -beta, -alpha, depth - 1, bestMove, ply+1, rootDepth, true);
         }
         pos.unmakeMove();
 
@@ -297,14 +329,41 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
 }
 
 
+
+
 Move findBestMove(Position& pos)
 {
     memset(historyMoves, 0, sizeof(historyMoves));
     memset(killerMoves, 0, sizeof(killerMoves));
     Move bestMove = 0;
+
+    int alpha = -CHECKMATE;
+    int beta = CHECKMATE;
+
     for (int depth = 1; depth <= MAX_DEPTH; depth++)
     {
-        negaMaxAlphaBeta(pos, -CHECKMATE, CHECKMATE, depth, bestMove, 0, depth);
+        nodes = 0;
+        auto startTime = std::chrono::high_resolution_clock::now();
+        int score = negaMaxAlphaBeta(pos, alpha, beta, depth, bestMove, 0, depth, false);
+        auto endTime = std::chrono::high_resolution_clock::now();
+
+        long long milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
+
+        std::cout << "Depth: " << depth << std::endl;
+        std::cout << "Nodes: " << nodes << std::endl;
+        std::cout << "milliseconds: " << milliseconds << std::endl;
+
+        std::cout << "\n";
+
+
+        if ((score <= alpha || score >= beta))
+        {
+            alpha = -CHECKMATE;
+            beta = CHECKMATE;
+            continue;
+        }
+        alpha = score - 50;
+        beta = score + 50;
     }
 
     std::cout << "Nodes: " << nodes << std::endl;

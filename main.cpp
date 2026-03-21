@@ -9,6 +9,7 @@
 
 #include "MoveGen.h"
 #include "Position.h"
+#include "PRNG.h"
 #include "Search.h"
 #include "Zobrist.h"
 
@@ -142,13 +143,17 @@ void dividePerft(Position& pos, int depth)
 
 }
 
-int depth = 4;
+int depth = 8;
 // TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
 int main()
 {
+    std::cout << "DEPTH : " << MAX_DEPTH << std::endl;
+
     std::string startPos = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     std::string veryTrickyCapturesPos = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
 
+    // initializations
+    seedingForXoshiro256aa();
     initPSTtables();
     SetConsoleOutputCP(CP_UTF8);
     initPawnAttacks();
@@ -158,7 +163,7 @@ int main()
     initBishopAttacks();
     initLineBetween();
     initZobrist();
-
+    // initializations
 
 
     //initMagicNumbers();
@@ -166,11 +171,12 @@ int main()
     Position pos;
 
     //Q7/ppp2k1p/3p2p1/5b2/4P1nq/2P4P/PP1P1bP1/RNB2R1K b - - 0 1
-    pos.loadFen(    startPos    );
+    pos.loadFen(   startPos    );
+
     //pos.loadFen(    startPos    );
 
-    ZobristHash hash = pos.computeZobristHash();
-    std::cout << "Hash:" << hash << std::endl;
+    //int eval = pos.getTotalPSTAndMaterialScore();
+    //std::cout << "eval:" << eval << std::endl;
     //Move moves[256];
     //int numOfMoves = 0;
 
@@ -200,39 +206,45 @@ int main()
     //}
 
 
-    std::cout << (WQ >> 1);
-    std::cout << (BK >> 2);
-    std::cout << (BQ >> 3);
+    //std::cout << (WQ >> 1);
+    //std::cout << (BK >> 2);
+    //std::cout << (BQ >> 3);
+//
+    //std::cout << pos.getTotalPSTAndMaterialScore() << std::endl;
 
-    std::cout << pos.getTotalPSTAndMaterialScore() << std::endl;
     auto startTime = std::chrono::high_resolution_clock::now();
   Move bestMove = (findBestMove(pos));
   printMove(bestMove);
+    std::cout << "RAW BEST MOVE:" << bestMove << std::endl;
     auto endTime = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
     std::cout << duration.count() << " ms" << std::endl;
 //
-//    std::cout << pos.getTotalPSTAndMaterialScore() << std::endl;
-//bestMove = (findBestMove(pos));
-//printMove(bestMove);
-//pos.makeMove(bestMove);
-//printBoard(pos);
-//
-//    std::cout << pos.getTotalPSTAndMaterialScore() << std::endl;
-//bestMove = (findBestMove(pos));
-//printMove(bestMove);
-//pos.makeMove(bestMove);
-//printBoard(pos);
-//
-//    std::cout << pos.getTotalPSTAndMaterialScore() << std::endl;
-//bestMove = (findBestMove(pos));
-//printMove(bestMove);
-//pos.makeMove(bestMove);
-//printBoard(pos);
-//
-//    std::cout << pos.getTotalPSTAndMaterialScore() << std::endl;
-//    //dividePerft(pos, depth);
 
 
+
+    //pos.makeMove(bestMove);
+    //bestMove = (findBestMove(pos));
+    //printMove(bestMove);
+    //std::cout << "RAW BEST MOVE:" << bestMove << std::endl;
+//
+//
+//
+    //pos.makeMove(bestMove);
+    //bestMove = (findBestMove(pos));
+    //printMove(bestMove);
+    //std::cout << "RAW BEST MOVE:" << bestMove << std::endl;
+//
+    //pos.makeMove(bestMove);
+    //bestMove = (findBestMove(pos));
+    //printMove(bestMove);
+    //std::cout << "RAW BEST MOVE:" << bestMove << std::endl;
+//
+    //pos.makeMove(bestMove);
+    //bestMove = (findBestMove(pos));
+    //printMove(bestMove);
+    //std::cout << "RAW BEST MOVE:" << bestMove << std::endl;
+//
+    //std::cout << "game phase:" << pos.getGamePhase() << std::endl;
 
 }
