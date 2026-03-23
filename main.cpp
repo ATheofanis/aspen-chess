@@ -11,6 +11,7 @@
 #include "Position.h"
 #include "PRNG.h"
 #include "Search.h"
+#include "TranspositionTable.h"
 #include "Zobrist.h"
 
 class Position;
@@ -147,6 +148,7 @@ int depth = 8;
 // TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
 int main()
 {
+    clearTranspositionTable();
     std::cout << "DEPTH : " << MAX_DEPTH << std::endl;
 
     std::string startPos = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -171,7 +173,7 @@ int main()
     Position pos;
 
     //Q7/ppp2k1p/3p2p1/5b2/4P1nq/2P4P/PP1P1bP1/RNB2R1K b - - 0 1
-    pos.loadFen(   startPos    );
+    pos.loadFen(    veryTrickyCapturesPos    );
 
     //pos.loadFen(    startPos    );
 
@@ -213,8 +215,8 @@ int main()
     //std::cout << pos.getTotalPSTAndMaterialScore() << std::endl;
 
     auto startTime = std::chrono::high_resolution_clock::now();
-  Move bestMove = (findBestMove(pos));
-  printMove(bestMove);
+    Move bestMove = (findBestMove(pos));
+    printMove(bestMove);
     std::cout << "RAW BEST MOVE:" << bestMove << std::endl;
     auto endTime = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
@@ -230,21 +232,11 @@ int main()
 //
 //
 //
-    //pos.makeMove(bestMove);
-    //bestMove = (findBestMove(pos));
-    //printMove(bestMove);
-    //std::cout << "RAW BEST MOVE:" << bestMove << std::endl;
-//
-    //pos.makeMove(bestMove);
-    //bestMove = (findBestMove(pos));
-    //printMove(bestMove);
-    //std::cout << "RAW BEST MOVE:" << bestMove << std::endl;
-//
-    //pos.makeMove(bestMove);
-    //bestMove = (findBestMove(pos));
-    //printMove(bestMove);
-    //std::cout << "RAW BEST MOVE:" << bestMove << std::endl;
-//
-    //std::cout << "game phase:" << pos.getGamePhase() << std::endl;
+
+
+    //Move bestMove = 0;
+    //save(25, 10, 100, Bound::BOUND_BETA, 1234);
+    //int eval = probe(6, 25, 120, 110, bestMove);
+    //std::cout << eval << std::endl;
 
 }

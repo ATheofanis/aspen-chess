@@ -8,9 +8,11 @@
 
 #include "MoveGen.h"
 #include "Score.h"
+#include "TranspositionTable.h"
 
 
 int nodes = 0;
+int transpositionCutoffs = 0;
 
 
 int quiescence(Position& pos, int alpha, int beta, Move bestMove, int ply)
@@ -113,11 +115,26 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
 {
     // call quie at leaf nodes
     nodes++;
+    Bound hashFlag = Bound::BOUND_ALPHA;
+    ZobristHash posZobrist = pos.getZobristHash();
+    //std::cout << "ZOBRIST KEY:" << pos.getZobristHash() << std::endl;
+
+    int value;
+    Move bestMv;
+
+    // probe TT
+    if ((value = probe(depth, posZobrist, beta, alpha, bestMv)) != NO_HASH_ENTRY)
+    {
+        transpositionCutoffs++;
+        return value;
+    }
 
     if (depth == 0)
     {
         //return scoreBoard(pos);
-        return quiescence(pos, alpha, beta, bestMove, ply);
+        int qVal =  quiescence(pos, alpha, beta, bestMove, ply);
+        save(posZobrist, depth, qVal, Bound::BOUND_EXACT, bestMove);
+        return qVal;
     }
 
 
@@ -218,6 +235,8 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
         // store killer move
         if ((((firstMove >> 12) & 0x3F) & 4))
         {
+            // TT:
+            save(posZobrist, depth, beta, Bound::BOUND_BETA, bestMove);
             return beta;
         }
         killerMoves[ply][1] = killerMoves[ply][0];
@@ -230,6 +249,8 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
 
     if (score > alpha)
     {
+        // TT:
+        hashFlag = Bound::BOUND_EXACT;
         alpha = score;
         if (!(((firstMove >> 12) & 0x3F) & 4))
         {
@@ -256,6 +277,7 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
     // start from i = 1 because we already searched the first move
     for (int i = 1; i < numOfMoves; i++)
     {
+
         // insertion sort (huge speed increase), swap move and score if found a better move so that we make that move immediately
         for (int j = i + 1; j < numOfMoves; j++)
         {
@@ -291,6 +313,7 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
         Move move = moves[i];
         if (score >= beta)
         {
+            save(posZobrist, depth, beta, Bound::BOUND_BETA, bestMove);
             // store killer move
             if ((((move >> 12) & 0x3F) & 4))
             {
@@ -306,6 +329,7 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
 
         if (score > alpha)
         {
+            hashFlag = Bound::BOUND_EXACT;
             alpha = score;
             if (!(((move >> 12) & 0x3F) & 4))
             {
@@ -325,6 +349,7 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
 
 
     }
+    save(posZobrist, depth, score, hashFlag, bestMove);
     return alpha;
 }
 
@@ -343,6 +368,7 @@ Move findBestMove(Position& pos)
     for (int depth = 1; depth <= MAX_DEPTH; depth++)
     {
         nodes = 0;
+        transpositionCutoffs = 0;
         auto startTime = std::chrono::high_resolution_clock::now();
         int score = negaMaxAlphaBeta(pos, alpha, beta, depth, bestMove, 0, depth, false);
         auto endTime = std::chrono::high_resolution_clock::now();
@@ -352,6 +378,8 @@ Move findBestMove(Position& pos)
         std::cout << "Depth: " << depth << std::endl;
         std::cout << "Nodes: " << nodes << std::endl;
         std::cout << "milliseconds: " << milliseconds << std::endl;
+        std::cout << "Transpositions: " << transpositionCutoffs << std::endl;
+        std::cout << "Transposition Table Entries: " << entries << std::endl;
 
         std::cout << "\n";
 
@@ -364,9 +392,11 @@ Move findBestMove(Position& pos)
         }
         alpha = score - 50;
         beta = score + 50;
+
     }
 
     std::cout << "Nodes: " << nodes << std::endl;
+    std::cout << "Transpositions: " << transpositionCutoffs << std::endl;
     return bestMove;
 
 }

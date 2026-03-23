@@ -7,7 +7,8 @@
 
 class Position;
 
-constexpr int MAX_DEPTH = 10;
+constexpr int MAX_DEPTH = 11;
+
 
 
 
