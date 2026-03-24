@@ -7,9 +7,9 @@
 
 class Position;
 
-constexpr int MAX_DEPTH = 11;
+inline int MAX_DEPTH = 12;
 
 
 
 
-Move findBestMove(Position& pos);
+Move findBestMove(Position pos);

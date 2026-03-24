@@ -47,12 +47,13 @@ int scoreQuiescenceMove(const Move& move, const Position& pos, const Move& bestM
     return 0;
 }
 
-int scoreMove(const Move& move, const Position& pos, const Move& bestMove, const int& ply)
+int scoreMove(const Move& move, const Position& pos, const Move& hashMove, const int& ply)
 {
-    if (move == bestMove)
+    if (move == hashMove)
     {
         return 10000;
     }
+
 
 
     int flag = (move >> 12) & 0x3F;

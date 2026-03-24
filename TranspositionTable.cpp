@@ -7,7 +7,7 @@
 
 
 // function to save current position to the transposition table (using depth replacement scheme)
-void save(ZobristHash zobristHash, int depth, int evaluation, Bound bound, Move bestMove)
+void save(ZobristHash zobristHash, int depth, int evaluation, Bound bound, Move bestMove, int ply)
 {
     // bitwise AND operation trick for powers of two
 
@@ -15,6 +15,9 @@ void save(ZobristHash zobristHash, int depth, int evaluation, Bound bound, Move 
 
 
     TTEntry entry = transpositionTable[index];
+
+    if (evaluation < -CHECKMATE) evaluation -= ply;
+    if (evaluation > CHECKMATE) evaluation += ply;
 
 
     // depth replacement scheme (replace entries if the entry's depth is lower than current depth)
@@ -31,7 +34,7 @@ void save(ZobristHash zobristHash, int depth, int evaluation, Bound bound, Move 
 
 // function to search for an entry, returns evaluation or alpha and beta to cause cutoffs in search
 // a best move variable is passed by reference to be updated inside the probe in case of a hit
-int probe(int depth, ZobristHash zobristHash, int beta, int alpha, Move& bestMove)
+int probe(int depth, ZobristHash zobristHash, int beta, int alpha, Move& bestMove, int ply)
 {
     // bitwise AND operation trick for powers of two
     int index = zobristHash & TTSizeMinusOne;
@@ -42,14 +45,6 @@ int probe(int depth, ZobristHash zobristHash, int beta, int alpha, Move& bestMov
     TTEntry entry = transpositionTable[index];
 
 
-    //ZobristHash entryZobr = entry.entryZobristKey;
-    //if (entryZobr)
-    //{
-    //    std::cout << "ENTRY ZOBRIST: " << entryZobr << std::endl;
-    //    std::cout << "MATCHED ZOBRIST:" << zobristHash << std::endl;
-    //}
-
-
 
     if (entry.entryZobristKey == zobristHash)
     {
@@ -57,26 +52,27 @@ int probe(int depth, ZobristHash zobristHash, int beta, int alpha, Move& bestMov
         bestMove = entry.entryBestMove;
         if (entry.entryDepth >= depth)
         {
+            int eval = entry.entryEvaluation;
+            // retrieve score independent of the actual path
+            if (eval < -CHECKMATE) eval += ply;
+            if (eval > CHECKMATE) eval -= ply;
+
             // exact flag
             if (entry.entryBound == Bound::BOUND_EXACT)
             {
-                return entry.entryEvaluation;
+                return eval;
             }
             // Alpha flag
-            if (entry.entryBound == Bound::BOUND_ALPHA && entry.entryEvaluation <= alpha)
+            if (entry.entryBound == Bound::BOUND_ALPHA && eval <= alpha)
             {
                 return alpha;
             }
             // beta flag
-            if (entry.entryBound == Bound::BOUND_BETA && entry.entryEvaluation >= beta)
+            if (entry.entryBound == Bound::BOUND_BETA && eval >= beta)
             {
                 return beta;
             }
         }
-    } else
-    {
-        //std::cout << "ENTRY ZOBRIST: " << entry.entryZobristKey << std::endl;
-        //std::cout << "CURRENT ZOBRIST" << zobristHash << std::endl;
     }
 
     return NO_HASH_ENTRY;

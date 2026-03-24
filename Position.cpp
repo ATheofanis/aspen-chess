@@ -131,7 +131,7 @@ void Position::loadFen(const std::string& fenString)
             file += c - '0';
         }
         // if it is a piece
-        if (charToPiece.contains(c))
+        if (charToPiece.count(c))
         {
             int sq = rank * 8 + file;
             Bitboard sqMask = 1ULL << sq;
@@ -1185,8 +1185,8 @@ void Position::calculatePstAndMaterialScore()
             }
         }
     }
-    std::cout << "Total pst and mat score:" << getTotalPSTAndMaterialScore() << std::endl;
-    std::cout << "GAME PHASE AFTER CALCULATE PST AND MAT SCORE: " << gamePhase << std::endl;
+    //std::cout << "Total pst and mat score:" << getTotalPSTAndMaterialScore() << std::endl;
+    //std::cout << "GAME PHASE AFTER CALCULATE PST AND MAT SCORE: " << gamePhase << std::endl;
 }
 
 // for now return zobrist hash for easier debugging might change later to set the hash directly

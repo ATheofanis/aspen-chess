@@ -13,6 +13,8 @@
 #include "Search.h"
 #include "TranspositionTable.h"
 #include "Zobrist.h"
+#include <vector>
+#include <sstream>
 
 class Position;
 
@@ -77,6 +79,26 @@ void printMoveNoMessages(Move& move)
     int toSquare = (move >> 6) & 0x3F;
     int flag = (move >> 12) & 0x3F;
     std::cout << squareName(static_cast<Square>(fromSquare)) << squareName(static_cast<Square>(toSquare));
+    if (flag & 8)
+    {
+        int promotedPieceIndex = flag % 4;
+        switch (promotedPieceIndex)
+        {
+        case 0:
+            std::cout << 'n';
+            break;
+        case 1:
+            std::cout << 'b';
+            break;
+        case 2:
+            std::cout << 'r';
+            break;
+        default:
+            std::cout << 'q';
+            break;
+        }
+
+    }
 
 }
 
@@ -117,6 +139,7 @@ long long Perft(Position& pos, int depth)
     return nodes;
 }
 
+
 void dividePerft(Position& pos, int depth)
 {
     Move moves[256];
@@ -144,17 +167,21 @@ void dividePerft(Position& pos, int depth)
 
 }
 
-int depth = 8;
-// TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
-int main()
+
+void findBestMoveTime(Position pos)
+{
+    auto startTime = std::chrono::high_resolution_clock::now();
+    Move bestMove = (findBestMove(pos));
+    printMove(bestMove);
+    std::cout << "RAW BEST MOVE:" << bestMove << std::endl;
+    auto endTime = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
+    std::cout << duration.count() << " ms" << std::endl;
+}
+
+inline void initializations()
 {
     clearTranspositionTable();
-    std::cout << "DEPTH : " << MAX_DEPTH << std::endl;
-
-    std::string startPos = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-    std::string veryTrickyCapturesPos = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
-
-    // initializations
     seedingForXoshiro256aa();
     initPSTtables();
     SetConsoleOutputCP(CP_UTF8);
@@ -165,78 +192,229 @@ int main()
     initBishopAttacks();
     initLineBetween();
     initZobrist();
-    // initializations
+}
 
 
-    //initMagicNumbers();
+std::string startPos = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+std::string veryTrickyCapturesPos = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
 
+
+int depth = 8;
+
+
+Move parseMove(const std::string& moveString, Position pos)
+{
+    Move moves[256];
+    int numOfMoves = 0;
+
+    int moveStringSize = moveString.size();
+
+    int kingSq;
+    Color allyColor;
+    //int pieceColorDelta;
+    if (pos.isWhiteToMove())
+    {
+        kingSq = lsbIndex(pos.getPieceBitboard(wK));
+        allyColor = White;
+        //pieceColorDelta = 0;
+    } else
+    {
+        kingSq = lsbIndex(pos.getPieceBitboard(bK));
+        allyColor = Black;
+        //pieceColorDelta = 6;
+    }
+    legalityInformation info = getLegalityInfo(kingSq, allyColor, pos);
+
+    generateLegalMoves(info, pos, moves, numOfMoves);
+    // test
+    //for (int i = 0 ; i < numOfMoves; i++)
+    //{
+    //    std::cout << "==========================================" << std::endl;
+    //    std::cout << "MOVE RAW:" << moves[i];
+    //    printMove(moves[i]);
+    //    std::cout << "==========================================" << std::endl;
+    //}
+
+    Move startSq = (moveString[0] - 'a') + (moveString[1] - '1') * 8;
+    Move endSq = (moveString[2] - 'a') + (moveString[3] - '1') * 8;
+    //Move move = (startSq) | (endSq << 6);
+
+    int promotedPiece = 0;
+    if (moveStringSize > 4)
+    {
+        switch (moveString[4])
+        {
+        case 'n':
+            promotedPiece = 0;
+            break;
+        case 'b':
+            promotedPiece = 1;
+            break;
+        case 'r':
+            promotedPiece = 2;
+            break;
+        default:
+            promotedPiece = 3;
+            break;
+        }
+    }
+
+    // find the matching move and return it
+    for (int i = 0; i < numOfMoves; i++)
+    {
+        Move currMove = moves[i];
+        int fromSquare = currMove & 0x3F;
+        int toSquare = (currMove >> 6) & 0x3F;
+        int flag = (currMove >> 12) & 0x3F;
+        if (startSq == fromSquare && endSq == toSquare)
+        {
+            if (flag & 8)
+            {
+                if (moveStringSize > 4)
+                {
+                    int promotedPieceIndex = flag % 4;
+                    if (promotedPieceIndex == promotedPiece) return currMove;
+                }
+            } else
+            {
+                return currMove;
+            }
+        }
+    }
+    // no legal move was found - problem
+    return 0;
+}
+
+
+Position parsePosition(std::vector<std::string> tokens, int startingIndex)
+{
     Position pos;
 
-    //Q7/ppp2k1p/3p2p1/5b2/4P1nq/2P4P/PP1P1bP1/RNB2R1K b - - 0 1
-    pos.loadFen(    veryTrickyCapturesPos    );
+    for (int i = startingIndex; i < tokens.size(); i++)
+    {
+        pos.makeMove(parseMove(tokens[i], pos));
+    }
 
-    //pos.loadFen(    startPos    );
-
-    //int eval = pos.getTotalPSTAndMaterialScore();
-    //std::cout << "eval:" << eval << std::endl;
-    //Move moves[256];
-    //int numOfMoves = 0;
+    return pos;
+}
 
 
-    //Color allyColor;
-    //int kingSquare;
-    //// store ally color and king location for legality info
-    //if (pos.isWhiteToMove())
-    //{
-    //    allyColor = White;
-    //    kingSquare = lsbIndex(pos.getPieceBitboard(wK));
-    //}
+// returns a vector of tokens from a given command string , using istringstream and >> loop method (https://www.tutorialspoint.com/article/how-to-process-strings-using-std-istringstream)
+std::vector<std::string> tokenize(const std::string& command)
+{
+    std::istringstream issCommand;
+    issCommand.str(command);
+
+    std::string commandStr;
+    std::vector<std::string> tokens;
+
+    while (issCommand >> commandStr)
+    {
+        tokens.push_back(commandStr);
+    }
+    return tokens;
+}
+
+
+
+
+int main()
+{
+    initializations();
+    std::string command;
+    Position pos;
+
+
+        while (getline(std::cin, command))
+        {
+            if (command.empty()) continue;
+
+            std::vector<std::string> tokens = tokenize(command);
+            // position command
+            if (tokens[0] == "position")
+            {
+                // non fen string ---------
+                if (tokens[1] == "startpos")
+                {
+                    pos.loadFen(startPos);
+
+                    if (tokens[2] == "moves")
+                    {
+                        pos = parsePosition(tokens, 3);
+                    }
+
+                    // non fen string --------
+                }
+
+                // fen string --------------
+                else if (tokens[1] == "fen")
+                {
+                    bool movesFlag = false;
+                    int movesTokenIndex;
+                    std::string fenString;
+                    for (int i = 2; i < tokens.size(); i++)
+                    {
+                        if (tokens[i] == "moves")
+                        {
+                            movesTokenIndex = i;
+                            movesFlag = true;
+                            break;
+                        }
+                        fenString += tokens[i];
+                        fenString += ' ';
+                    }
+
+                    pos.loadFen(fenString);
+                    if (movesFlag)
+                    {
+                        parsePosition(tokens, movesTokenIndex);
+                    }
+
+                    // fen string --------------
+                }
+
+            } else if (tokens[0] == "go")
+            {
+                MAX_DEPTH = 11;
+                if (tokens[1] == "depth")
+                {
+                    MAX_DEPTH = std::atoi(tokens[2].c_str());
+                }
+
+                // PRINT BEST MOVE ------------------======================================================
+                Move bestMove = findBestMove(pos);
+
+                std::cout << "bestmove ";
+                printMoveNoMessages(bestMove);
+                std::cout << std::endl;
+                // PRINT BEST MOVE ------------------======================================================
+
+            }
+            else if (tokens[0] == "isready")
+            {
+                std::cout << "readyok\n" << std::endl;
+                continue;
+            } else if (tokens[0] == "uci")
+            {
+                std::cout << "id name ABot\n";
+                std::cout << "id author ATheo\n";
+                std::cout << "uciok\n";
+            }
+            // quit command
+            else if (tokens[0] == "quit")
+            {
+                break;
+            }
+        }
+
     //else
     //{
-    //    allyColor = Black;
-    //    kingSquare = lsbIndex(pos.getPieceBitboard(bK));
-    //}
-    //legalityInformation info = getLegalityInfo(kingSquare, allyColor, pos);
-//
-//
-    //// generate legal moves using previously calculated legality info
-    //generateCaptures(info, pos, moves, numOfMoves);
-//
-    //for (int i =0 ; i < numOfMoves; i++)
-    //{
-    //    printMove(moves[i]);
+    //    MAX_DEPTH = 12;
+    //    pos.loadFen(veryTrickyCapturesPos);
+    //    findBestMoveTime(pos);
     //}
 
 
-    //std::cout << (WQ >> 1);
-    //std::cout << (BK >> 2);
-    //std::cout << (BQ >> 3);
-//
-    //std::cout << pos.getTotalPSTAndMaterialScore() << std::endl;
-
-    auto startTime = std::chrono::high_resolution_clock::now();
-    Move bestMove = (findBestMove(pos));
-    printMove(bestMove);
-    std::cout << "RAW BEST MOVE:" << bestMove << std::endl;
-    auto endTime = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
-    std::cout << duration.count() << " ms" << std::endl;
-//
-
-
-
-    //pos.makeMove(bestMove);
-    //bestMove = (findBestMove(pos));
-    //printMove(bestMove);
-    //std::cout << "RAW BEST MOVE:" << bestMove << std::endl;
-//
-//
-//
-
-
-    //Move bestMove = 0;
-    //save(25, 10, 100, Bound::BOUND_BETA, 1234);
-    //int eval = probe(6, 25, 120, 110, bestMove);
-    //std::cout << eval << std::endl;
+    return 0;
 
 }

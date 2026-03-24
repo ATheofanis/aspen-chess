@@ -5,11 +5,12 @@
 #pragma once
 #include <cstring>
 
+#include "Score.h"
 #include "Types.h"
 
 inline int entries = 0;
 
-constexpr int NO_HASH_ENTRY = -1000000;
+constexpr int NO_HASH_ENTRY = -64000;
 
 // the transposition table contains hash entries that have specific information stored about a position
 struct TTEntry
@@ -34,7 +35,7 @@ struct TTEntry
 
 
 // the size of the transposition table
-constexpr int TTSize = 1 << 20;
+constexpr int TTSize = 1 << 21;
 
 // the TTSize is a power of 2. therefore in order to calculate the index of an entry which is zobrist % TTSize we can use bitwise AND like so:
 // index = zobrist & TTSize-1
@@ -45,10 +46,10 @@ constexpr int TTSizeMinusOne = TTSize - 1;
 inline TTEntry transpositionTable[TTSize];
 
 // save a position to the tt, or overwrite an existing hash entry
-void save(ZobristHash zobristHash, int depth, int evaluation, Bound bound, Move bestMove);
+void save(ZobristHash zobristHash, int depth, int evaluation, Bound bound, Move bestMove, int ply);
 
 // looks up a position in the transposition table and returns the entry if it exists
-int probe(int depth, ZobristHash zobristHash, int beta, int alpha, Move& bestMove);
+int probe(int depth, ZobristHash zobristHash, int beta, int alpha, Move& bestMove, int ply);
 
 
 // function to clear transposition table

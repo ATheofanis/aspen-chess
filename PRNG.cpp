@@ -59,7 +59,7 @@ uint64_t splitmix64()
 	z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9; /* xor the variable with the variable right bit shifted 30 then multiply by a constant */
 	z = (z ^ (z >> 27)) * 0x94d049bb133111eb; /* xor the variable with the variable right bit shifted 27 then multiply by a constant */
 
-	return z ^ (z >> 31);					  /* return the variable xored with itself right bit shifted 31 */
+	return z ^ (z >> 31);					  /* return the variable xor'ed with itself right bit shifted 31 */
 }
 
 

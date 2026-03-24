@@ -232,6 +232,6 @@ inline void initPSTtables()
 
 int scoreQuiescenceMove(const Move& move, const Position& pos, const Move& bestMove);
 
-int scoreMove(const Move& move, const Position& pos, const Move& bestMove, const int& ply);
+int scoreMove(const Move& move, const Position& pos, const Move& hashMove, const int& ply);
 
 int scoreBoard(const Position& pos);
