@@ -112,7 +112,7 @@ int quiescence(Position& pos, int alpha, int beta, Move hashMove, int ply)
 
         Move capture = captures[i];
 
-        // delta pruning
+        // delta pruning - considerable speed increase in many positions - slow in others
 
 
 
@@ -130,6 +130,7 @@ int quiescence(Position& pos, int alpha, int beta, Move hashMove, int ply)
             deltaPrunes++;
             continue;
         }
+
 
 
 
