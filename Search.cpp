@@ -341,11 +341,11 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
         hashFlag = Bound::BOUND_EXACT;
         alpha = score;
 
-        if (!(((firstMove >> 12) & 0x3F) & 4))
-        {
-            // store history move
-            historyMoves[fromSquare][toSquare] = std::min(historyMoves[fromSquare][toSquare] + depth * depth, 800);
-        }
+        //if (!(((firstMove >> 12) & 0x3F) & 4))
+        //{
+        //    // store history move
+        //    historyMoves[fromSquare][toSquare] = std::min(historyMoves[fromSquare][toSquare] + depth * depth, 800);
+        //}
         ttBestMove = firstMove;
 
         if (depth == rootDepth)
@@ -363,25 +363,19 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
             {
                 return beta;
             }
+            historyMoves[fromSquare][toSquare] = std::min(historyMoves[fromSquare][toSquare] + depth * depth, 800);
 
             killerMoves[ply][1] = killerMoves[ply][0];
             killerMoves[ply][0] = firstMove;
 
 
             return beta; // hard beta cutoff
+        } else
+        {
+            historyMoves[fromSquare][toSquare] -= depth;
         }
 
     }
-    //else
-    //{
-    //    if (!(((firstMove >> 12) & 0x3F) & 4))
-    //    {
-    //        // subtract score if move didnt cause cutoff
-    //        historyMoves[fromSquare][toSquare] -= depth * depth;
-    //    }
-    //}
-
-    // PVS ABOVE
     // ***************************************************************
 
 
@@ -457,11 +451,7 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
         {
             hashFlag = Bound::BOUND_EXACT;
             alpha = score;
-            if (!(moveFlag & 4))
-            {
-                // store history move
-                historyMoves[fromSquare][toSquare] = std::min(historyMoves[fromSquare][toSquare] + depth * depth, 800);
-            }
+
 
             ttBestMove = move;
 
@@ -480,11 +470,15 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
                 {
                     return beta;
                 }
+                historyMoves[fromSquare][toSquare] = std::min(historyMoves[fromSquare][toSquare] + depth * depth, 800);
                 killerMoves[ply][1] = killerMoves[ply][0];
                 killerMoves[ply][0] = move;
 
 
                 return beta; // hard beta cutoff
+            } else
+            {
+                historyMoves[fromSquare][toSquare] -= depth;
             }
         }
         else
