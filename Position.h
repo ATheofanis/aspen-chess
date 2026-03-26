@@ -4,6 +4,7 @@
 
 #pragma once
 #include <cassert>
+#include <cstring>
 
 #include "Bitboard.h"
 #include "Score.h"
@@ -24,6 +25,8 @@ struct positionInfo
     int egScore;
     int gamePhase;
 
+    int irreversiblePositionTop{};
+
     Piece pieceCaptured;
     Move prevMove{};
     CastlingRights castleRights{};
@@ -43,8 +46,13 @@ private:
     Bitboard occupiedSquaresBitboard{};
 
     ZobristHash zobristHash{};
+    ZobristHash previousPositions[256]{}; // store all previous positions' zobrist
 
     Piece Board[64]{};
+
+
+    int numOfPositions{}; // index used for the previousPositions array
+    int irreversiblePositionTop{}; // index for last irreversible move (for 3-fold repetition check)
 
     int mgPstAndMaterialScore{};
     int egPstAndMaterialScore{};
@@ -57,7 +65,7 @@ private:
 
     bool whiteToMoveFlag{};
     bool isCheckmate{};
-    bool isStalemate{};;
+    bool isStalemate{};
 
 public:
     void clearPosition();
@@ -130,6 +138,11 @@ public:
         return zobristHash;
     }
 
+    [[nodiscard]] constexpr int getNumOfMoves() const
+    {
+        return numOfPositions;
+    }
+
     // returns game phase for testing
     [[nodiscard]] int getGamePhase() const { return gamePhase; }
 
@@ -163,7 +176,29 @@ public:
         return (mgPstAndMaterialScore * mgPhase + egPstAndMaterialScore * egPhase) / 24;
     }
 
+    // manual computation of zobrist hash for loading fen and for debugging incremental zobrist
     ZobristHash computeZobristHash();
+
+
+    // check if current position has been repeated twice before (3-fold repetition rule)
+    bool checkRepetition(ZobristHash currentPositionZobrist)
+    {
+        int repetitionsCount = 0;
+
+        for (int i = numOfPositions - 1; i >= irreversiblePositionTop; i--)
+        {
+            if (currentPositionZobrist == previousPositions[i])
+            {
+                repetitionsCount++;
+                if (repetitionsCount == 2)
+                {
+                    //std::cout << "info string repetition detected" << std::endl;
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
 
 
 };

@@ -14,10 +14,10 @@ int scoreBoard(const Position& pos)
     return pos.isWhiteToMove() ? score : -score;
 }
 
-int scoreQuiescenceMove(const Move& move, const Position& pos, const Move& bestMove)
+int scoreQuiescenceMove(const Move& move, const Position& pos, const Move& hashMove)
 {
 
-    if (move == bestMove)
+    if (move == hashMove)
     {
         return 10000;
     }

@@ -33,6 +33,8 @@ void Position::clearPosition()
 // set board to the starting position
 void Position::setStartPos()
 {
+    numOfPositions = 0;
+    irreversiblePositionTop = 0;
     positionLogTop = 0;
     whiteToMoveFlag = true;
     isCheckmate = false;
@@ -208,13 +210,19 @@ void Position::loadFen(const std::string& fenString)
     int fullMoveCounter;
     sscanf(fenString.c_str() + charIndex, "%d %d", &halfMoveClock, &fullMoveCounter);
 
+
     calculatePstAndMaterialScore();
     zobristHash = computeZobristHash();
+
+    numOfPositions = 0;
+    irreversiblePositionTop = 0;
+    previousPositions[numOfPositions++] = zobristHash;
 }
 
 
 void Position::makeMove(Move move)
 {
+
     positionInfo prevPosInfo;
     prevPosInfo.prevMove = move;
     prevPosInfo.blackPiecesBitboard = blackPiecesBitboard;
@@ -230,6 +238,8 @@ void Position::makeMove(Move move)
     prevPosInfo.egScore = egPstAndMaterialScore;
     prevPosInfo.gamePhase = gamePhase;
 
+    prevPosInfo.irreversiblePositionTop = irreversiblePositionTop;
+
     CastlingRights oldCastleRights = castleRights;
 
     // extract move info
@@ -244,6 +254,11 @@ void Position::makeMove(Move move)
     Bitboard moveMask = fromMask | toMask;
 
     Piece pieceMoved = Board[fromSquare];
+    if (pieceMoved % 6 == 0)
+    {
+        irreversiblePositionTop = numOfPositions;
+    }
+
     // update board-piece zobrist value
     zobristHash ^= zobristPieces[fromSquare][pieceMoved];
 
@@ -320,6 +335,7 @@ void Position::makeMove(Move move)
         // CORRECT ----------------------------------------------------------------
         if (flag == 4)
         {
+            irreversiblePositionTop = numOfPositions;
 
             Piece capPiece = Board[toSquare];
             gamePhase -= gamephaseInc[capPiece];
@@ -476,6 +492,7 @@ void Position::makeMove(Move move)
         }
         else
         {
+            irreversiblePositionTop = numOfPositions;
             if (whiteToMoveFlag) // White castles
             {
 
@@ -584,14 +601,18 @@ void Position::makeMove(Move move)
         zobristHash ^= zobristCastleRights[3];
     }
 
-    // ASSERT
-    //assert(zobristHash == computeZobristHash());
+
+
+    previousPositions[numOfPositions++] = zobristHash;
 
 }
 
 // MAKE CAPTURE -----------------==============================
 void Position::makeCapture(Move move)
 {
+
+    irreversiblePositionTop = numOfPositions;
+
     positionInfo prevPosInfo;
     prevPosInfo.prevMove = move;
     prevPosInfo.blackPiecesBitboard = blackPiecesBitboard;
@@ -606,6 +627,8 @@ void Position::makeCapture(Move move)
     prevPosInfo.mgScore = mgPstAndMaterialScore;
     prevPosInfo.egScore = egPstAndMaterialScore;
     prevPosInfo.gamePhase = gamePhase;
+
+    prevPosInfo.irreversiblePositionTop = irreversiblePositionTop;
 
     CastlingRights oldCastleRights = castleRights;
 
@@ -856,8 +879,7 @@ void Position::makeCapture(Move move)
         zobristHash ^= zobristCastleRights[3];
     }
 
-    // ASSERT
-    //assert(zobristHash == computeZobristHash());
+    previousPositions[numOfPositions++] = zobristHash;
 
 }
 // MAKE CAPTURE -----------------==============================
@@ -866,6 +888,8 @@ void Position::makeCapture(Move move)
 
 void Position::unmakeMove()
 {
+    numOfPositions--;
+
 
     whiteToMoveFlag = !whiteToMoveFlag;
 
@@ -885,6 +909,8 @@ void Position::unmakeMove()
     mgPstAndMaterialScore = prevPosInfo.mgScore;
     egPstAndMaterialScore = prevPosInfo.egScore;
     gamePhase = prevPosInfo.gamePhase;
+
+    irreversiblePositionTop = prevPosInfo.irreversiblePositionTop;
 
     Piece pieceCaptured = prevPosInfo.pieceCaptured;
     Move move = prevPosInfo.prevMove;
@@ -1022,6 +1048,7 @@ void Position::unmakeMove()
 // UNMAKE CAPTURE -------------------------================================
 void Position::unmakeCapture()
 {
+    numOfPositions--;
 
     whiteToMoveFlag = !whiteToMoveFlag;
 
@@ -1041,6 +1068,8 @@ void Position::unmakeCapture()
     mgPstAndMaterialScore = prevPosInfo.mgScore;
     egPstAndMaterialScore = prevPosInfo.egScore;
     gamePhase = prevPosInfo.gamePhase;
+
+    irreversiblePositionTop = prevPosInfo.irreversiblePositionTop;
 
     Piece pieceCaptured = prevPosInfo.pieceCaptured;
     Move move = prevPosInfo.prevMove;
