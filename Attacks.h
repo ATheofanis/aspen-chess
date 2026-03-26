@@ -6,7 +6,8 @@
 #include <cassert>
 
 #include "MagicNumbers.h"
-#include "Position.h"
+
+class Position;
 
 // initialize pawn attacks table
 extern Bitboard pawnAttacks[2][64];

@@ -21,15 +21,17 @@ int quiescence(Position& pos, int alpha, int beta, Move hashMove, int ply)
 {
     //if (ply > 0 && pos.checkRepetition(pos.getZobristHash())) return 0;
 
+
     ZobristHash zobrist = pos.getZobristHash();
-    int value;
+    int bestValue;
     Move ttBestMove = 0;
 
+
     // probe TT
-    if (ply > 0 && (value = probe(0, zobrist, beta, alpha, hashMove, ply)) != NO_HASH_ENTRY)
+    if (ply > 0 && (bestValue = probe(0, zobrist, beta, alpha, hashMove, ply)) != NO_HASH_ENTRY)
     {
         transpositionCutoffs++;
-        return value;
+        return bestValue;
     }
 
     Bound hashFlag = Bound::BOUND_ALPHA;
@@ -37,25 +39,25 @@ int quiescence(Position& pos, int alpha, int beta, Move hashMove, int ply)
     quieNodes++;
 
     // stand pat
-    int standPat = scoreBoard(pos);
+    bestValue = scoreBoard(pos);
 
     // Delta pruning
-    if (standPat < alpha - 980)  // average queen value is 980
+    if (bestValue < alpha - 980)  // average queen value is 980
     {
         deltaPrunes++;
-        return alpha;
+        return bestValue;
     }
 
-    if (standPat >= beta)
+    if (bestValue >= beta)
     {
         save(zobrist, 0, beta, Bound::BOUND_BETA, ttBestMove, ply);
-        return beta;
+        return bestValue;
     }
 
-    if (standPat > alpha)
+    if (bestValue > alpha)
     {
         //hashFlag = Bound::BOUND_EXACT;
-        alpha = standPat;
+        alpha = bestValue;
     }
 
     Move captures[128];
@@ -111,12 +113,13 @@ int quiescence(Position& pos, int alpha, int beta, Move hashMove, int ply)
         // insertion sort -----------================================
 
         Move capture = captures[i];
+        int fromSquare = capture & 0x3F;
+        int toSquare = (capture >> 6) & 0x3F;
+
 
         // delta pruning - considerable speed increase in many positions - slow in others
 
-
-
-        Piece capturedPiece = pos.getPieceFromBoard(capture >> 6 & 0x3F);
+        Piece capturedPiece = pos.getPieceFromBoard(toSquare);
         int capturedPieceScore = averagePieceScore[0];
 
         if (capturedPiece != NO_PIECE)
@@ -125,11 +128,20 @@ int quiescence(Position& pos, int alpha, int beta, Move hashMove, int ply)
         }
 
 
-        if (standPat + capturedPieceScore + 800 < alpha)
+        if (bestValue + capturedPieceScore + 200 < alpha)
         {
             deltaPrunes++;
             continue;
         }
+
+
+        // SEE pruning
+        int attacker = pos.getPieceFromBoard(fromSquare);
+        if (averagePieceScore[attacker] - 500 > averagePieceScore[capturedPiece])
+        {
+            if (pos.SEE(toSquare, capturedPiece, fromSquare, pos.getPieceFromBoard(fromSquare)) < 0) continue;
+        }
+
 
 
 
@@ -143,21 +155,45 @@ int quiescence(Position& pos, int alpha, int beta, Move hashMove, int ply)
         pos.unmakeCapture();
 
 
-        if (score >= beta)
+
+        //if (score > alpha)
+        //{
+        //    hashFlag = Bound::BOUND_EXACT;
+        //    ttBestMove = capture;
+        //    alpha = score;
+        //    if (score >= beta)
+        //    {
+        //        save(zobrist, 0, beta, Bound::BOUND_BETA, ttBestMove, ply);
+        //        return beta;
+        //    }
+        //}
+
+
+        if (score > bestValue)
         {
-            save(zobrist, 0, beta, Bound::BOUND_BETA, ttBestMove, ply);
-            return beta;
+            bestValue = score;
+
+            if (score > alpha)
+            {
+                hashFlag = Bound::BOUND_EXACT;
+                if (score < beta)
+                {
+                    // Update alpha here!
+                    alpha = score;
+                }
+                else
+                {
+                    save(zobrist, 0, beta, Bound::BOUND_BETA, ttBestMove, ply);
+                    break;  // Fail high
+                }
+
+            }
         }
 
-        if (score > alpha)
-        {
-            hashFlag = Bound::BOUND_EXACT;
-            ttBestMove = capture;
-            alpha = score;
-        }
+
     }
     save(zobrist, 0, alpha, hashFlag, ttBestMove, ply);
-    return alpha;
+    return bestValue;
 }
 
 
@@ -365,15 +401,16 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
             }
         }
         //Move move = moves[i];
-
         pos.makeMove(moves[i]);
+
         // LMR: set the depth reduction based on move index, current depth and if king is in check reduce depth by less
         int depthReduction = 1;
         Move move = moves[i];
 
         toSquare = (move >> 6) & 0x3F;
+        int moveFlag = move >> 12 & 0x3F;
         // we start from i = 1, so (1) i = 1, (2) i = 2, (3) i = 3 - so atleast 3  moves searched before LMR plus the hash move so 3 + 1
-        if (((move >> 12) & 0x3F) < 4)
+        if ((moveFlag) < 4)
         {
             if (depth > 3 && i > 3)
             {
@@ -415,13 +452,12 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
         //    return beta; // hard beta cutoff
         //}
 
-
-        int fromSquare = move & 0x3F;
+        fromSquare = move & 0x3F;
         if (score > alpha)
         {
             hashFlag = Bound::BOUND_EXACT;
             alpha = score;
-            if (!(((move >> 12) & 0x3F) & 4))
+            if (!(moveFlag & 4))
             {
                 // store history move
                 historyMoves[fromSquare][toSquare] = std::min(historyMoves[fromSquare][toSquare] + depth * depth, 800);
@@ -440,7 +476,7 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
             {
                 save(posZobrist, depth, beta, Bound::BOUND_BETA, ttBestMove, ply);
                 // store killer move
-                if ((((move >> 12) & 0x3F) & 4))
+                if (moveFlag & 4)
                 {
                     return beta;
                 }
@@ -453,7 +489,7 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
         }
         else
         {
-            if (!(((move >> 12) & 0x3F) & 4))
+            if (!(moveFlag & 4))
             {
                 // store history move
                 historyMoves[fromSquare][toSquare] -= depth * depth / 2;

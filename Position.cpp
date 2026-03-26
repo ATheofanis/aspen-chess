@@ -1260,3 +1260,100 @@ ZobristHash Position::computeZobristHash()
     hash ^= zobristBlackToMove;
     return hash;
 }
+
+
+
+
+// SEE :
+Bitboard Position::getAllAttackersToSquare(int targetSquare)
+{
+
+
+    Bitboard attackersBitboard = 0ULL;
+
+    attackersBitboard |= ( pawnAttacks[Black][targetSquare] &  pieceBitboard[wp] ) | ( pawnAttacks[White][targetSquare] &  pieceBitboard[bp] );
+    attackersBitboard |= knightAttacks[targetSquare] & (pieceBitboard[wN] | pieceBitboard[bN]);
+    attackersBitboard |= kingAttacks[targetSquare] & (pieceBitboard[wK] | pieceBitboard[bK]);
+    // occupancy attacks
+    Bitboard allDiagonalAttackers = pieceBitboard[wB] | pieceBitboard[bB] | pieceBitboard[bQ] | pieceBitboard[wQ];
+    Bitboard allRookAttackers = pieceBitboard[wR] | pieceBitboard[bR] | pieceBitboard[bQ] | pieceBitboard[wQ];
+    attackersBitboard |= getBishopAttacks(targetSquare, occupiedSquaresBitboard ) & allDiagonalAttackers; // bishops and queens
+    attackersBitboard |= getRookAttacks(targetSquare, occupiedSquaresBitboard) & allRookAttackers; // rooks and queens
+    return attackersBitboard;
+}
+
+
+Bitboard Position::getLeastValuablePiece(Bitboard pieces, int colorDelta, int &piece) // colorDelta is 0 for white 6 for black
+{
+
+
+
+    int kingPieceIndex = 5 + colorDelta;
+    int pawnIndex = colorDelta;
+
+    for (piece = pawnIndex; piece <= kingPieceIndex; piece++)
+    {
+        Bitboard subset = pieces & pieceBitboard[piece];
+        if (subset) return subset & -subset;
+    }
+    return 0;
+}
+
+
+
+// for SEE
+Bitboard Position::xRayAttackersToSquare(int targetSquare, Bitboard occupancy) const
+{
+    //std::cout << "Inside RAY ATTACKERS" << std::endl;
+
+    Bitboard attackersBitboard = 0ULL;
+
+    Bitboard allDiagonalAttackers = pieceBitboard[wB] | pieceBitboard[bB] | pieceBitboard[bQ] | pieceBitboard[wQ];
+    attackersBitboard |= getBishopAttacks(targetSquare, occupancy ) & allDiagonalAttackers; // bishops and queens
+    Bitboard allRookAttackers = pieceBitboard[wR] | pieceBitboard[bR] | pieceBitboard[bQ] | pieceBitboard[wQ];
+    attackersBitboard |= getRookAttacks(targetSquare, occupancy ) & allRookAttackers; // rooks and queens
+
+
+    //std::cout << "exiting RAY ATTACKERS" << std::endl;
+    return attackersBitboard & occupancy;
+}
+
+
+
+int Position::SEE( int toSquare, int targetPiece, int fromSquare, int attackerPiece)
+{
+    //std::cout << "Inside SEE" << std::endl;
+
+    int side = (attackerPiece < 6) ? 0 : 1; // if white side is 1 , if black side is 0
+
+    int gain[32];
+    int depth = 0;
+    Bitboard mayXRay = (whitePiecesBitboard & ~ (pieceBitboard[wN] | pieceBitboard[wK])) | (blackPiecesBitboard & ~ (pieceBitboard[bN] | pieceBitboard[bK]));
+    Bitboard fromSet = 1ULL << fromSquare;
+    Bitboard occupancy = occupiedSquaresBitboard;
+    Bitboard attadef = getAllAttackersToSquare(toSquare);
+
+    gain[depth] = averagePieceScore[targetPiece];
+
+
+    do
+    {
+        depth++;
+        gain[depth] = averagePieceScore[attackerPiece] - gain[depth - 1]; // speculative store, if defended
+        attadef ^= fromSet; // reset bit in set to traverse
+        occupancy ^= fromSet; // reset bit in temporary occupancy for x-Rays
+        if (fromSet & mayXRay)
+        {
+            attadef |= xRayAttackersToSquare(toSquare, occupancy);
+        }
+        fromSet = getLeastValuablePiece(attadef, (depth & 1) * 6, attackerPiece);
+    } while (fromSet);
+    while (--depth)
+    {
+        gain[depth - 1] = -std::max(-gain[depth - 1], gain[depth]);
+    }
+
+    return gain[0];
+
+}
+

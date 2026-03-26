@@ -6,6 +6,7 @@
 #include <cassert>
 #include <cstring>
 
+#include "Attacks.h"
 #include "Bitboard.h"
 #include "Score.h"
 #include "Zobrist.h"
@@ -200,5 +201,14 @@ public:
         return false;
     }
 
+    Bitboard getAllAttackersToSquare(int targetSquare);
+
+    Bitboard getLeastValuablePiece(Bitboard pieces, int bySide, int &piece); // bySide is 0 for white 6 for black
+
+    Bitboard xRayAttackersToSquare(int targetSquare, Bitboard occupancy) const;
+
+    int SEE( int toSquare, int targetPiece, int fromSquare, int attackerPiece);
 
 };
+
+

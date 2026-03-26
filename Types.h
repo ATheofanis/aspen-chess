@@ -128,7 +128,7 @@ inline Color pieceColor(Piece p)
 
 
 // enum type for transposition table hash entry
-enum class Bound : int {
+enum class Bound : uint8_t {
               // UPPERBOUND , LOWERBOUND
     BOUND_EXACT, BOUND_ALPHA, BOUND_BETA
 

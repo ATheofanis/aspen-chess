@@ -3,6 +3,7 @@
 //
 
 #include "Attacks.h"
+#include "Position.h"
 
 #include <cassert>
 

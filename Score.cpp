@@ -14,9 +14,9 @@ int scoreBoard(const Position& pos)
     return pos.isWhiteToMove() ? score : -score;
 }
 
-int scoreQuiescenceMove(const Move& move, const Position& pos, const Move& hashMove)
+int scoreQuiescenceMove(const Move& move, Position& pos, const Move& hashMove)
 {
-
+    int score = 0;
     if (move == hashMove)
     {
         return 10000;
@@ -27,8 +27,9 @@ int scoreQuiescenceMove(const Move& move, const Position& pos, const Move& hashM
     int flag = (move >> 12) & 0x3F;
 
     // MVV-LVA for quiescence
-    if (flag & 4)
-    {
+    //if (flag & 4)
+    //{
+
         Piece victim = wp;
         if (flag == 5)
         {
@@ -39,9 +40,11 @@ int scoreQuiescenceMove(const Move& move, const Position& pos, const Move& hashM
         }
         Piece attacker = pos.getPieceFromBoard(fromSquare);
 
-        return 1000 + 10 * averagePieceScore[(int)(victim) % 6] - averagePieceScore[(int)(attacker) % 6];
+        //score += pos.SEE(toSquare, victim, fromSquare, pos.getPieceFromBoard(fromSquare)) * 10;
 
-    }
+        return score + 1000 + 10 * averagePieceScore[(int)(victim) % 6] - averagePieceScore[(int)(attacker) % 6];
+
+    //}
 
 
     return 0;

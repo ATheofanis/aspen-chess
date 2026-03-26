@@ -16,10 +16,10 @@ constexpr int NO_HASH_ENTRY = -64000;
 struct TTEntry
 {
     ZobristHash entryZobristKey = 0; // the position's zobrist key
-    int entryDepth = -1;              // the current depth when the position was searched
-    int entryEvaluation = 0;         // the evaluation of the position
-    Bound entryBound = Bound::BOUND_EXACT;              // EXACT - BOUND_EXACT(0)  /  UPPERBOUND - BOUND_ALPHA(1)  /  LOWERBOUND - BOUND_BETA(2)
     Move entryBestMove = 0;          // the best move of the position
+    int16_t entryEvaluation = 0;         // the evaluation of the position
+    Bound entryBound = Bound::BOUND_EXACT;              // EXACT - BOUND_EXACT(0)  /  UPPERBOUND - BOUND_ALPHA(1)  /  LOWERBOUND - BOUND_BETA(2)
+    uint8_t entryDepth = -1;              // the current depth when the position was searched
 
     TTEntry() = default; // default constructor
 

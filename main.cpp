@@ -195,9 +195,6 @@ inline void initializations()
 }
 
 
-std::string startPos = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-std::string veryTrickyCapturesPos = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
-
 
 int depth = 8;
 
@@ -318,9 +315,46 @@ std::vector<std::string> tokenize(const std::string& command)
 
 
 
+
+
+
+
+std::string startPos = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+std::string veryTrickyCapturesPos = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
+
 int main()
 {
     initializations();
+
+    // TESTS ---------------------------------==============================================================
+
+
+    //Position testPos;
+    //testPos.loadFen("k3r3/4r3/8/4n3/8/8/4R3/K3R3 w - - 0 1");
+    //std::cout << testPos.SEE(e5, bN, e2, wR) << std::endl;
+    //printBitboard(testPos.getAllAttackersToSquare(d5));
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // TESTS ---------------------------------==============================================================
+
+
     std::string command;
     Position pos;
 
@@ -375,7 +409,7 @@ int main()
 
             } else if (tokens[0] == "go")
             {
-                MAX_DEPTH = 13;
+                MAX_DEPTH = 12;
                 if (tokens[1] == "depth")
                 {
                     MAX_DEPTH = std::atoi(tokens[2].c_str());

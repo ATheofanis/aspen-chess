@@ -16,13 +16,13 @@ constexpr int STALEMATE = 0;
 
 
 // PeSTO's middlegame piece score values
-constexpr int mgPieceScore[6] = { 82, 337, 365, 477, 1025,  0};
+constexpr int mgPieceScore[6] = { 82, 337, 365, 477, 1025, 0};
 
 // average piece score for SEE , MVVLVA and other stuff
-constexpr int averagePieceScore[6] = {88, 309, 331, 494, 980, 0};
+constexpr int averagePieceScore[12] = {88, 309, 331, 494, 980, 0, 88, 309, 331, 494, 980, 0};
 
 // PeSTO's endgame piece score values
-constexpr int egPieceScore[6] = { 94, 281, 297, 512,  936,  0};
+constexpr int egPieceScore[6] = { 94, 281, 297, 512,  936, 0};
 
 
 // PeSTO's PST's values for middlegame and endgame:
@@ -230,7 +230,7 @@ inline void initPSTtables()
     }
 }
 
-int scoreQuiescenceMove(const Move& move, const Position& pos, const Move& bestMove);
+int scoreQuiescenceMove(const Move& move, Position& pos, const Move& bestMove);
 
 int scoreMove(const Move& move, const Position& pos, const Move& hashMove, const int& ply);
 
