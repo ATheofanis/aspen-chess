@@ -7,10 +7,88 @@
 Move killerMoves[15][2];
 int historyMoves[64][64];
 
+// CALCULATE DOUBLED PAWN SCORE, ADD FOR WHITE SUBTRACT FOR BLACK --------------===============
+int pawnStructureScore(const Position& pos)
+{
+
+    Bitboard wps = pos.getPieceBitboard(0);
+    Bitboard bps = pos.getPieceBitboard(6);
+    Bitboard whitePawns = wps;
+    Bitboard blackPawns = bps;
+
+
+    int numOfWhiteDoubled = 0;
+    int numOfWhiteIsolated = 0;
+    int numOfWhitePassed = 0;
+
+    int numOfBlackDoubled = 0;
+    int numOfBlackIsolated = 0;
+    int numOfBlackPassed = 0;
+
+    while (whitePawns)
+    {
+        int currentPawnSq = popLsbAndReturnIndex(whitePawns);
+        int file = currentPawnSq & 7;
+
+        // doubled white pawns
+        Bitboard doubledWhitePawns = wps & files[file];
+        int whiteDoubledInFile = bitCount(doubledWhitePawns);
+        if (whiteDoubledInFile > 1)
+        {
+            numOfWhiteDoubled += whiteDoubledInFile - 1;
+        }
+
+        // isolated white pawns
+        if ((isolatedMasks[currentPawnSq] & wps) == 0)
+        {
+            numOfWhiteIsolated++;
+        }
+
+    }
+
+    while (blackPawns)
+    {
+        int currentPawnSq = popLsbAndReturnIndex(blackPawns);
+        int file = currentPawnSq & 7;
+
+        // doubled black pawns
+        Bitboard doubledBlackPawns = bps & files[file];
+        int blackDoubledInFile = bitCount(doubledBlackPawns);
+        if (blackDoubledInFile > 1)
+        {
+            numOfBlackDoubled += blackDoubledInFile - 1;
+        }
+
+        // isolated black pawns
+        if ((isolatedMasks[currentPawnSq] & bps) == 0)
+        {
+            numOfBlackIsolated++;
+        }
+
+    }
+
+
+
+
+    //std::cout << "DOUBLED WHITE / BLACK PAWNS: " << numOfWhiteDoubled << " / " << numOfBlackDoubled << std::endl;
+    //std::cout << "ISOLATED WHITE / BLACK PAWNS: " << numOfWhiteIsolated << " / " << numOfBlackIsolated << std::endl;
+
+    //return pos.isWhiteToMove() ? ((numOfWhiteDoubled - numOfBlackDoubled) * doubledPawnPenalty) : -((numOfWhiteDoubled - numOfBlackDoubled) * doubledPawnPenalty);
+    return ((numOfWhiteDoubled - numOfBlackDoubled) * doubledPawnPenalty) + (numOfWhiteIsolated - numOfBlackIsolated) * isolatedPawnPenalty;
+}
+// CALCULATE DOUBLED PAWN SCORE, ADD FOR WHITE SUBTRACT FOR BLACK --------------===============
+
+
+
+
+
 int scoreBoard(const Position& pos)
 {
     int score = 0;
     score += pos.getTotalPSTAndMaterialScore();
+
+    score += pawnStructureScore(pos);
+
     return pos.isWhiteToMove() ? score : -score;
 }
 

@@ -7,6 +7,82 @@
 
 Bitboard lineBetween[64][64];
 
+Bitboard fileMasks[64];
+Bitboard rankMasks[64];
+Bitboard isolatedMasks[64];
+Bitboard whitePassedMasks[64];
+Bitboard blackPassedMasks[64];
+
+
+void initializePawnStructureMasks()
+{
+    // initialize rank masks
+    for (int rank = 0; rank < 8; rank++)
+    {
+        for (int sqInRank = 0; sqInRank < 8; sqInRank++)
+        {
+            int square = rank * 8 + sqInRank;
+            rankMasks[square] = ranks[rank];
+        }
+    }
+
+    // initialize file masks
+    for (int file = 0; file < 8; file++)
+    {
+        for (int sqInFile = 0; sqInFile < 8; sqInFile++)
+        {
+            int square = file + sqInFile * 8;
+            fileMasks[square] = files[file];
+        }
+    }
+
+    // initialize isolated pawn masks
+    for (int sq = 0; sq < 64; sq++)
+    {
+        if ((sq & 7) == 0) // if sq mod 8 is 0 meaning it is in fileA
+        {
+            isolatedMasks[sq] = fileMasks[sq+1];
+        } else if ((sq & 7) == 7)
+        {
+            isolatedMasks[sq] = fileMasks[sq-1];
+        } else
+        {
+            isolatedMasks[sq] = fileMasks[sq+1] | fileMasks[sq-1];
+        }
+    }
+
+    // initialize passed pawn masks:
+    for (int rank = 0; rank < 8; rank++)
+    {
+        for (int file = 0; file < 8; file++)
+        {
+            int sq = rank * 8 + file;
+
+            Bitboard passedPawnMask = isolatedMasks[sq] | fileMasks[sq];
+
+            Bitboard wpMask = passedPawnMask; // white pawns
+            Bitboard bpMask = passedPawnMask; // black pawns
+
+
+            for (int whiteRank = 0; whiteRank <= rank; whiteRank++ )
+            {
+                wpMask &= ~ranks[whiteRank];
+            }
+            for (int blackRank = 7; blackRank >= rank; blackRank-- )
+            {
+                bpMask &= ~ranks[blackRank];
+            }
+
+            whitePassedMasks[sq] = wpMask;
+            blackPassedMasks[sq] = bpMask;
+        }
+    }
+
+}
+
+
+
+
 // function to print a bitboard
 void printBitboard(Bitboard bb)
 {
@@ -88,3 +164,5 @@ void initLineBetween()
         }
     }
 }
+
+

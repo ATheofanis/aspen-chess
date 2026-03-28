@@ -16,6 +16,21 @@ constexpr Bitboard fileF = 0x2020202020202020ULL;
 constexpr Bitboard fileG = 0x4040404040404040ULL;
 constexpr Bitboard fileH = 0x8080808080808080ULL;
 
+constexpr Bitboard files[8] = {
+    fileA, fileB, fileC, fileD,
+    fileE, fileF, fileG, fileH
+};
+
+
+// masks for pawn structure
+extern Bitboard fileMasks[64];
+extern Bitboard rankMasks[64];
+extern Bitboard isolatedMasks[64];
+extern Bitboard whitePassedMasks[64];
+extern Bitboard blackPassedMasks[64];
+
+
+
 // file combinations for knight attacks table
 constexpr Bitboard fileGH = 0xC0C0C0C0C0C0C0C0ULL;
 constexpr Bitboard fileAB = 217020518514230019;
@@ -29,6 +44,15 @@ constexpr Bitboard rank5 = 0x000000FF00000000ULL;
 constexpr Bitboard rank6 = 0x0000FF0000000000ULL;
 constexpr Bitboard rank7 = 0x00FF000000000000ULL;
 constexpr Bitboard rank8 = 0xFF00000000000000ULL;
+
+constexpr Bitboard ranks[8] = {
+    rank1, rank2, rank3, rank4,
+    rank5, rank6, rank7, rank8
+};
+
+
+
+void initializePawnStructureMasks();
 
 
 constexpr Bitboard wkRookMask = 128;

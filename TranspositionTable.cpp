@@ -16,19 +16,19 @@ void save(ZobristHash zobristHash, int depth, int evaluation, Bound bound, Move 
 
     TTEntry entry = transpositionTable[index];
 
-    if (evaluation < -CHECKMATE) evaluation -= ply;
-    if (evaluation > CHECKMATE) evaluation += ply;
+    if (evaluation < -CHECKMATE + 500) evaluation -= ply;
+    if (evaluation > CHECKMATE - 500) evaluation += ply;
 
 
-    // depth replacement scheme (replace entries if the entry's depth is lower than current depth)
     if (entry.entryDepth < depth)
     {
-        //std::cout << "SAVING ENTRY" << std::endl;
         entries++;
-        TTEntry newEntry = TTEntry(zobristHash, depth, evaluation, bound, bestMove);
-        //std::cout << "NEW ENTRY ZOBRIST:" << newEntry.entryZobristKey << std::endl;
-        transpositionTable[index] = newEntry;
+        //TTEntry newEntry = TTEntry(zobristHash, depth, evaluation, bound, bestMove);
+        transpositionTable[index] = TTEntry(zobristHash, depth, evaluation, bound, bestMove);
     }
+
+
+
 }
 
 
@@ -54,8 +54,8 @@ int probe(int depth, ZobristHash zobristHash, int beta, int alpha, Move& bestMov
         {
             int eval = entry.entryEvaluation;
             // retrieve score independent of the actual path
-            if (eval < -CHECKMATE) eval += ply;
-            if (eval > CHECKMATE) eval -= ply;
+            if (eval < -CHECKMATE + 500) eval += ply;
+            if (eval > CHECKMATE - 500) eval -= ply;
 
             // exact flag
             if (entry.entryBound == Bound::BOUND_EXACT)

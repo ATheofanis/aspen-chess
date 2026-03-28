@@ -1286,8 +1286,6 @@ Bitboard Position::getAllAttackersToSquare(int targetSquare)
 Bitboard Position::getLeastValuablePiece(Bitboard pieces, int colorDelta, int &piece) // colorDelta is 0 for white 6 for black
 {
 
-
-
     int kingPieceIndex = 5 + colorDelta;
     int pawnIndex = colorDelta;
 
@@ -1319,6 +1317,22 @@ Bitboard Position::xRayAttackersToSquare(int targetSquare, Bitboard occupancy) c
 }
 
 
+/*
+    1. Generate all of the attacks and x-ray attacks on the target square for both sides
+    2. The “see_value” is set to the value of the initially captured piece
+    3. The “trophy_value” is set to the value of the piece making the initial capture
+    4. Find the least valuable opponent’s piece which is attacking the target square (and is not blocked)
+    5. Reduce the see_value by the trophy_value i.e. see_value = see_value – trophy_value
+    6. Set the trophy_value equal to the value of the piece found in step 4
+    7. If see_value >= threshold then return TRUE (i.e. the side to_move can stand pat and still have a score which reaches the threshold)
+    8. If see_value + trophy_value < threshold then return FALSE (i.e. even if the side to move captures the new piece on offer, they will not reach the threshold)
+    9. Find the least valuable piece for the side-to-move which is attacking the target square (and is not blocked)
+    10. Increase the see_value by the trophy_value i.e. see_value = see_value + trophy_value
+    11. Set the trophy_value equal to the value of the piece found in step 9
+    12. If see_value – trophy_value >= threshold then return TRUE (i.e. even of the opponent captures the new piece on offer, they will not each the threshold)
+    13. If see_value < threshold then return FALSE (i.e. the opponent can stand-pat and the score is less than the threshold).
+    14. While each side has potential captures go to Step 4.
+    */
 
 int Position::SEE( int toSquare, int targetPiece, int fromSquare, int attackerPiece)
 {
@@ -1356,4 +1370,10 @@ int Position::SEE( int toSquare, int targetPiece, int fromSquare, int attackerPi
     return gain[0];
 
 }
+
+
+
+
+
+
 

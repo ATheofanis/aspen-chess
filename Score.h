@@ -5,6 +5,7 @@
 #pragma once
 #include "Position.h"
 #include "Search.h"
+#include "Bitboard.h"
 
 class Position;
 
@@ -13,6 +14,12 @@ extern int historyMoves[64][64];
 
 constexpr int CHECKMATE = 32000;
 constexpr int STALEMATE = 0;
+
+int pawnStructureScore(const Position& pos);
+
+constexpr int doubledPawnPenalty = -10;
+constexpr int isolatedPawnPenalty = -10;
+constexpr int passedPawnBonus[8] = { 0, 5, 10, 20, 35, 60, 100, 200 };
 
 
 // PeSTO's middlegame piece score values

@@ -137,9 +137,9 @@ int quiescence(Position& pos, int alpha, int beta, Move hashMove, int ply)
 
         // SEE pruning
         int attacker = pos.getPieceFromBoard(fromSquare);
-        if (averagePieceScore[attacker] - 500 > averagePieceScore[capturedPiece])
+        if (averagePieceScore[attacker] > averagePieceScore[capturedPiece])
         {
-            if (pos.SEE(toSquare, capturedPiece, fromSquare, pos.getPieceFromBoard(fromSquare)) < 0) continue;
+            if (pos.SEE(toSquare, capturedPiece, fromSquare, attacker) < 0) continue;
         }
 
 
@@ -192,7 +192,7 @@ int quiescence(Position& pos, int alpha, int beta, Move hashMove, int ply)
 
 
     }
-    save(zobrist, 0, alpha, hashFlag, ttBestMove, ply);
+    save(zobrist, 0, bestValue, hashFlag, ttBestMove, ply);
     return bestValue;
 }
 
@@ -226,6 +226,7 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
         return value;
     }
 
+
     if (depth == 0)
     {
         // if king square is under attack set depth to 1 - check extension
@@ -235,6 +236,7 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
         save(posZobrist, depth, qVal, Bound::BOUND_EXACT, ttBestMove, ply);
         return qVal;
     }
+
 
 
     // generate the moves by first extracting the legality info
@@ -258,6 +260,7 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
     legalityInformation info = getLegalityInfo(kingSquare, allyColor, pos);
 
 
+
     // null move pruning
 
     if (allowNullMove) // NMP Conditions
@@ -270,7 +273,7 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
                 {
                     if (beta == alpha + 1) // not a PV node
                     {
-                        int r = 3; // NMP Reduction
+                        int r = std::min(depth, 3 + depth / 3); // NMP Reduction
                         int epSq = pos.getEnpassantSquare();
                         pos.makeNullMove(epSq);
                         int v = -negaMaxAlphaBeta(pos, -beta, -(beta - 1), std::max(1, depth - r), bestMove, ply+1, rootDepth, false);
@@ -286,6 +289,8 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
     // generate legal moves using previously calculated legality info
     generateLegalMoves(info, pos, moves, numOfMoves);
 
+
+
     if (numOfMoves == 0)
     {
         if (info.numOfChecks)
@@ -296,14 +301,20 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
         return 0;
     }
 
+    // set futility pruning flag
+    bool canFutilityPrune = false;
+    bool canExtendedFutilityPrune = false;
+    canFutilityPrune = (depth == 1 && !info.numOfChecks && pos.getTotalPSTAndMaterialScore() + 200 <= alpha);
+    canExtendedFutilityPrune = (depth == 2 && !info.numOfChecks && pos.getTotalPSTAndMaterialScore() + 500 <= alpha);
+
     // sort moves
     int moveScores[numOfMoves];
+
 
     for (int i = 0; i < numOfMoves; i++)
     {
         moveScores[i] = scoreMove(moves[i], pos, hashMove, ply);
     }
-
 
 
 
@@ -341,11 +352,6 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
         hashFlag = Bound::BOUND_EXACT;
         alpha = score;
 
-        //if (!(((firstMove >> 12) & 0x3F) & 4))
-        //{
-        //    // store history move
-        //    historyMoves[fromSquare][toSquare] = std::min(historyMoves[fromSquare][toSquare] + depth * depth, 800);
-        //}
         ttBestMove = firstMove;
 
         if (depth == rootDepth)
@@ -394,15 +400,34 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
                 std::swap(moves[i], moves[j]);
             }
         }
+
+
+        Move move = moves[i];
+        int moveFlag = move >> 12 & 0x3F;
+
+
+        // futility pruning
+
+
+
+        if (canFutilityPrune || canExtendedFutilityPrune)
+        {
+            if (!(moveFlag & 4 || moveFlag & 8)) continue;
+        }
+
+
+
+
+        // futility pruning
+
+
         //Move move = moves[i];
         pos.makeMove(moves[i]);
 
         // LMR: set the depth reduction based on move index, current depth and if king is in check reduce depth by less
         int depthReduction = 1;
-        Move move = moves[i];
 
         toSquare = (move >> 6) & 0x3F;
-        int moveFlag = move >> 12 & 0x3F;
         // we start from i = 1, so (1) i = 1, (2) i = 2, (3) i = 3 - so atleast 3  moves searched before LMR plus the hash move so 3 + 1
         if ((moveFlag) < 4)
         {
@@ -411,11 +436,12 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
                 if (! (info.numOfChecks)  ) // don't reduce if we are in check
                 {
                     //if (!(move == killerMoves[ply][0] || move == killerMoves[ply][1]))
-                        depthReduction = 1 + log(depth) * std::log(i) / 2.0;
+                        depthReduction = 1 + std::log(depth) * std::log(i) / 2.0;
                 }
             }
 
         }
+
 
 
         int reducedDepth = std::max(0, depth - depthReduction);
@@ -431,20 +457,6 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
         pos.unmakeMove();
 
 
-        //if (score >= beta)
-        //{
-        //    save(posZobrist, depth, beta, Bound::BOUND_BETA, ttBestMove, ply);
-        //    // store killer move
-        //    if ((((move >> 12) & 0x3F) & 4))
-        //    {
-        //        return beta;
-        //    }
-        //    killerMoves[ply][1] = killerMoves[ply][0];
-        //    killerMoves[ply][0] = move;
-//
-//
-        //    return beta; // hard beta cutoff
-        //}
 
         fromSquare = move & 0x3F;
         if (score > alpha)
@@ -486,7 +498,7 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
             if (!(moveFlag & 4))
             {
                 // store history move
-                historyMoves[fromSquare][toSquare] -= depth * depth / 2;
+                historyMoves[fromSquare][toSquare] -= depth * depth / 2.0;
             }
         }
 

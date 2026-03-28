@@ -207,6 +207,14 @@ public:
 
     Bitboard xRayAttackersToSquare(int targetSquare, Bitboard occupancy) const;
 
+
+
+
+
+
+
+
+
     int SEE( int toSquare, int targetPiece, int fromSquare, int attackerPiece);
 
 };
