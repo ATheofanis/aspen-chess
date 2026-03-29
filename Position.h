@@ -81,6 +81,16 @@ public:
 
     Position();
 
+    template <Color bySide>
+    bool inCheck()
+    {
+        if (bySide) // if bySide == 1 then attacking side is black
+        {
+            return squareUnderAttack(lsbIndex(pieceBitboard[wK]), bySide, *this, occupiedSquaresBitboard);
+        }
+        return squareUnderAttack(lsbIndex(pieceBitboard[bK]), bySide, *this, occupiedSquaresBitboard);
+    }
+
     // make (move) functions
     void makeMove(Move move); // any legal move
     void makeCapture(Move capture); // any legal capture

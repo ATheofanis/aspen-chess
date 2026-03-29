@@ -192,9 +192,8 @@ int scoreQuiescenceMove(const Move& move, Position& pos, const Move& hashMove)
     score = 10 * averagePieceScore[(int)(victim) % 6] - averagePieceScore[(int)(attacker) % 6];
 
     return score;
-
-
 }
+
 
 int scoreMove(const Move& move, const Position& pos, const Move& hashMove, const int& ply)
 {
