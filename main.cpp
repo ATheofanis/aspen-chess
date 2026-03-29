@@ -334,7 +334,7 @@ int main()
 
 
     Position testPos;
-    testPos.loadFen("k7/2P5/2P1P3/8/8/2p1p3/3p4/K7 w - - 0 1");
+    testPos.loadFen("3r1rk1/pbpp1pp1/1p5p/3P2q1/2P2b2/2N2B1P/PPR2PP1/3QR1K1 b - - 10 21");
     std::cout << scoreBoard(testPos) << std::endl;
 
 
@@ -412,7 +412,7 @@ int main()
 
             } else if (tokens[0] == "go")
             {
-                MAX_DEPTH = 13;
+                MAX_DEPTH = 12;
                 if (tokens[1] == "depth")
                 {
                     MAX_DEPTH = std::atoi(tokens[2].c_str());
@@ -443,13 +443,6 @@ int main()
                 break;
             }
         }
-
-    //else
-    //{
-    //    MAX_DEPTH = 12;
-    //    pos.loadFen(veryTrickyCapturesPos);
-    //    findBestMoveTime(pos);
-    //}
 
 
     return 0;

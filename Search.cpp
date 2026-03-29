@@ -12,6 +12,11 @@
 #include "TranspositionTable.h"
 
 
+
+
+
+
+
 int nodes = 0;
 int transpositionCutoffs = 0;
 int quieNodes = 0;
@@ -79,6 +84,7 @@ int quiescence(Position& pos, int alpha, int beta, Move hashMove, int ply)
     }
 
     legalityInformation info = getLegalityInfo(kingSquare, allyColor, pos);
+    bool inCheck = info.numOfChecks;
 
     // FOR LATER: ------------------
     // maybe later: if king in check gen legal, otherwise gen captures and change capture generator condition so that it doesnt have the if king in check condtion
@@ -229,12 +235,32 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
 
     if (depth == 0)
     {
-        // if king square is under attack set depth to 1 - check extension
 
-        //return scoreBoard(pos);
-        int qVal =  quiescence(pos, alpha, beta, hashMove, ply);
-        save(posZobrist, depth, qVal, Bound::BOUND_EXACT, ttBestMove, ply);
-        return qVal;
+        // if king square is under attack set depth to 1 - check extension
+        Color enemyColor;
+        int kingSquare;
+        // store ally color and king location for legality info
+        if (pos.isWhiteToMove())
+        {
+            enemyColor = Black;
+            kingSquare = lsbIndex(pos.getPieceBitboard(wK));
+        }
+        else
+        {
+            enemyColor = White;
+            kingSquare = lsbIndex(pos.getPieceBitboard(bK));
+        }
+
+        if (squareUnderAttack(kingSquare, enemyColor, pos, pos.getOccupiedBitboard()))
+        {
+            depth = 1;
+        } else
+        {
+            int qVal =  quiescence(pos, alpha, beta, hashMove, ply);
+            save(posZobrist, depth, qVal, Bound::BOUND_EXACT, ttBestMove, ply);
+            return qVal;
+        }
+
     }
 
 

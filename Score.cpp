@@ -178,33 +178,22 @@ int scoreQuiescenceMove(const Move& move, Position& pos, const Move& hashMove)
     //if (flag & 4)
     //{
 
-        Piece victim = wp;
-        if (flag == 5)
-        {
-            victim = wp;
-        }
-        else
-        {
-            victim = pos.getPieceFromBoard(toSquare);
-        }
-        Piece attacker = pos.getPieceFromBoard(fromSquare);
-
-        int seeScore = pos.SEE(toSquare, victim, fromSquare, attacker);
-
-    if (seeScore >= 0)
+    Piece victim = wp;
+    if (flag == 5)
     {
-      return 32000 + 10 * averagePieceScore[(int)(victim) % 6] - averagePieceScore[(int)(attacker) % 6];
-    } else
-    {
-        return seeScore;
+        victim = wp;
     }
+    else
+    {
+        victim = pos.getPieceFromBoard(toSquare);
+    }
+    Piece attacker = pos.getPieceFromBoard(fromSquare);
+
+    score = 10 * averagePieceScore[(int)(victim) % 6] - averagePieceScore[(int)(attacker) % 6];
+
+    return score;
 
 
-
-    //}
-
-
-    return 0;
 }
 
 int scoreMove(const Move& move, const Position& pos, const Move& hashMove, const int& ply)
