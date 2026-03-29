@@ -4,8 +4,13 @@
 
 #include "Score.h"
 
+#include "TranspositionTable.h"
+
 Move killerMoves[15][2];
 int historyMoves[64][64];
+
+int pawnHashHIT = 0;
+int pawnHashMISS = 0;
 
 // CALCULATE DOUBLED PAWN SCORE, ADD FOR WHITE SUBTRACT FOR BLACK --------------===============
 int pawnStructureScore(const Position& pos)
@@ -19,11 +24,11 @@ int pawnStructureScore(const Position& pos)
 
     int numOfWhiteDoubled = 0;
     int numOfWhiteIsolated = 0;
-    int numOfWhitePassed = 0;
 
     int numOfBlackDoubled = 0;
     int numOfBlackIsolated = 0;
-    int numOfBlackPassed = 0;
+
+    int score = 0;
 
     while (whitePawns)
     {
@@ -42,6 +47,11 @@ int pawnStructureScore(const Position& pos)
         if ((isolatedMasks[currentPawnSq] & wps) == 0)
         {
             numOfWhiteIsolated++;
+        }
+
+        if ((whitePassedMasks[currentPawnSq] & bps) == 0)
+        {
+            score += whitePassedPawnBonus[currentPawnSq / 8];
         }
 
     }
@@ -65,6 +75,11 @@ int pawnStructureScore(const Position& pos)
             numOfBlackIsolated++;
         }
 
+        if ((blackPassedMasks[currentPawnSq] & wps) == 0)
+        {
+            score -= blackPassedPawnBonus[currentPawnSq / 8];
+        }
+
     }
 
 
@@ -74,12 +89,48 @@ int pawnStructureScore(const Position& pos)
     //std::cout << "ISOLATED WHITE / BLACK PAWNS: " << numOfWhiteIsolated << " / " << numOfBlackIsolated << std::endl;
 
     //return pos.isWhiteToMove() ? ((numOfWhiteDoubled - numOfBlackDoubled) * doubledPawnPenalty) : -((numOfWhiteDoubled - numOfBlackDoubled) * doubledPawnPenalty);
-    return ((numOfWhiteDoubled - numOfBlackDoubled) * doubledPawnPenalty) + (numOfWhiteIsolated - numOfBlackIsolated) * isolatedPawnPenalty;
+    return score + ((numOfWhiteDoubled - numOfBlackDoubled) * doubledPawnPenalty) + (numOfWhiteIsolated - numOfBlackIsolated) * isolatedPawnPenalty;
 }
 // CALCULATE DOUBLED PAWN SCORE, ADD FOR WHITE SUBTRACT FOR BLACK --------------===============
 
 
-
+int rookOpenFileScore(const Position& pos)
+{
+    Bitboard wRs = pos.getPieceBitboard(wR);
+    Bitboard bRs = pos.getPieceBitboard(bR);
+    Bitboard wps = pos.getPieceBitboard(wp);
+    Bitboard bps = pos.getPieceBitboard(bp);
+    Bitboard pawns = bps | wps;
+    int whiteRookScore = 0;
+    while (wRs)
+    {
+        int currentRookSq = popLsbAndReturnIndex(wRs);
+        int file = currentRookSq & 7;
+        Bitboard pawnsInFile = files[file] & pawns;
+        if (pawnsInFile == 0)
+        {
+            whiteRookScore += openFileBonus;
+        } else if (pawnsInFile == 1)
+        {
+            whiteRookScore += semiOpenFileBonus;
+        }
+    }
+    int blackRookScore = 0;
+    while (bRs)
+    {
+        int currentRookSq = popLsbAndReturnIndex(bRs);
+        int file = currentRookSq & 7;
+        Bitboard pawnsInFile = files[file] & pawns;
+        if (pawnsInFile == 0)
+        {
+            blackRookScore += openFileBonus;
+        } else if (pawnsInFile == 1)
+        {
+            blackRookScore += semiOpenFileBonus;
+        }
+    }
+    return whiteRookScore - blackRookScore;
+}
 
 
 int scoreBoard(const Position& pos)
@@ -87,17 +138,36 @@ int scoreBoard(const Position& pos)
     int score = 0;
     score += pos.getTotalPSTAndMaterialScore();
 
-    score += pawnStructureScore(pos);
+
+    // pawn score using pawn hash table:
+    int pawnEval = probePawnHash(pos.getPawnZobristHash());
+    // first probe to see if the hash table has stored this position before
+    if ( pawnEval != NO_HASH_ENTRY )
+    {
+        pawnHashHIT++;
+        // we found the same position in the hash table with a precomputed pawn structure score, so add that to our current
+        score += pawnEval;
+    }
+    else
+    {
+        pawnHashMISS++;
+        // a new pawn position has been encountered, manual compute the score and store it in the pawn hash table
+        int pawnScore = pawnStructureScore(pos);
+        score += pawnScore;
+        savePawnHash(pos.getPawnZobristHash(), pawnScore);
+    }
+    //score += rookOpenFileScore(pos);
 
     return pos.isWhiteToMove() ? score : -score;
 }
+
 
 int scoreQuiescenceMove(const Move& move, Position& pos, const Move& hashMove)
 {
     int score = 0;
     if (move == hashMove)
     {
-        return 10000;
+        return 64000;
     }
 
     int fromSquare = move & 0x3F;
@@ -112,15 +182,24 @@ int scoreQuiescenceMove(const Move& move, Position& pos, const Move& hashMove)
         if (flag == 5)
         {
             victim = wp;
-        } else
+        }
+        else
         {
             victim = pos.getPieceFromBoard(toSquare);
         }
         Piece attacker = pos.getPieceFromBoard(fromSquare);
 
-        //score += pos.SEE(toSquare, victim, fromSquare, pos.getPieceFromBoard(fromSquare)) * 10;
+        int seeScore = pos.SEE(toSquare, victim, fromSquare, attacker);
 
-        return score + 1000 + 10 * averagePieceScore[(int)(victim) % 6] - averagePieceScore[(int)(attacker) % 6];
+    if (seeScore >= 0)
+    {
+      return 32000 + 10 * averagePieceScore[(int)(victim) % 6] - averagePieceScore[(int)(attacker) % 6];
+    } else
+    {
+        return seeScore;
+    }
+
+
 
     //}
 

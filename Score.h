@@ -9,6 +9,10 @@
 
 class Position;
 
+extern int pawnHashHIT;
+extern int pawnHashMISS;
+
+
 extern Move killerMoves[15][2];
 extern int historyMoves[64][64];
 
@@ -17,10 +21,14 @@ constexpr int STALEMATE = 0;
 
 int pawnStructureScore(const Position& pos);
 
+constexpr int openFileBonus = 35;
+constexpr int semiOpenFileBonus = 17;
+
 constexpr int doubledPawnPenalty = -10;
 constexpr int isolatedPawnPenalty = -10;
-constexpr int passedPawnBonus[8] = { 0, 5, 10, 20, 35, 60, 100, 200 };
 
+constexpr int whitePassedPawnBonus[8] = { 0, 5, 10, 20, 35, 60, 100, 200 };
+constexpr int blackPassedPawnBonus[8] = { 200, 100, 60, 35, 20, 10, 5, 0 };
 
 // PeSTO's middlegame piece score values
 constexpr int mgPieceScore[6] = { 82, 337, 365, 477, 1025, 0};

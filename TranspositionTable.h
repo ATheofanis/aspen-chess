@@ -12,6 +12,45 @@ inline int entries = 0;
 
 constexpr int NO_HASH_ENTRY = -64000;
 
+
+// the size of the pawn structure transposition table
+constexpr int pawnTableSize = 1 << 16;
+constexpr int pawnTableSizeMinusOne = pawnTableSize - 1;
+
+// Hashtable entry for pawns
+struct pawnHashEntry
+{
+    ZobristHash pawnZobristHash = 0;
+    uint8_t pawnStructureEval = 0;
+
+    pawnHashEntry() = default;
+
+    pawnHashEntry(ZobristHash pawnZobrist, int pawnEval)
+    {
+        pawnZobristHash = pawnZobrist;
+        pawnStructureEval = pawnEval;
+    }
+};
+
+
+// global transposition table for pawns
+inline pawnHashEntry pawnHashTable[pawnTableSize];
+
+
+// save a position to the tt, or overwrite an existing hash entry
+void savePawnHash(ZobristHash pawnZobristHash, int pawnsEvaluation);
+
+// looks up a position in the transposition table and returns the entry if it exists
+int probePawnHash(ZobristHash pawnZobrist);
+
+// function to clear pawn transposition table
+inline void clearPawnTranspositionTable()
+{
+    memset(pawnHashTable, 0, sizeof(pawnHashEntry) * pawnTableSize);
+}
+
+
+
 // the transposition table contains hash entries that have specific information stored about a position
 struct TTEntry
 {
@@ -57,6 +96,7 @@ inline void clearTranspositionTable()
 {
     memset(transpositionTable, 0, sizeof(TTEntry) * TTSize);
 }
+
 
 
 

@@ -539,6 +539,8 @@ Move findBestMove(Position pos)
         std::cout << "Transpositions: " << transpositionCutoffs << std::endl;
         std::cout << "Transposition Table Entries: " << entries << std::endl;
         std::cout << "Delta prunes: " << deltaPrunes << std::endl;
+        std::cout << "PAWN HASH HITS: " << pawnHashHIT << std::endl;
+        std::cout << "PAWN HASH MISSES: " << pawnHashMISS << std::endl;
         std::cout << "\n";
 
 
