@@ -133,5 +133,3 @@ enum class Bound : uint8_t {
     BOUND_EXACT, BOUND_ALPHA, BOUND_BETA
 
 };
-
-enum class NodeType { NonPV, PV, Root };

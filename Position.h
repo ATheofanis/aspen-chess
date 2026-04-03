@@ -40,7 +40,7 @@ class Position
 {
 private:
     // Bitboards for board representation
-    positionInfo prevPositionsLog[256];
+    positionInfo prevPositionsLog[1024];
 
 
     Bitboard pieceBitboard[12]{};
@@ -50,7 +50,7 @@ private:
 
     ZobristHash zobristHash{};
     ZobristHash pawnZobristHash{};
-    ZobristHash previousPositions[256]{}; // store all previous positions' zobrist
+    ZobristHash previousPositions[1024]{}; // store all previous positions' zobrist
 
     Piece Board[64]{};
 
@@ -80,16 +80,6 @@ public:
     void loadFen(const std::string& fenString);
 
     Position();
-
-    template <Color bySide>
-    bool inCheck()
-    {
-        if (bySide) // if bySide == 1 then attacking side is black
-        {
-            return squareUnderAttack(lsbIndex(pieceBitboard[wK]), bySide, *this, occupiedSquaresBitboard);
-        }
-        return squareUnderAttack(lsbIndex(pieceBitboard[bK]), bySide, *this, occupiedSquaresBitboard);
-    }
 
     // make (move) functions
     void makeMove(Move move); // any legal move

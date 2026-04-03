@@ -22,11 +22,10 @@ int transpositionCutoffs = 0;
 int quieNodes = 0;
 int deltaPrunes = 0;
 
-template <NodeType NodeType>
 int quiescence(Position& pos, int alpha, int beta, Move hashMove, int ply)
 {
     //if (ply > 0 && pos.checkRepetition(pos.getZobristHash())) return 0;
-    constexpr bool isPV = NodeType != NodeType::NonPV;
+
 
     ZobristHash zobrist = pos.getZobristHash();
     int bestValue;
@@ -158,7 +157,7 @@ int quiescence(Position& pos, int alpha, int beta, Move hashMove, int ply)
 
 
         pos.makeCapture(capture);
-        int score = -quiescence<NodeType>(pos, -beta, -alpha, hashMove, ply + 1);
+        int score = -quiescence(pos, -beta, -alpha, hashMove, ply + 1);
         pos.unmakeCapture();
 
 
@@ -211,10 +210,8 @@ int quiescence(Position& pos, int alpha, int beta, Move hashMove, int ply)
 
 
 // takes a position, alpha and beta for pruning, current depth, keeps track of best move found, and ply for stuff such as killer moves, checkmate detection and for cleaner design
-template <NodeType NodeType>
 int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMove, int ply, int rootDepth, bool allowNullMove)
 {
-    constexpr bool isPV = NodeType != NodeType::NonPV;
     if (ply > 0 && pos.checkRepetition(pos.getZobristHash())) return 0;
 
     Move ttBestMove = 0;
@@ -259,7 +256,7 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
             depth = 1;
         } else
         {
-            int qVal =  quiescence<NodeType>(pos, alpha, beta, hashMove, ply);
+            int qVal =  quiescence(pos, alpha, beta, hashMove, ply);
             save(posZobrist, depth, qVal, Bound::BOUND_EXACT, ttBestMove, ply);
             return qVal;
         }
@@ -300,12 +297,12 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
             {
                 if (pos.getGamePhase()) // game phase is 0 when no major pieces are left (only pawns) - for zugzwang
                 {
-                    if (!isPV) // not a PV node
+                    if (beta == alpha + 1) // not a PV node
                     {
                         int r = std::min(depth, 3 + depth / 3); // NMP Reduction
                         int epSq = pos.getEnpassantSquare();
                         pos.makeNullMove(epSq);
-                        int v = -negaMaxAlphaBeta<NodeType::PV>(pos, -beta, -(beta - 1), std::max(1, depth - r), bestMove, ply+1, rootDepth, false);
+                        int v = -negaMaxAlphaBeta(pos, -beta, -(beta - 1), std::max(1, depth - r), bestMove, ply+1, rootDepth, false);
                         pos.unmakeNullMove(epSq);
                         if (v >= beta)
                             return v;
@@ -333,11 +330,8 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
     // set futility pruning flag
     bool canFutilityPrune = false;
     bool canExtendedFutilityPrune = false;
-    if (!isPV)
-    {
-        canFutilityPrune = (depth == 1 && !info.numOfChecks && pos.getTotalPSTAndMaterialScore() + 200 <= alpha);
-        canExtendedFutilityPrune = (depth == 2 && !info.numOfChecks && pos.getTotalPSTAndMaterialScore() + 500 <= alpha);
-    }
+    canFutilityPrune = (depth == 1 && !info.numOfChecks && pos.getTotalPSTAndMaterialScore() + 200 <= alpha);
+    canExtendedFutilityPrune = (depth == 2 && !info.numOfChecks && pos.getTotalPSTAndMaterialScore() + 500 <= alpha);
 
     // sort moves
     int moveScores[numOfMoves];
@@ -371,7 +365,7 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
 
     pos.makeMove(firstMove);
     // full window for first move
-    int score = -negaMaxAlphaBeta<NodeType>(pos, -beta, -alpha, depth - 1, bestMove, ply+1, rootDepth, true);
+    int score = -negaMaxAlphaBeta(pos, -beta, -alpha, depth - 1, bestMove, ply+1, rootDepth, true);
     pos.unmakeMove();
 
 
@@ -461,7 +455,7 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
 
         toSquare = (move >> 6) & 0x3F;
         // we start from i = 1, so (1) i = 1, (2) i = 2, (3) i = 3 - so atleast 3  moves searched before LMR plus the hash move so 3 + 1
-        if (((moveFlag) < 4) & !isPV)
+        if ((moveFlag) < 4)
         {
             if (depth > 3 && i > 3)
             {
@@ -479,12 +473,12 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
         int reducedDepth = std::max(0, depth - depthReduction);
 
         // null window to first check if the move is good enough to warrant a full window search which happens when the move's score is above alpha
-        score = -negaMaxAlphaBeta<NodeType::NonPV>(pos, -alpha-1, -alpha, reducedDepth, bestMove, ply+1, rootDepth, true);
+        score = -negaMaxAlphaBeta(pos, -alpha-1, -alpha, reducedDepth, bestMove, ply+1, rootDepth, true);
 
         // research if move score stayed within the window
         if ((score > alpha) && (score < beta))
         {
-            score = -negaMaxAlphaBeta<NodeType::NonPV>(pos, -beta, -alpha, depth - 1, bestMove, ply+1, rootDepth, true);
+            score = -negaMaxAlphaBeta(pos, -beta, -alpha, depth - 1, bestMove, ply+1, rootDepth, true);
         }
         pos.unmakeMove();
 
@@ -559,7 +553,7 @@ Move findBestMove(Position pos)
         transpositionCutoffs = 0;
         deltaPrunes = 0;
         auto startTime = std::chrono::high_resolution_clock::now();
-        int score = negaMaxAlphaBeta<NodeType::Root>(pos, alpha, beta, depth, bestMove, 0, depth, false);
+        int score = negaMaxAlphaBeta(pos, alpha, beta, depth, bestMove, 0, depth, false);
         auto endTime = std::chrono::high_resolution_clock::now();
 
         long long milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
@@ -582,7 +576,7 @@ Move findBestMove(Position pos)
             beta = CHECKMATE;
 
 
-            score = negaMaxAlphaBeta<NodeType::Root>(pos, alpha, beta, depth, bestMove, 0, depth, false);
+            score = negaMaxAlphaBeta(pos, alpha, beta, depth, bestMove, 0, depth, false);
         }
         alpha = score - 50;
         beta = score + 50;
