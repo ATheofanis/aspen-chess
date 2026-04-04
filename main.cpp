@@ -334,10 +334,13 @@ int main()
 
 
     Position testPos;
-    testPos.loadFen("3r1rk1/pbpp1pp1/1p5p/3P2q1/2P2b2/2N2B1P/PPR2PP1/3QR1K1 b - - 10 21");
+    testPos.loadFen("2q3k1/8/8/8/6p1/7p/8/2K5 w - - 0 1"); // -1246
     std::cout << scoreBoard(testPos) << std::endl;
 
-
+    if (testPos.sideToMoveIsInCheck())
+    {
+        std::cout << "king in check" << std::endl;
+    }
 
 
 

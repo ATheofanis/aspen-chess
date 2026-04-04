@@ -232,26 +232,13 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
         return value;
     }
 
+    bool isInCheck = pos.sideToMoveIsInCheck();
+
+
 
     if (depth == 0)
     {
-
-        // if king square is under attack set depth to 1 - check extension
-        Color enemyColor;
-        int kingSquare;
-        // store ally color and king location for legality info
-        if (pos.isWhiteToMove())
-        {
-            enemyColor = Black;
-            kingSquare = lsbIndex(pos.getPieceBitboard(wK));
-        }
-        else
-        {
-            enemyColor = White;
-            kingSquare = lsbIndex(pos.getPieceBitboard(bK));
-        }
-
-        if (squareUnderAttack(kingSquare, enemyColor, pos, pos.getOccupiedBitboard()))
+        if (isInCheck)
         {
             depth = 1;
         } else
@@ -261,6 +248,25 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
             return qVal;
         }
 
+    }
+
+
+
+
+    // null move pruning
+
+    if (allowNullMove && !isInCheck && depth > 3 && pos.getGamePhase()) // NMP Conditions
+    {
+        if (beta == alpha + 1) // not a PV node
+        {
+            int r = std::min(depth, 3 + depth / 3); // NMP Reduction
+            int epSq = pos.getEnpassantSquare();
+            pos.makeNullMove(epSq);
+            int v = -negaMaxAlphaBeta(pos, -beta, -(beta - 1), std::max(1, depth - r), bestMove, ply+1, rootDepth, false);
+            pos.unmakeNullMove(epSq);
+            if (v >= beta)
+                return v;
+        }
     }
 
 
@@ -287,31 +293,6 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
 
 
 
-    // null move pruning
-
-    if (allowNullMove) // NMP Conditions
-    {
-        if (info.numOfChecks == 0) // not in check
-        {
-            if (depth > 3) // depth more than 3
-            {
-                if (pos.getGamePhase()) // game phase is 0 when no major pieces are left (only pawns) - for zugzwang
-                {
-                    if (beta == alpha + 1) // not a PV node
-                    {
-                        int r = std::min(depth, 3 + depth / 3); // NMP Reduction
-                        int epSq = pos.getEnpassantSquare();
-                        pos.makeNullMove(epSq);
-                        int v = -negaMaxAlphaBeta(pos, -beta, -(beta - 1), std::max(1, depth - r), bestMove, ply+1, rootDepth, false);
-                        pos.unmakeNullMove(epSq);
-                        if (v >= beta)
-                            return v;
-                    }
-                }
-            }
-        }
-    }
-
     // generate legal moves using previously calculated legality info
     generateLegalMoves(info, pos, moves, numOfMoves);
 
@@ -319,7 +300,7 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
 
     if (numOfMoves == 0)
     {
-        if (info.numOfChecks)
+        if (isInCheck)
         {
             return ply - CHECKMATE;
         }
@@ -330,8 +311,8 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
     // set futility pruning flag
     bool canFutilityPrune = false;
     bool canExtendedFutilityPrune = false;
-    canFutilityPrune = (depth == 1 && !info.numOfChecks && pos.getTotalPSTAndMaterialScore() + 200 <= alpha);
-    canExtendedFutilityPrune = (depth == 2 && !info.numOfChecks && pos.getTotalPSTAndMaterialScore() + 500 <= alpha);
+    canFutilityPrune = (depth == 1 && !isInCheck && pos.getTotalPSTAndMaterialScore() + 200 <= alpha);
+    canExtendedFutilityPrune = (depth == 2 && !isInCheck && pos.getTotalPSTAndMaterialScore() + 500 <= alpha);
 
     // sort moves
     int moveScores[numOfMoves];
@@ -372,6 +353,8 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
 
     int fromSquare = firstMove & 0x3F;
     int toSquare = (firstMove >> 6) & 0x3F;
+    int firstMoveFlag = firstMove >> 12 & 0x3F;
+
     if (score > alpha)
     {
         // TT:
@@ -391,7 +374,7 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
             // TT:
             save(posZobrist, depth, beta, Bound::BOUND_BETA, ttBestMove, ply);
             // store killer move
-            if ((((firstMove >> 12) & 0x3F) & 4))
+            if (firstMoveFlag & 4)
             {
                 return beta;
             }
@@ -402,11 +385,16 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
 
 
             return beta; // hard beta cutoff
-        } else
-        {
-            historyMoves[fromSquare][toSquare] -= depth;
         }
 
+    }
+    else
+    {
+        if (!(firstMoveFlag & 4))
+        {
+            // store history move
+            historyMoves[fromSquare][toSquare] -= depth * depth / 2.0;
+        }
     }
     // ***************************************************************
 
@@ -416,15 +404,20 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
     // start from i = 1 because we already searched the first move
     for (int i = 1; i < numOfMoves; i++)
     {
-
+        int nextMoveIndex = i;
         // insertion sort (huge speed increase), swap move and score if found a better move so that we make that move immediately
         for (int j = i + 1; j < numOfMoves; j++)
         {
-            if (moveScores[j] > moveScores[i])
+            if (moveScores[j] > moveScores[nextMoveIndex])
             {
-                std::swap(moveScores[i], moveScores[j]);
-                std::swap(moves[i], moves[j]);
+                nextMoveIndex = j;
             }
+        }
+
+        if (nextMoveIndex != i)
+        {
+            std::swap(moveScores[i], moveScores[nextMoveIndex]);
+            std::swap(moves[i], moves[nextMoveIndex]);
         }
 
 
@@ -455,7 +448,7 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
 
         toSquare = (move >> 6) & 0x3F;
         // we start from i = 1, so (1) i = 1, (2) i = 2, (3) i = 3 - so atleast 3  moves searched before LMR plus the hash move so 3 + 1
-        if ((moveFlag) < 4)
+        if (!(moveFlag & 4 || moveFlag & 8))
         {
             if (depth > 3 && i > 3)
             {
@@ -504,19 +497,15 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
             {
                 save(posZobrist, depth, beta, Bound::BOUND_BETA, ttBestMove, ply);
                 // store killer move
-                if (moveFlag & 4)
+                if (!(moveFlag & 4))
                 {
-                    return beta;
+                    historyMoves[fromSquare][toSquare] = std::min(historyMoves[fromSquare][toSquare] + depth * depth, 800);
+                    killerMoves[ply][1] = killerMoves[ply][0];
+                    killerMoves[ply][0] = move;
                 }
-                historyMoves[fromSquare][toSquare] = std::min(historyMoves[fromSquare][toSquare] + depth * depth, 800);
-                killerMoves[ply][1] = killerMoves[ply][0];
-                killerMoves[ply][0] = move;
 
 
                 return beta; // hard beta cutoff
-            } else
-            {
-                historyMoves[fromSquare][toSquare] -= depth;
             }
         }
         else

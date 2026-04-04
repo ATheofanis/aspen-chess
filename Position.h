@@ -221,6 +221,24 @@ public:
 
     int SEE( int toSquare, int targetPiece, int fromSquare, int attackerPiece);
 
+
+    bool sideToMoveIsInCheck()
+    {
+        int kingSquare;
+        Color attackingSideColor;
+        if (whiteToMoveFlag)
+        {
+            kingSquare = lsbIndex(pieceBitboard[wK]);
+            attackingSideColor = Black;
+        } else
+        {
+            kingSquare = lsbIndex(pieceBitboard[bK]);
+            attackingSideColor = White;
+        }
+
+        return squareUnderAttack(kingSquare, attackingSideColor, *this, occupiedSquaresBitboard);
+    }
+
 };
 
 
