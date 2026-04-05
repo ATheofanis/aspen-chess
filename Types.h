@@ -48,7 +48,7 @@ inline const char* squareName(Square sq) {
 }
 
 
-inline int Q_DEPTH = -1;
+inline int Q_DEPTH = 0;
 
 enum ValueType : int
 {

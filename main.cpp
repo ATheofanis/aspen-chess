@@ -415,7 +415,7 @@ int main()
 
             } else if (tokens[0] == "go")
             {
-                MAX_DEPTH = 14;
+                MAX_DEPTH = 13;
                 if (tokens[1] == "depth")
                 {
                     MAX_DEPTH = std::atoi(tokens[2].c_str());

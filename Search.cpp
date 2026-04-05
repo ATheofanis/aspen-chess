@@ -82,19 +82,23 @@ int quiescence(Position& pos, int alpha, int beta, Move ttBestMove, int ply)
     bestValue = staticValue;
     bool inCheck = pos.sideToMoveIsInCheck();
 
-    // Delta pruning
-    if (bestValue < alpha - 980)  // average queen value is 980
+    if (!inCheck)
     {
-        deltaPrunes++;
-        return bestValue;
+        // Delta pruning
+        if (bestValue < alpha - 980)  // average queen value is 980
+        {
+            deltaPrunes++;
+            return bestValue;
+        }
+
+        if (bestValue >= beta)
+        {
+            if (ttBestMove != NO_MOVE)
+                save(zobrist, ttBestMove, bestValue, staticValue, Q_DEPTH, Bound::BOUND_BETA, generation, ply);
+            return bestValue;
+        }
     }
 
-    if (bestValue >= beta && !inCheck)
-    {
-        if (ttBestMove != NO_MOVE)
-            save(zobrist, ttBestMove, beta, staticValue, Q_DEPTH, Bound::BOUND_BETA, generation, ply);
-        return bestValue;
-    }
 
     if (bestValue > alpha)
     {
@@ -226,7 +230,7 @@ int quiescence(Position& pos, int alpha, int beta, Move ttBestMove, int ply)
                 }
                 else
                 {
-                    save(zobrist, ttBestMove, beta, staticValue, Q_DEPTH, Bound::BOUND_BETA, generation, ply);
+                    save(zobrist, ttBestMove, score, staticValue, Q_DEPTH, Bound::BOUND_BETA, generation, ply);
                     break;  // Fail high
                 }
 
@@ -426,7 +430,7 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
         if (score >= beta)
         {
             // TT:
-            save(posZobrist, ttBestMove, beta, staticValue, depth, Bound::BOUND_BETA, generation, ply);
+            save(posZobrist, ttBestMove, score, staticValue, depth, Bound::BOUND_BETA, generation, ply);
             // store killer move
             if (firstMoveFlag & 4)
             {
@@ -549,7 +553,7 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
             // beta cutoff
             if (score >= beta)
             {
-                save(posZobrist, ttBestMove, beta, staticValue, depth, Bound::BOUND_BETA, generation, ply);
+                save(posZobrist, ttBestMove, score, staticValue, depth, Bound::BOUND_BETA, generation, ply);
                 // store killer move
                 if (!(moveFlag & 4))
                 {

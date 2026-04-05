@@ -51,10 +51,9 @@ void save(ZobristHash zobristHash, Move bestMove, int evaluation, int staticEval
         //TTEntry newEntry = TTEntry(zobristHash, depth, evaluation, bound, bestMove);
         transpositionTable[index] = TTEntry(zobristHash, bestMove, evaluation, staticEval, depth, (uint8_t)bound, entryGeneration);
     }
-
-
-
 }
+
+
 
 std::tuple<bool, TTData> probe(ZobristHash zobristHash)
 {
