@@ -22,29 +22,65 @@ int transpositionCutoffs = 0;
 int quieNodes = 0;
 int deltaPrunes = 0;
 
-int quiescence(Position& pos, int alpha, int beta, Move hashMove, int ply)
+int quiescence(Position& pos, int alpha, int beta, Move ttBestMove, int ply)
 {
     //if (ply > 0 && pos.checkRepetition(pos.getZobristHash())) return 0;
 
-
     ZobristHash zobrist = pos.getZobristHash();
     int bestValue;
-    Move ttBestMove = 0;
+    int staticValue;
+
+
+    /*
+    auto [ttHit, ttData] = probe(zobrist);
+
 
 
     // probe TT
-    if (ply > 0 && (bestValue = probe(0, zobrist, beta, alpha, hashMove, ply)) != NO_HASH_ENTRY)
+    if (ply > 0 && (bestValue = probe(0, zobrist, beta, alpha, , ply)) != NO_HASH_ENTRY)
     {
         transpositionCutoffs++;
         return bestValue;
     }
+    */
+
+
+    // probe TT
+    auto [ttHit, ttData] = probe(zobrist);
+
+    if (ttHit)
+    {
+        staticValue = ttData.staticEval;
+        ttBestMove = ttData.bestMove;
+    } else
+    {
+        staticValue = scoreBoard(pos);
+    }
+
+
+    // check for tt cutoff
+    if (ttHit && ttData.depth >= Q_DEPTH && // add not a PV node check when template is added
+        ( ( ttData.bound == Bound::BOUND_EXACT ) ||
+        ( ttData.bound == Bound::BOUND_ALPHA && ttData.evaluation <= alpha ) ||
+        ( ttData.bound == Bound::BOUND_BETA && ttData.evaluation >= beta )  ) )
+    {
+        int eval = ttData.evaluation;
+
+        if (eval < -CHECKMATE + 500) eval += ply;
+        if (eval > CHECKMATE - 500) eval -= ply;
+
+        return eval;
+    }
+
 
     Bound hashFlag = Bound::BOUND_ALPHA;
+
 
     quieNodes++;
 
     // stand pat
-    bestValue = scoreBoard(pos);
+    bestValue = staticValue;
+    bool inCheck = pos.sideToMoveIsInCheck();
 
     // Delta pruning
     if (bestValue < alpha - 980)  // average queen value is 980
@@ -53,9 +89,10 @@ int quiescence(Position& pos, int alpha, int beta, Move hashMove, int ply)
         return bestValue;
     }
 
-    if (bestValue >= beta)
+    if (bestValue >= beta && !inCheck)
     {
-        save(zobrist, 0, beta, Bound::BOUND_BETA, ttBestMove, ply);
+        if (ttBestMove != NO_MOVE)
+            save(zobrist, ttBestMove, beta, staticValue, Q_DEPTH, Bound::BOUND_BETA, generation, ply);
         return bestValue;
     }
 
@@ -84,7 +121,6 @@ int quiescence(Position& pos, int alpha, int beta, Move hashMove, int ply)
     }
 
     legalityInformation info = getLegalityInfo(kingSquare, allyColor, pos);
-    bool inCheck = info.numOfChecks;
 
     // FOR LATER: ------------------
     // maybe later: if king in check gen legal, otherwise gen captures and change capture generator condition so that it doesnt have the if king in check condtion
@@ -99,7 +135,7 @@ int quiescence(Position& pos, int alpha, int beta, Move hashMove, int ply)
 
     for (int i = 0; i < numOfCaps; i++)
     {
-        moveScores[i] = scoreQuiescenceMove(captures[i], pos, hashMove);
+        moveScores[i] = scoreQuiescenceMove(captures[i], pos, ttBestMove);
     }
 
 
@@ -157,7 +193,7 @@ int quiescence(Position& pos, int alpha, int beta, Move hashMove, int ply)
 
 
         pos.makeCapture(capture);
-        int score = -quiescence(pos, -beta, -alpha, hashMove, ply + 1);
+        int score = -quiescence(pos, -beta, -alpha, NO_MOVE, ply + 1);
         pos.unmakeCapture();
 
 
@@ -182,6 +218,7 @@ int quiescence(Position& pos, int alpha, int beta, Move hashMove, int ply)
             if (score > alpha)
             {
                 hashFlag = Bound::BOUND_EXACT;
+                ttBestMove = capture;
                 if (score < beta)
                 {
                     // Update alpha here!
@@ -189,7 +226,7 @@ int quiescence(Position& pos, int alpha, int beta, Move hashMove, int ply)
                 }
                 else
                 {
-                    save(zobrist, 0, beta, Bound::BOUND_BETA, ttBestMove, ply);
+                    save(zobrist, ttBestMove, beta, staticValue, Q_DEPTH, Bound::BOUND_BETA, generation, ply);
                     break;  // Fail high
                 }
 
@@ -198,7 +235,7 @@ int quiescence(Position& pos, int alpha, int beta, Move hashMove, int ply)
 
 
     }
-    save(zobrist, 0, bestValue, hashFlag, ttBestMove, ply);
+    save(zobrist, ttBestMove, bestValue, staticValue, Q_DEPTH, hashFlag, generation, ply);
     return bestValue;
 }
 
@@ -212,28 +249,10 @@ int quiescence(Position& pos, int alpha, int beta, Move hashMove, int ply)
 // takes a position, alpha and beta for pruning, current depth, keeps track of best move found, and ply for stuff such as killer moves, checkmate detection and for cleaner design
 int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMove, int ply, int rootDepth, bool allowNullMove)
 {
+    nodes++;
     if (ply > 0 && pos.checkRepetition(pos.getZobristHash())) return 0;
 
-    Move ttBestMove = 0;
-
-    // call quie at leaf nodes
-    nodes++;
-    Bound hashFlag = Bound::BOUND_ALPHA;
-    ZobristHash posZobrist = pos.getZobristHash();
-    //std::cout << "ZOBRIST KEY:" << pos.getZobristHash() << std::endl;
-
-    int value;
-    Move hashMove = 0;
-
-    // probe TT
-    if (ply > 0 && (value = probe(depth, posZobrist, beta, alpha, hashMove, ply)) != NO_HASH_ENTRY)
-    {
-        transpositionCutoffs++;
-        return value;
-    }
-
     bool isInCheck = pos.sideToMoveIsInCheck();
-
 
 
     if (depth == 0)
@@ -243,11 +262,46 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
             depth = 1;
         } else
         {
-            int qVal =  quiescence(pos, alpha, beta, hashMove, ply);
-            save(posZobrist, depth, qVal, Bound::BOUND_EXACT, ttBestMove, ply);
+            int qVal =  quiescence(pos, alpha, beta, NO_MOVE, ply);
+            //save(posZobrist, depth, qVal, Bound::BOUND_EXACT, NO_MOVE, ply);
             return qVal;
         }
 
+    }
+
+    ZobristHash posZobrist = pos.getZobristHash();
+    Move ttBestMove = 0;
+    Bound hashFlag = Bound::BOUND_ALPHA;
+
+
+    // probe TT
+    auto [ttHit, ttData] = probe(posZobrist);
+    int staticValue;
+    if (ttHit)
+    {
+        staticValue = ttData.staticEval;
+        ttBestMove = ttData.bestMove;
+    } else
+    {
+        staticValue = scoreBoard(pos);
+        ttBestMove = NO_MOVE;
+    }
+
+
+    // check for tt cutoff
+    if (ttHit && ttData.depth >= depth && // add not a PV node check when template is added
+        ( ( ttData.bound == Bound::BOUND_EXACT ) ||
+        ( ttData.bound == Bound::BOUND_ALPHA && ttData.evaluation <= alpha ) ||
+        ( ttData.bound == Bound::BOUND_BETA && ttData.evaluation >= beta )  ) )
+    {
+
+        int eval = ttData.evaluation;
+
+        if (eval < -CHECKMATE + 500) eval += ply;
+        if (eval > CHECKMATE - 500) eval -= ply;
+
+        if (ply == 0) bestMove = ttData.bestMove;
+        return eval;
     }
 
 
@@ -311,8 +365,8 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
     // set futility pruning flag
     bool canFutilityPrune = false;
     bool canExtendedFutilityPrune = false;
-    canFutilityPrune = (depth == 1 && !isInCheck && pos.getTotalPSTAndMaterialScore() + 200 <= alpha);
-    canExtendedFutilityPrune = (depth == 2 && !isInCheck && pos.getTotalPSTAndMaterialScore() + 500 <= alpha);
+    canFutilityPrune = (depth == 1 && !isInCheck && staticValue + 200 <= alpha);
+    canExtendedFutilityPrune = (depth == 2 && !isInCheck && staticValue + 500 <= alpha);
 
     // sort moves
     int moveScores[numOfMoves];
@@ -320,7 +374,7 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
 
     for (int i = 0; i < numOfMoves; i++)
     {
-        moveScores[i] = scoreMove(moves[i], pos, hashMove, ply);
+        moveScores[i] = scoreMove(moves[i], pos, ttBestMove, ply);
     }
 
 
@@ -363,7 +417,7 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
 
         ttBestMove = firstMove;
 
-        if (depth == rootDepth)
+        if (ply == 0)
         {
             bestMove = firstMove;
         }
@@ -372,7 +426,7 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
         if (score >= beta)
         {
             // TT:
-            save(posZobrist, depth, beta, Bound::BOUND_BETA, ttBestMove, ply);
+            save(posZobrist, ttBestMove, beta, staticValue, depth, Bound::BOUND_BETA, generation, ply);
             // store killer move
             if (firstMoveFlag & 4)
             {
@@ -486,7 +540,7 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
 
             ttBestMove = move;
 
-            if (depth == rootDepth)
+            if (ply == 0)
             {
                 bestMove = move;
             }
@@ -495,7 +549,7 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
             // beta cutoff
             if (score >= beta)
             {
-                save(posZobrist, depth, beta, Bound::BOUND_BETA, ttBestMove, ply);
+                save(posZobrist, ttBestMove, beta, staticValue, depth, Bound::BOUND_BETA, generation, ply);
                 // store killer move
                 if (!(moveFlag & 4))
                 {
@@ -519,7 +573,7 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
 
 
     }
-    save(posZobrist, depth, alpha, hashFlag, ttBestMove, ply);
+    save(posZobrist, ttBestMove, alpha, staticValue, depth, hashFlag, generation, ply);
     return alpha;
 }
 
@@ -528,6 +582,7 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
 
 Move findBestMove(Position pos)
 {
+    generation++;
     memset(historyMoves, 0, sizeof(historyMoves));
     memset(killerMoves, 0, sizeof(killerMoves));
     Move bestMove = 0;

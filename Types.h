@@ -48,6 +48,19 @@ inline const char* squareName(Square sq) {
 }
 
 
+inline int Q_DEPTH = -1;
+
+enum ValueType : int
+{
+    VALUE_NONE
+};
+
+
+enum MoveType : int
+{
+    NO_MOVE
+};
+
 enum Piece : int {
 //  0   1   2   3   4   5
     wp, wN, wB, wR, wQ, wK,
@@ -130,6 +143,6 @@ inline Color pieceColor(Piece p)
 // enum type for transposition table hash entry
 enum class Bound : uint8_t {
               // UPPERBOUND , LOWERBOUND
-    BOUND_EXACT, BOUND_ALPHA, BOUND_BETA
+    BOUND_EXACT, BOUND_ALPHA, BOUND_BETA, BOUND_NONE
 
 };

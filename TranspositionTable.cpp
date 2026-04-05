@@ -32,7 +32,7 @@ int probePawnHash(ZobristHash pawnZobristHash)
 
 
 // function to save current position to the transposition table (using depth replacement scheme)
-void save(ZobristHash zobristHash, int depth, int evaluation, Bound bound, Move bestMove, int ply)
+void save(ZobristHash zobristHash, Move bestMove, int evaluation, int staticEval, int depth, Bound bound, int entryGeneration, int ply)
 {
     // bitwise AND operation trick for powers of two
 
@@ -45,21 +45,36 @@ void save(ZobristHash zobristHash, int depth, int evaluation, Bound bound, Move 
     if (evaluation > CHECKMATE - 500) evaluation += ply;
 
 
-    if (entry.entryDepth < depth)
+    if (entry.entryDepth < depth || entry.entryGen != generation)
     {
         entries++;
         //TTEntry newEntry = TTEntry(zobristHash, depth, evaluation, bound, bestMove);
-        transpositionTable[index] = TTEntry(zobristHash, depth, evaluation, bound, bestMove);
+        transpositionTable[index] = TTEntry(zobristHash, bestMove, evaluation, staticEval, depth, (uint8_t)bound, entryGeneration);
     }
 
 
 
 }
 
+std::tuple<bool, TTData> probe(ZobristHash zobristHash)
+{
+    int index = zobristHash & TTSizeMinusOne;
 
+    TTEntry entry = transpositionTable[index];
+
+    if (entry.entryZobristKey == zobristHash)
+    {
+        return {true, entry.read()};
+    }
+
+    return {false, TTData(VALUE_NONE, VALUE_NONE, VALUE_NONE, NO_MOVE, Bound::BOUND_NONE)};
+}
+
+
+/*
 // function to search for an entry, returns evaluation or alpha and beta to cause cutoffs in search
 // a best move variable is passed by reference to be updated inside the probe in case of a hit
-int probe(int depth, ZobristHash zobristHash, int beta, int alpha, Move& bestMove, int ply)
+std::tuple<bool, TTData> probe(int depth, ZobristHash zobristHash, int beta, int alpha, Move& bestMove, int ply)
 {
     // bitwise AND operation trick for powers of two
     int index = zobristHash & TTSizeMinusOne;
@@ -83,17 +98,17 @@ int probe(int depth, ZobristHash zobristHash, int beta, int alpha, Move& bestMov
             if (eval > CHECKMATE - 500) eval -= ply;
 
             // exact flag
-            if (entry.entryBound == Bound::BOUND_EXACT)
+            if ((Bound)entry.entryBound == Bound::BOUND_EXACT)
             {
                 return eval;
             }
             // Alpha flag
-            if (entry.entryBound == Bound::BOUND_ALPHA && eval <= alpha)
+            if ((Bound)entry.entryBound == Bound::BOUND_ALPHA && eval <= alpha)
             {
                 return alpha;
             }
             // beta flag
-            if (entry.entryBound == Bound::BOUND_BETA && eval >= beta)
+            if ((Bound)entry.entryBound == Bound::BOUND_BETA && eval >= beta)
             {
                 return beta;
             }
@@ -103,3 +118,4 @@ int probe(int depth, ZobristHash zobristHash, int beta, int alpha, Move& bestMov
     return NO_HASH_ENTRY;
 
 }
+*/
