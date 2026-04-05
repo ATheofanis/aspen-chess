@@ -1,0 +1,16 @@
+*.exe
+*.o
+*.obj
+*.out
+
+.idea/
+cmake-build-debug/
+cmake-build-release/
+
+
+log.txt
+*.tmp
+
+
+Thumbs.db
+.DS_Store
