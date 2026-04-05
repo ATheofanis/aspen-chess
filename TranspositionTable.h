@@ -22,7 +22,7 @@ constexpr int pawnTableSizeMinusOne = pawnTableSize - 1;
 struct pawnHashEntry
 {
     ZobristHash pawnZobristHash = 0;
-    uint8_t pawnStructureEval = 0;
+    int16_t pawnStructureEval = 0;
 
     pawnHashEntry() = default;
 

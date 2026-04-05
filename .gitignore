@@ -3,6 +3,8 @@
 *.obj
 *.out
 
+editor.xml
+
 .idea/
 cmake-build-debug/
 cmake-build-release/

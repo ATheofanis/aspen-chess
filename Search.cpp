@@ -51,6 +51,7 @@ int quiescence(Position& pos, int alpha, int beta, Move ttBestMove, int ply)
     if (ttHit)
     {
         staticValue = ttData.staticEval;
+
         ttBestMove = ttData.bestMove;
     } else
     {
@@ -251,8 +252,12 @@ int quiescence(Position& pos, int alpha, int beta, Move ttBestMove, int ply)
 
 
 // takes a position, alpha and beta for pruning, current depth, keeps track of best move found, and ply for stuff such as killer moves, checkmate detection and for cleaner design
+template<NodeType nodeType>
 int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMove, int ply, int rootDepth, bool allowNullMove)
 {
+    constexpr bool isPv = (nodeType != NodeType::NonPV);
+    constexpr bool rootNode = (nodeType == NodeType::Root);
+
     nodes++;
     if (ply > 0 && pos.checkRepetition(pos.getZobristHash())) return 0;
 
@@ -280,20 +285,10 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
 
     // probe TT
     auto [ttHit, ttData] = probe(posZobrist);
-    int staticValue;
-    if (ttHit)
-    {
-        staticValue = ttData.staticEval;
-        ttBestMove = ttData.bestMove;
-    } else
-    {
-        staticValue = scoreBoard(pos);
-        ttBestMove = NO_MOVE;
-    }
 
 
     // check for tt cutoff
-    if (ttHit && ttData.depth >= depth && // add not a PV node check when template is added
+    if (ttHit && !isPv && ttData.depth >= depth &&
         ( ( ttData.bound == Bound::BOUND_EXACT ) ||
         ( ttData.bound == Bound::BOUND_ALPHA && ttData.evaluation <= alpha ) ||
         ( ttData.bound == Bound::BOUND_BETA && ttData.evaluation >= beta )  ) )
@@ -308,25 +303,58 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
         return eval;
     }
 
-
-
-
-    // null move pruning
-
-    if (allowNullMove && !isInCheck && depth > 3 && pos.getGamePhase()) // NMP Conditions
+    // get the static evaluation of the position
+    int staticValue;
+    bool ttMoveIsCapture = false;
+    if (ttHit) // if we got a transposition table hit we can store the previously calculated static evaluation as well as the best move of the position
     {
-        if (beta == alpha + 1) // not a PV node
+        staticValue = ttData.staticEval;
+
+        ttBestMove = ttData.bestMove;
+
+        ttMoveIsCapture =  (bool)((ttBestMove >> 12 & 0x3F) & 4);
+
+    } else // otherwise manually calculate the static evaluation
+    {
+        staticValue = scoreBoard(pos);
+        ttBestMove = NO_MOVE;
+    }
+
+
+    // reverse futility pruning before move generation to cut the whole branch
+    if (!isPv && depth <= 7 && !isInCheck && !ttMoveIsCapture)
+    {
+        int futilityMargin = 150 * depth;
+        if (staticValue >= beta + futilityMargin)
+            return staticValue;
+    }
+
+
+    // razoring
+    if (!isPv && depth <= 3 && !isInCheck && pos.getGamePhase() && (alpha == beta - 1))
+    {
+        int margin = 100 + depth * 200;
+        if (staticValue + margin < beta)
         {
-            int r = std::min(depth, 3 + depth / 3); // NMP Reduction
-            int epSq = pos.getEnpassantSquare();
-            pos.makeNullMove(epSq);
-            int v = -negaMaxAlphaBeta(pos, -beta, -(beta - 1), std::max(1, depth - r), bestMove, ply+1, rootDepth, false);
-            pos.unmakeNullMove(epSq);
-            if (v >= beta)
-                return v;
+            int qValue =  quiescence(pos, alpha, beta, NO_MOVE, ply);
+            if (qValue < beta) return qValue;
         }
     }
 
+
+    // null move pruning
+    if (allowNullMove && !isPv && !isInCheck && depth > 3 && pos.getGamePhase()) // NMP Conditions
+    {
+        int r = std::min(depth, 3 + depth / 3); // NMP Reduction
+        int epSq = pos.getEnpassantSquare();
+        pos.makeNullMove(epSq);
+        int v = -negaMaxAlphaBeta<NodeType::NonPV>(pos, -beta, -(beta - 1), std::max(1, depth - r), bestMove, ply+1, rootDepth, false);
+        pos.unmakeNullMove(epSq);
+        if (v >= beta)
+        {
+            return v;
+        }
+    }
 
 
     // generate the moves by first extracting the legality info
@@ -369,8 +397,13 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
     // set futility pruning flag
     bool canFutilityPrune = false;
     bool canExtendedFutilityPrune = false;
-    canFutilityPrune = (depth == 1 && !isInCheck && staticValue + 200 <= alpha);
-    canExtendedFutilityPrune = (depth == 2 && !isInCheck && staticValue + 500 <= alpha);
+
+    if constexpr (isPv)
+    {
+        canFutilityPrune = (depth == 1 && !isInCheck && staticValue + 200 <= alpha);
+        canExtendedFutilityPrune = (depth == 2 && !isInCheck && staticValue + 500 <= alpha);
+    }
+
 
     // sort moves
     int moveScores[numOfMoves];
@@ -404,7 +437,7 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
 
     pos.makeMove(firstMove);
     // full window for first move
-    int score = -negaMaxAlphaBeta(pos, -beta, -alpha, depth - 1, bestMove, ply+1, rootDepth, true);
+    int score = -negaMaxAlphaBeta<nodeType>(pos, -beta, -alpha, depth - 1, bestMove, ply+1, rootDepth, true);
     pos.unmakeMove();
 
 
@@ -524,12 +557,15 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
         int reducedDepth = std::max(0, depth - depthReduction);
 
         // null window to first check if the move is good enough to warrant a full window search which happens when the move's score is above alpha
-        score = -negaMaxAlphaBeta(pos, -alpha-1, -alpha, reducedDepth, bestMove, ply+1, rootDepth, true);
+        score = -negaMaxAlphaBeta<NodeType::NonPV>(pos, -alpha-1, -alpha, reducedDepth, bestMove, ply+1, rootDepth, true);
 
         // research if move score stayed within the window
-        if ((score > alpha) && (score < beta))
+        if constexpr (isPv)
         {
-            score = -negaMaxAlphaBeta(pos, -beta, -alpha, depth - 1, bestMove, ply+1, rootDepth, true);
+            if ((score > alpha) && (rootNode || score < beta))
+            {
+                score = -negaMaxAlphaBeta<NodeType::PV>(pos, -beta, -alpha, depth - 1, bestMove, ply+1, rootDepth, true);
+            }
         }
         pos.unmakeMove();
 
@@ -601,7 +637,7 @@ Move findBestMove(Position pos)
         transpositionCutoffs = 0;
         deltaPrunes = 0;
         auto startTime = std::chrono::high_resolution_clock::now();
-        int score = negaMaxAlphaBeta(pos, alpha, beta, depth, bestMove, 0, depth, false);
+        int score = negaMaxAlphaBeta<NodeType::Root>(pos, alpha, beta, depth, bestMove, 0, depth, false);
         auto endTime = std::chrono::high_resolution_clock::now();
 
         long long milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
@@ -610,22 +646,30 @@ Move findBestMove(Position pos)
         std::cout << "Nodes: " << nodes << std::endl;
         std::cout << "Nodes in quiescence search:" << quieNodes << std::endl;
         std::cout << "info string milliseconds: " << milliseconds << std::endl;
-        std::cout << "Transpositions: " << transpositionCutoffs << std::endl;
-        std::cout << "Transposition Table Entries: " << entries << std::endl;
-        std::cout << "Delta prunes: " << deltaPrunes << std::endl;
-        std::cout << "PAWN HASH HITS: " << pawnHashHIT << std::endl;
-        std::cout << "PAWN HASH MISSES: " << pawnHashMISS << std::endl;
+        //std::cout << "Transpositions: " << transpositionCutoffs << std::endl;
+        //std::cout << "Transposition Table Entries: " << entries << std::endl;
+        //std::cout << "Delta prunes: " << deltaPrunes << std::endl;
+        //std::cout << "PAWN HASH HITS: " << pawnHashHIT << std::endl;
+        //std::cout << "PAWN HASH MISSES: " << pawnHashMISS << std::endl;
         std::cout << "\n";
 
+
+        if ((score <= alpha || score >= beta))
+        {
+            alpha -= 50;
+            beta += 50;
+
+            score = negaMaxAlphaBeta<NodeType::Root>(pos, alpha, beta, depth, bestMove, 0, depth, false);
+        }
 
         if ((score <= alpha || score >= beta))
         {
             alpha = -CHECKMATE;
             beta = CHECKMATE;
 
-
-            score = negaMaxAlphaBeta(pos, alpha, beta, depth, bestMove, 0, depth, false);
+            score = negaMaxAlphaBeta<NodeType::Root>(pos, alpha, beta, depth, bestMove, 0, depth, false);
         }
+
         alpha = score - 50;
         beta = score + 50;
 

@@ -140,6 +140,11 @@ inline Color pieceColor(Piece p)
 }
 
 
+enum class NodeType : int {
+    PV, NonPV, Root
+};
+
+
 // enum type for transposition table hash entry
 enum class Bound : uint8_t {
               // UPPERBOUND , LOWERBOUND

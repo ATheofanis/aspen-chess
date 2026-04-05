@@ -1080,6 +1080,8 @@ void Position::unmakeMove()
 
     }
 
+    //zobristHash ^= zobristBlackToMove;
+
     // ASSERT
     assert(pawnZobristHash == computePawnZobristHash());
 
@@ -1225,6 +1227,7 @@ void Position::unmakeCapture()
 
         }
     }
+    //zobristHash ^= zobristBlackToMove;
 
     // ASSERT
     assert(pawnZobristHash == computePawnZobristHash());
@@ -1295,12 +1298,11 @@ ZobristHash Position::computeZobristHash()
     }
 
     // black to move
-    if (whiteToMoveFlag)
+    if (!whiteToMoveFlag)
     {
-        return hash;
+        hash ^= zobristBlackToMove;
     }
 
-    hash ^= zobristBlackToMove;
     return hash;
 }
 

@@ -415,7 +415,7 @@ int main()
 
             } else if (tokens[0] == "go")
             {
-                MAX_DEPTH = 13;
+                MAX_DEPTH = 15;
                 if (tokens[1] == "depth")
                 {
                     MAX_DEPTH = std::atoi(tokens[2].c_str());
@@ -439,6 +439,10 @@ int main()
                 std::cout << "id name ABot\n";
                 std::cout << "id author ATheo\n";
                 std::cout << "uciok\n";
+            } else if (tokens[0] == "ucinewgame")
+            {
+                clearTranspositionTable();
+                clearPawnTranspositionTable();
             }
             // quit command
             else if (tokens[0] == "quit")
