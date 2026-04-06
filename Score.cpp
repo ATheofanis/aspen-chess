@@ -6,8 +6,9 @@
 
 #include "TranspositionTable.h"
 
-Move killerMoves[15][2];
+Move killerMoves[MAX_PLY][2];
 int historyMoves[64][64];
+//Move counterMoves[64][64]; // [fromSquare][toSquare]
 
 int pawnHashHIT = 0;
 int pawnHashMISS = 0;
@@ -175,8 +176,6 @@ int scoreQuiescenceMove(const Move& move, Position& pos, const Move& hashMove)
     int flag = (move >> 12) & 0x3F;
 
     // MVV-LVA for quiescence
-    //if (flag & 4)
-    //{
 
     Piece victim = wp;
     if (flag == 5)
@@ -231,6 +230,17 @@ int scoreMove(const Move& move, const Position& pos, const Move& hashMove, const
         return 900;
     if (move == killerMoves[ply][1])
         return 850;
+
+    //if (ply > 0 && previousMoves[ply-1] != NO_MOVE)
+    //{
+    //    Move prevMove = previousMoves[ply-1];
+    //    int prevMoveFromSquare = prevMove & 0x3F;
+    //    int prevMoveToSquare = (prevMove >> 6) & 0x3F;
+    //    if (counterMoves[prevMoveFromSquare][prevMoveToSquare] == move)
+    //    {
+    //        return 800;
+    //    }
+    //}
 
     int fromSquare = move & 0x3F;
     int toSquare = (move >> 6) & 0x3F;

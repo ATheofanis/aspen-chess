@@ -302,6 +302,7 @@ std::vector<std::string> tokenize(const std::string& command)
 
 inline void initializations()
 {
+    initLMR();
     clearTranspositionTable();
     clearPawnTranspositionTable();
     seedingForXoshiro256aa();
@@ -415,7 +416,7 @@ int main()
 
             } else if (tokens[0] == "go")
             {
-                MAX_DEPTH = 15;
+                MAX_DEPTH = 16;
                 if (tokens[1] == "depth")
                 {
                     MAX_DEPTH = std::atoi(tokens[2].c_str());
@@ -433,7 +434,6 @@ int main()
             else if (tokens[0] == "isready")
             {
                 std::cout << "readyok\n" << std::endl;
-                continue;
             } else if (tokens[0] == "uci")
             {
                 std::cout << "id name ABot\n";

@@ -12,9 +12,7 @@
 #include "TranspositionTable.h"
 
 
-
-
-
+//Move previousMoves[MAX_PLY];
 
 
 int nodes = 0;
@@ -22,27 +20,20 @@ int transpositionCutoffs = 0;
 int quieNodes = 0;
 int deltaPrunes = 0;
 
+int precomputedLMR[32][256];
+
+template<NodeType nodeType>
 int quiescence(Position& pos, int alpha, int beta, Move ttBestMove, int ply)
 {
-    //if (ply > 0 && pos.checkRepetition(pos.getZobristHash())) return 0;
+
+    constexpr bool isPv = nodeType == NodeType::PV;
+
+
 
     ZobristHash zobrist = pos.getZobristHash();
     int bestValue;
     int staticValue;
 
-
-    /*
-    auto [ttHit, ttData] = probe(zobrist);
-
-
-
-    // probe TT
-    if (ply > 0 && (bestValue = probe(0, zobrist, beta, alpha, , ply)) != NO_HASH_ENTRY)
-    {
-        transpositionCutoffs++;
-        return bestValue;
-    }
-    */
 
 
     // probe TT
@@ -59,8 +50,8 @@ int quiescence(Position& pos, int alpha, int beta, Move ttBestMove, int ply)
     }
 
 
-    // check for tt cutoff
-    if (ttHit && ttData.depth >= Q_DEPTH && // add not a PV node check when template is added
+    // check for tt cutoff at non-PV nodes
+    if (!isPv && ttHit && ttData.depth >= Q_DEPTH && // add not a PV node check when template is added
         ( ( ttData.bound == Bound::BOUND_EXACT ) ||
         ( ttData.bound == Bound::BOUND_ALPHA && ttData.evaluation <= alpha ) ||
         ( ttData.bound == Bound::BOUND_BETA && ttData.evaluation >= beta )  ) )
@@ -83,7 +74,11 @@ int quiescence(Position& pos, int alpha, int beta, Move ttBestMove, int ply)
     bestValue = staticValue;
     bool inCheck = pos.sideToMoveIsInCheck();
 
-    if (!inCheck)
+    if (inCheck)
+    {
+        bestValue = -CHECKMATE;
+    }
+    else
     {
         // Delta pruning
         if (bestValue < alpha - 980)  // average queen value is 980
@@ -146,18 +141,23 @@ int quiescence(Position& pos, int alpha, int beta, Move ttBestMove, int ply)
 
     for (int i = 0; i < numOfCaps; i++)
     {
-
-        // insertion sort -----------================================
+        int nextMoveIndex = i;
+        // insertion sort (huge speed increase), swap move and score if found a better move so that we make that move immediately
         for (int j = i + 1; j < numOfCaps; j++)
         {
-            if (moveScores[j] > moveScores[i])
+            if (moveScores[j] > moveScores[nextMoveIndex])
             {
-                std::swap(moveScores[i], moveScores[j]);
-                std::swap(captures[i], captures[j]);
+                nextMoveIndex = j;
             }
         }
 
-        // insertion sort -----------================================
+        if (nextMoveIndex != i)
+        {
+            std::swap(moveScores[i], moveScores[nextMoveIndex]);
+            std::swap(captures[i], captures[nextMoveIndex]);
+        }
+
+
 
         Move capture = captures[i];
         int fromSquare = capture & 0x3F;
@@ -191,29 +191,10 @@ int quiescence(Position& pos, int alpha, int beta, Move ttBestMove, int ply)
 
 
 
-
-
-        // delta pruning
-
-
-
         pos.makeCapture(capture);
-        int score = -quiescence(pos, -beta, -alpha, NO_MOVE, ply + 1);
+        int score = -quiescence<nodeType>(pos, -beta, -alpha, NO_MOVE, ply + 1);
         pos.unmakeCapture();
 
-
-
-        //if (score > alpha)
-        //{
-        //    hashFlag = Bound::BOUND_EXACT;
-        //    ttBestMove = capture;
-        //    alpha = score;
-        //    if (score >= beta)
-        //    {
-        //        save(zobrist, 0, beta, Bound::BOUND_BETA, ttBestMove, ply);
-        //        return beta;
-        //    }
-        //}
 
 
         if (score > bestValue)
@@ -271,7 +252,7 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
             depth = 1;
         } else
         {
-            int qVal =  quiescence(pos, alpha, beta, NO_MOVE, ply);
+            int qVal =  quiescence<nodeType>(pos, alpha, beta, NO_MOVE, ply);
             //save(posZobrist, depth, qVal, Bound::BOUND_EXACT, NO_MOVE, ply);
             return qVal;
         }
@@ -336,7 +317,7 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
         int margin = 100 + depth * 200;
         if (staticValue + margin < beta)
         {
-            int qValue =  quiescence(pos, alpha, beta, NO_MOVE, ply);
+            int qValue =  quiescence<nodeType>(pos, alpha, beta, NO_MOVE, ply);
             if (qValue < beta) return qValue;
         }
     }
@@ -436,14 +417,14 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
     Move firstMove = moves[0];
 
     pos.makeMove(firstMove);
+    //previousMoves[ply] = firstMove;
     // full window for first move
     int score = -negaMaxAlphaBeta<nodeType>(pos, -beta, -alpha, depth - 1, bestMove, ply+1, rootDepth, true);
     pos.unmakeMove();
 
 
-
-    int fromSquare = firstMove & 0x3F;
-    int toSquare = (firstMove >> 6) & 0x3F;
+    int firstMovefromSquare = firstMove & 0x3F;
+    int firstMovetoSquare = (firstMove >> 6) & 0x3F;
     int firstMoveFlag = firstMove >> 12 & 0x3F;
 
     if (score > alpha)
@@ -465,14 +446,20 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
             // TT:
             save(posZobrist, ttBestMove, score, staticValue, depth, Bound::BOUND_BETA, generation, ply);
             // store killer move
-            if (firstMoveFlag & 4)
+            if (!(firstMoveFlag & 4))
             {
-                return beta;
-            }
-            historyMoves[fromSquare][toSquare] = std::min(historyMoves[fromSquare][toSquare] + depth * depth, 800);
+                historyMoves[firstMovefromSquare][firstMovetoSquare] = std::min(historyMoves[firstMovefromSquare][firstMovetoSquare] + depth * depth, 800);
 
-            killerMoves[ply][1] = killerMoves[ply][0];
-            killerMoves[ply][0] = firstMove;
+                killerMoves[ply][1] = killerMoves[ply][0];
+                killerMoves[ply][0] = firstMove;
+                //if (ply > 0 && previousMoves[ply-1] != NO_MOVE)
+                //{
+                //    Move prevMove = previousMoves[ply-1];
+                //    int prevMoveFromSquare = prevMove & 0x3F;
+                //    int prevMoveToSquare = (prevMove >> 6) & 0x3F;
+                //    counterMoves[prevMoveFromSquare][prevMoveToSquare] = firstMove;
+                //}
+            }
 
 
             return beta; // hard beta cutoff
@@ -484,7 +471,7 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
         if (!(firstMoveFlag & 4))
         {
             // store history move
-            historyMoves[fromSquare][toSquare] -= depth * depth / 2.0;
+            historyMoves[firstMovefromSquare][firstMovetoSquare] -= depth * depth / 2.0;
         }
     }
     // ***************************************************************
@@ -513,8 +500,10 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
 
 
         Move move = moves[i];
-        int moveFlag = move >> 12 & 0x3F;
 
+        int fromSquare = move & 0x3F;
+        int toSquare = (move >> 6) & 0x3F;
+        int moveFlag = move >> 12 & 0x3F;
 
         // futility pruning
 
@@ -537,7 +526,7 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
         // LMR: set the depth reduction based on move index, current depth and if king is in check reduce depth by less
         int depthReduction = 1;
 
-        toSquare = (move >> 6) & 0x3F;
+
         // we start from i = 1, so (1) i = 1, (2) i = 2, (3) i = 3 - so atleast 3  moves searched before LMR plus the hash move so 3 + 1
         if (!(moveFlag & 4 || moveFlag & 8))
         {
@@ -546,7 +535,7 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
                 if (! (info.numOfChecks)  ) // don't reduce if we are in check
                 {
                     //if (!(move == killerMoves[ply][0] || move == killerMoves[ply][1]))
-                        depthReduction = 1 + std::log(depth) * std::log(i) / 2.0;
+                        depthReduction = precomputedLMR[depth][i];
                 }
             }
 
@@ -555,6 +544,8 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
 
 
         int reducedDepth = std::max(0, depth - depthReduction);
+
+        //previousMoves[ply] = move;
 
         // null window to first check if the move is good enough to warrant a full window search which happens when the move's score is above alpha
         score = -negaMaxAlphaBeta<NodeType::NonPV>(pos, -alpha-1, -alpha, reducedDepth, bestMove, ply+1, rootDepth, true);
@@ -571,7 +562,6 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
 
 
 
-        fromSquare = move & 0x3F;
         if (score > alpha)
         {
             hashFlag = Bound::BOUND_EXACT;
@@ -596,8 +586,15 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
                     historyMoves[fromSquare][toSquare] = std::min(historyMoves[fromSquare][toSquare] + depth * depth, 800);
                     killerMoves[ply][1] = killerMoves[ply][0];
                     killerMoves[ply][0] = move;
-                }
 
+                    //if (ply > 0 && previousMoves[ply-1] != NO_MOVE)
+                    //{
+                    //    Move prevMove = previousMoves[ply-1];
+                    //    int prevMoveFromSquare = prevMove & 0x3F;
+                    //    int prevMoveToSquare = (prevMove >> 6) & 0x3F;
+                    //    counterMoves[prevMoveFromSquare][prevMoveToSquare] = move;
+                    //}
+                }
 
                 return beta; // hard beta cutoff
             }
@@ -625,6 +622,8 @@ Move findBestMove(Position pos)
     generation++;
     memset(historyMoves, 0, sizeof(historyMoves));
     memset(killerMoves, 0, sizeof(killerMoves));
+    //memset(previousMoves, 0, sizeof(previousMoves));
+    //memset(counterMoves, 0, sizeof(counterMoves));
     Move bestMove = 0;
 
     int alpha = -CHECKMATE;

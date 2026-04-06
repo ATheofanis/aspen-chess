@@ -15,6 +15,9 @@
 using Bitboard = uint64_t;
 using ZobristHash = uint64_t;
 
+constexpr int MAX_PLY = 30;
+
+
 // board squares ENUM
 enum Square : int {
     a1, b1, c1, d1, e1, f1, g1, h1,

@@ -13,8 +13,9 @@ extern int pawnHashHIT;
 extern int pawnHashMISS;
 
 
-extern Move killerMoves[15][2];
+extern Move killerMoves[MAX_PLY][2];
 extern int historyMoves[64][64];
+//extern Move counterMoves[64][64];
 
 constexpr int CHECKMATE = 32000;
 constexpr int STALEMATE = 0;
