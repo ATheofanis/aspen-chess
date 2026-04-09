@@ -13,6 +13,50 @@ int historyMoves[64][64];
 int pawnHashHIT = 0;
 int pawnHashMISS = 0;
 
+
+
+// returns a score based on the number of attackers and attackers piece type on a given square
+int kingAttackersScore(int targetSquare, Color attackingSideColor, const Position& pos)
+{
+    int attackersScore = 0;
+    Bitboard occupied = pos.getOccupiedBitboard();
+    // delta is 6 for black and 0 for white for piece indecies
+    int attackingSideDelta = (attackingSideColor == White) ? 0 : 6;
+
+    Bitboard attackingKing    = pos.getPieceBitboard(attackingSideDelta + 5);
+    Bitboard attackingQueens  = pos.getPieceBitboard(attackingSideDelta + 4);
+    Bitboard attackingRooks   = pos.getPieceBitboard(attackingSideDelta + 3);
+    Bitboard attackingBishops = pos.getPieceBitboard(attackingSideDelta + 2);
+    Bitboard attackingKnights = pos.getPieceBitboard(attackingSideDelta + 1);
+    Bitboard attackingPawns   = pos.getPieceBitboard(attackingSideDelta + 0);
+
+    // to get the rook attacks i use the occupancy without rook pieces to account for battery attacks (for example rook behind a queen)
+    Bitboard rookAttacks = getRookAttacks(targetSquare, occupied & ~(attackingRooks | attackingQueens));
+
+    // same for diagonal attackers, a bishop behind a queen should count as an attacker
+    Bitboard bishopAttacks = getBishopAttacks(targetSquare, occupied & ~(attackingBishops | attackingQueens));
+
+    //int numOfQueenAttackers, numOfRookAttackers, numOfBishopAttackers;
+    //int numOfKnightAttackers, numOfPawnAttackers;
+
+    int numOfQueenAttackers = bitCount((rookAttacks | bishopAttacks) & attackingQueens);
+    int numOfRookAttackers = bitCount(rookAttacks & attackingRooks);
+    int numOfBishopAttackers = bitCount(bishopAttacks & attackingBishops);
+    int numOfKnightAttackers = bitCount(knightAttacks[targetSquare] & attackingKnights);
+    int numOfPawnAttackers = bitCount(pawnAttacks[attackingSideColor == White ? Black : White][targetSquare] & attackingPawns);
+
+
+    attackersScore += numOfQueenAttackers * queenAttackerWeight;
+    attackersScore += numOfRookAttackers * rookAttackerWeight;
+    attackersScore += numOfBishopAttackers * bishopAttackerWeight;
+    attackersScore += numOfKnightAttackers * knightAttackerWeight;
+    attackersScore += numOfPawnAttackers * pawnAttackerWeight;
+
+
+    return attackersScore;
+}
+
+
 // CALCULATE DOUBLED PAWN SCORE, ADD FOR WHITE SUBTRACT FOR BLACK --------------===============
 int pawnStructureScore(const Position& pos)
 {
@@ -23,6 +67,9 @@ int pawnStructureScore(const Position& pos)
     Bitboard blackPawns = bps;
 
 
+    int wpPassedPawnBonus = 0;
+    int bpPassedPawnBonus = 0;
+
     int numOfWhiteDoubled = 0;
     int numOfWhiteIsolated = 0;
 
@@ -31,18 +78,27 @@ int pawnStructureScore(const Position& pos)
 
     int score = 0;
 
+    // white pawns
     while (whitePawns)
     {
         int currentPawnSq = popLsbAndReturnIndex(whitePawns);
-        int file = currentPawnSq & 7;
+
 
         // doubled white pawns
-        Bitboard doubledWhitePawns = wps & files[file];
-        int whiteDoubledInFile = bitCount(doubledWhitePawns);
-        if (whiteDoubledInFile > 1)
+        for (int i = 0; i < 8; i++)
         {
-            numOfWhiteDoubled += whiteDoubledInFile - 1;
+            Bitboard doubledWhitePawns = wps & files[i];
+
+            int whiteDoubledInFile = bitCount(doubledWhitePawns);
+
+            if (whiteDoubledInFile > 1)
+            {
+                numOfWhiteDoubled += whiteDoubledInFile - 1;
+            }
         }
+
+
+
 
         // isolated white pawns
         if ((isolatedMasks[currentPawnSq] & wps) == 0)
@@ -50,25 +106,36 @@ int pawnStructureScore(const Position& pos)
             numOfWhiteIsolated++;
         }
 
+        // white passed pawns
         if ((whitePassedMasks[currentPawnSq] & bps) == 0)
         {
-            score += whitePassedPawnBonus[currentPawnSq / 8];
+            wpPassedPawnBonus += whitePassedPawnBonus[currentPawnSq / 8];
         }
 
     }
 
+    // black pawns
     while (blackPawns)
     {
         int currentPawnSq = popLsbAndReturnIndex(blackPawns);
-        int file = currentPawnSq & 7;
+
+
 
         // doubled black pawns
-        Bitboard doubledBlackPawns = bps & files[file];
-        int blackDoubledInFile = bitCount(doubledBlackPawns);
-        if (blackDoubledInFile > 1)
+        for (int i = 0; i < 8; i++)
         {
-            numOfBlackDoubled += blackDoubledInFile - 1;
+            Bitboard doubledBlackPawns = bps & files[i];
+
+            int blackDoubledInFile = bitCount(doubledBlackPawns);
+
+            if (blackDoubledInFile > 1)
+            {
+                numOfBlackDoubled += blackDoubledInFile - 1;
+            }
         }
+
+
+
 
         // isolated black pawns
         if ((isolatedMasks[currentPawnSq] & bps) == 0)
@@ -76,9 +143,11 @@ int pawnStructureScore(const Position& pos)
             numOfBlackIsolated++;
         }
 
+
+        // black passed pawns
         if ((blackPassedMasks[currentPawnSq] & wps) == 0)
         {
-            score -= blackPassedPawnBonus[currentPawnSq / 8];
+            bpPassedPawnBonus -= blackPassedPawnBonus[currentPawnSq / 8];
         }
 
     }
@@ -86,11 +155,11 @@ int pawnStructureScore(const Position& pos)
 
 
 
-    //std::cout << "DOUBLED WHITE / BLACK PAWNS: " << numOfWhiteDoubled << " / " << numOfBlackDoubled << std::endl;
-    //std::cout << "ISOLATED WHITE / BLACK PAWNS: " << numOfWhiteIsolated << " / " << numOfBlackIsolated << std::endl;
 
-    //return pos.isWhiteToMove() ? ((numOfWhiteDoubled - numOfBlackDoubled) * doubledPawnPenalty) : -((numOfWhiteDoubled - numOfBlackDoubled) * doubledPawnPenalty);
-    return score + ((numOfWhiteDoubled - numOfBlackDoubled) * doubledPawnPenalty) + (numOfWhiteIsolated - numOfBlackIsolated) * isolatedPawnPenalty;
+    return score + ((numOfWhiteDoubled - numOfBlackDoubled) * 0) + (numOfWhiteIsolated - numOfBlackIsolated) * 0;
+
+    //return score + (numOfWhiteIsolated - numOfBlackIsolated) * isolatedPawnPenalty;
+    return score + ((numOfWhiteDoubled - numOfBlackDoubled) * doubledPawnPenalty) + (numOfWhiteIsolated - numOfBlackIsolated) * isolatedPawnPenalty + wpPassedPawnBonus - bpPassedPawnBonus;
 }
 // CALCULATE DOUBLED PAWN SCORE, ADD FOR WHITE SUBTRACT FOR BLACK --------------===============
 
@@ -102,36 +171,52 @@ int rookOpenFileScore(const Position& pos)
     Bitboard wps = pos.getPieceBitboard(wp);
     Bitboard bps = pos.getPieceBitboard(bp);
     Bitboard pawns = bps | wps;
-    int whiteRookScore = 0;
+
+    int openFileRookNetScore = 0;
+
     while (wRs)
     {
         int currentRookSq = popLsbAndReturnIndex(wRs);
-        int file = currentRookSq & 7;
-        Bitboard pawnsInFile = files[file] & pawns;
-        if (pawnsInFile == 0)
+        Bitboard file = files[currentRookSq & 7];
+
+        if ((file & pawns) == 0)
         {
-            whiteRookScore += openFileBonus;
-        } else if (pawnsInFile == 1)
-        {
-            whiteRookScore += semiOpenFileBonus;
+            openFileRookNetScore += openFileBonus;
         }
     }
-    int blackRookScore = 0;
+
+
     while (bRs)
     {
         int currentRookSq = popLsbAndReturnIndex(bRs);
-        int file = currentRookSq & 7;
-        Bitboard pawnsInFile = files[file] & pawns;
-        if (pawnsInFile == 0)
+        Bitboard file = files[currentRookSq & 7];
+
+        if ((file & pawns) == 0)
         {
-            blackRookScore += openFileBonus;
-        } else if (pawnsInFile == 1)
-        {
-            blackRookScore += semiOpenFileBonus;
+            openFileRookNetScore -= openFileBonus;
         }
     }
-    return whiteRookScore - blackRookScore;
+
+
+    return openFileRookNetScore;
 }
+
+
+
+int getBishopPairScore(const Position& pos)
+{
+    int bishopPairDiff = 0;
+    if (bitCount(pos.getPieceBitboard(wB)) >= 2)
+    {
+        bishopPairDiff++;
+    }
+    if (bitCount(pos.getPieceBitboard(bB)) >= 2)
+    {
+        bishopPairDiff--;
+    }
+    return bishopPairDiff * bishopPairBonus;
+}
+
 
 
 int scoreBoard(const Position& pos)
@@ -157,8 +242,14 @@ int scoreBoard(const Position& pos)
         score += pawnScore;
         savePawnHash(pos.getPawnZobristHash(), pawnScore);
     }
+
+
     score += rookOpenFileScore(pos);
 
+    score += getBishopPairScore(pos);
+
+
+    //return score;
     return pos.isWhiteToMove() ? score : -score;
 }
 

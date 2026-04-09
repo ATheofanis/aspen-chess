@@ -4,6 +4,7 @@
 
 #include "Attacks.h"
 #include "Bitboard.h"
+#include "Tuning.h"
 
 #include <windows.h>
 
@@ -300,6 +301,8 @@ std::vector<std::string> tokenize(const std::string& command)
 }
 
 
+
+
 inline void initializations()
 {
     initLMR();
@@ -326,23 +329,59 @@ inline void initializations()
 std::string startPos = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 std::string veryTrickyCapturesPos = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
 
-int main()
+bool UCI_ENABLED = false;
+
+int main(int argc, char* argv[])
 {
 
     initializations();
 
-    // TESTS ---------------------------------==============================================================
+    std::string line;
+    Position pos;
+    pos.loadFen("k3r3/3p4/8/8/8/8/4P3/K2R1R2 w - - 0 1");
+    std::cout << "Score of position:" << scoreBoard(pos) << std::endl;
+    //std::cout << "rooks on semi open:" << getSemiOpenFileRooksDiff(pos) << std::endl;
+
+    //std::cout << "Passed pawns in rank " << rank  << ":" << numOfPassedPawnsInRank(pos, rank) << std::endl;
+
+    //pos.loadFen("8/1p5p/8/8/3p4/8/2PP1P2/8 b - - 0 1");
+    //std::cout << "Isolated white:" << numOfIsolatedPawns(White, pos) << std::endl;
+    //std::cout << "Isolated black:" << numOfIsolatedPawns(Black, pos) << std::endl;
 
 
-    Position testPos;
-    testPos.loadFen("2q3k1/8/8/8/6p1/7p/8/2K5 w - - 0 1"); // -1246
-    std::cout << scoreBoard(testPos) << std::endl;
 
-    if (testPos.sideToMoveIsInCheck())
+
+
+    while (std::getline(std::cin, line))
     {
-        std::cout << "king in check" << std::endl;
+        if (line.empty()) continue;
+        parseLineForTuning(line, pos);
     }
 
+    std::cout << "Loop finished. Entering tuner..." << std::endl;
+    tuner();
+
+
+    std::cout << "Total positions stored:" << tuningData.size() << std::endl;
+
+
+
+
+
+
+
+
+
+
+    // TESTS ---------------------------------==============================================================
+
+
+    //Position testPos;
+    //testPos.loadFen("8/1q6/2k5/8/4p3/8/6K1/8 b - - 0 1");
+    //std::cout << scoreBoard(testPos) << std::endl;
+//
+    //std::cout << numOfDoubledPawns(White, testPos);
+
 
 
 
@@ -360,10 +399,10 @@ int main()
 
 
     // TESTS ---------------------------------==============================================================
-
-
-    std::string command;
-    Position pos;
+    if (UCI_ENABLED)
+    {
+        std::string command;
+        Position pos;
 
 
         while (getline(std::cin, command))
@@ -416,7 +455,7 @@ int main()
 
             } else if (tokens[0] == "go")
             {
-                MAX_DEPTH = 16;
+                MAX_DEPTH = 10;
                 if (tokens[1] == "depth")
                 {
                     MAX_DEPTH = std::atoi(tokens[2].c_str());
@@ -450,7 +489,7 @@ int main()
                 break;
             }
         }
-
+    }
 
     return 0;
 

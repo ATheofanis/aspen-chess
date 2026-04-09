@@ -20,16 +20,51 @@ extern int historyMoves[64][64];
 constexpr int CHECKMATE = 32000;
 constexpr int STALEMATE = 0;
 
+
+// attackers weight
+constexpr int queenAttackerWeight = 20;
+constexpr int rookAttackerWeight = 12;
+constexpr int bishopAttackerWeight = 8;
+constexpr int knightAttackerWeight = 8;
+constexpr int pawnAttackerWeight = 3;
+constexpr int kingAttackerWeight = 0;
+
+
+static const int SafetyTable[100] = {
+    0,  0,   1,   2,   3,   5,   7,   9,  12,  15,
+  18,  22,  26,  30,  35,  39,  44,  50,  56,  62,
+  68,  75,  82,  85,  89,  97, 105, 113, 122, 131,
+ 140, 150, 169, 180, 191, 202, 213, 225, 237, 248,
+ 260, 272, 283, 295, 307, 319, 330, 342, 354, 366,
+ 377, 389, 401, 412, 424, 436, 448, 459, 471, 483,
+ 494, 500, 500, 500, 500, 500, 500, 500, 500, 500,
+ 500, 500, 500, 500, 500, 500, 500, 500, 500, 500,
+ 500, 500, 500, 500, 500, 500, 500, 500, 500, 500,
+ 500, 500, 500, 500, 500, 500, 500, 500, 500, 500
+};
+
+
+
+
 int pawnStructureScore(const Position& pos);
 
-constexpr int openFileBonus = 35;
-constexpr int semiOpenFileBonus = 17;
+constexpr int bishopPairBonus = 16; // tuned
 
-constexpr int doubledPawnPenalty = -10;
-constexpr int isolatedPawnPenalty = -10;
 
-constexpr int whitePassedPawnBonus[8] = { 0, 5, 10, 20, 35, 60, 100, 200 };
-constexpr int blackPassedPawnBonus[8] = { 200, 100, 60, 35, 20, 10, 5, 0 };
+// bonuses for rooks that are on a file with no pawns or in a file with only one enemy pawn
+constexpr int openFileBonus = 15; // tuned
+constexpr int semiOpenFileBonus = 3; // tuned
+
+// penalties for doubled pawns and isolated pawns
+constexpr int doubledPawnPenalty = -18; // tuned
+constexpr int isolatedPawnPenalty = -11; // tuned
+
+
+// the passed pawn bonuses are not very high because they work in conjuction with the PST values
+constexpr int whitePassedPawnBonus[8] = { 0, 0, 0, 10, 22, 26, 9, 0 }; // tuned
+constexpr int blackPassedPawnBonus[8] = { 0, 9, 26, 22, 10, 0, 0, 0 }; // tuned
+
+
 
 // PeSTO's middlegame piece score values
 constexpr int mgPieceScore[6] = { 82, 337, 365, 477, 1025, 0};
@@ -43,7 +78,6 @@ constexpr int egPieceScore[6] = { 94, 281, 297, 512,  936, 0};
 
 // PeSTO's PST's values for middlegame and endgame:
 
-//82 + (-15) //  pawn in e2
 // MIDDLE GAME PAWN
 constexpr int mgPawnPST[64] = {
     0,   0,   0,   0,   0,   0,  0,   0,

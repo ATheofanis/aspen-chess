@@ -526,21 +526,12 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
         // LMR: set the depth reduction based on move index, current depth and if king is in check reduce depth by less
         int depthReduction = 1;
 
-
         // we start from i = 1, so (1) i = 1, (2) i = 2, (3) i = 3 - so atleast 3  moves searched before LMR plus the hash move so 3 + 1
-        if (!(moveFlag & 4 || moveFlag & 8))
+        if (depth > 3 && i > 3 && !isInCheck && !(moveFlag & 4 || moveFlag & 8))
         {
-            if (depth > 3 && i > 3)
-            {
-                if (! (info.numOfChecks)  ) // don't reduce if we are in check
-                {
-                    //if (!(move == killerMoves[ply][0] || move == killerMoves[ply][1]))
-                        depthReduction = precomputedLMR[depth][i];
-                }
-            }
-
+            depthReduction = precomputedLMR[depth][i];
+            if ((ttBestMove >> 12 & 0x3F) & 4) depthReduction++; // idea from stockfish , reduce more if tt move is a capture
         }
-
 
 
         int reducedDepth = std::max(0, depth - depthReduction);
