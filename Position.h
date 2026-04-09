@@ -195,6 +195,8 @@ public:
     // check if current position has been repeated twice before (3-fold repetition rule)
     bool checkRepetition(ZobristHash currentPositionZobrist)
     {
+        //if (irreversiblePositionTop > 50) return true;
+
         int repetitionsCount = 0;
 
         for (int i = numOfPositions - 1; i >= irreversiblePositionTop; i--)

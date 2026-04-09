@@ -329,13 +329,14 @@ inline void initializations()
 std::string startPos = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 std::string veryTrickyCapturesPos = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
 
-bool UCI_ENABLED = false;
+bool UCI_ENABLED = true;
 
 int main(int argc, char* argv[])
 {
 
     initializations();
 
+    /*
     std::string line;
     Position pos;
     pos.loadFen("k3r3/3p4/8/8/8/8/4P3/K2R1R2 w - - 0 1");
@@ -366,7 +367,7 @@ int main(int argc, char* argv[])
 
 
 
-
+    */
 
 
 
@@ -455,10 +456,24 @@ int main(int argc, char* argv[])
 
             } else if (tokens[0] == "go")
             {
-                MAX_DEPTH = 10;
+                MAX_DEPTH = 16;
                 if (tokens[1] == "depth")
                 {
                     MAX_DEPTH = std::atoi(tokens[2].c_str());
+                } else
+                {
+                    int gamePhase = pos.getGamePhase();
+                    if (gamePhase <= 8)
+                    {
+                        MAX_DEPTH += 3;
+                    }
+                    else if (gamePhase <= 12)
+                    {
+                        MAX_DEPTH += 2;
+                    } else if (gamePhase <= 16)
+                    {
+                        MAX_DEPTH += 1;
+                    }
                 }
 
                 // PRINT BEST MOVE ------------------======================================================

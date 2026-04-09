@@ -22,11 +22,11 @@ constexpr int STALEMATE = 0;
 
 
 // attackers weight
-constexpr int queenAttackerWeight = 20;
-constexpr int rookAttackerWeight = 12;
-constexpr int bishopAttackerWeight = 8;
-constexpr int knightAttackerWeight = 8;
-constexpr int pawnAttackerWeight = 3;
+constexpr int queenAttackerWeight = 10;
+constexpr int rookAttackerWeight = 6;
+constexpr int bishopAttackerWeight = 3;
+constexpr int knightAttackerWeight = 3;
+constexpr int pawnAttackerWeight = 1;
 constexpr int kingAttackerWeight = 0;
 
 
@@ -61,8 +61,11 @@ constexpr int isolatedPawnPenalty = -11; // tuned
 
 
 // the passed pawn bonuses are not very high because they work in conjuction with the PST values
-constexpr int whitePassedPawnBonus[8] = { 0, 0, 0, 10, 22, 26, 9, 0 }; // tuned
-constexpr int blackPassedPawnBonus[8] = { 0, 9, 26, 22, 10, 0, 0, 0 }; // tuned
+//constexpr int whitePassedPawnBonus[8] = { 0, 0, 0, 10, 22, 26, 9, 0 }; // tuned
+//constexpr int blackPassedPawnBonus[8] = { 0, 9, 26, 22, 10, 0, 0, 0 }; // tuned
+
+constexpr int whitePassedPawnBonus[8] = { 0, 5, 10, 20, 35, 60, 100, 200 };
+constexpr int blackPassedPawnBonus[8] = { 200, 100, 60, 35, 20, 10, 5, 0 };
 
 
 
