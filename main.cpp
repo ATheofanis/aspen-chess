@@ -329,45 +329,48 @@ inline void initializations()
 std::string startPos = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 std::string veryTrickyCapturesPos = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
 
-bool UCI_ENABLED = true;
+bool UCI_ENABLED = false;
 
 int main(int argc, char* argv[])
 {
 
     initializations();
 
-    /*
-    std::string line;
+
+
     Position pos;
-    pos.loadFen("k3r3/3p4/8/8/8/8/4P3/K2R1R2 w - - 0 1");
-    std::cout << "Score of position:" << scoreBoard(pos) << std::endl;
-    //std::cout << "rooks on semi open:" << getSemiOpenFileRooksDiff(pos) << std::endl;
-
-    //std::cout << "Passed pawns in rank " << rank  << ":" << numOfPassedPawnsInRank(pos, rank) << std::endl;
-
-    //pos.loadFen("8/1p5p/8/8/3p4/8/2PP1P2/8 b - - 0 1");
-    //std::cout << "Isolated white:" << numOfIsolatedPawns(White, pos) << std::endl;
-    //std::cout << "Isolated black:" << numOfIsolatedPawns(Black, pos) << std::endl;
+    pos.loadFen("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8");
 
 
+    Move moves[256];
+    int numOfMoves = 0;
 
-
-
-    while (std::getline(std::cin, line))
+    Color allyColor;
+    int kingSquare;
+    // store ally color and king location for legality info
+    if (pos.isWhiteToMove())
     {
-        if (line.empty()) continue;
-        parseLineForTuning(line, pos);
+        allyColor = White;
+        kingSquare = lsbIndex(pos.getPieceBitboard(wK));
+    }
+    else
+    {
+        allyColor = Black;
+        kingSquare = lsbIndex(pos.getPieceBitboard(bK));
     }
 
-    std::cout << "Loop finished. Entering tuner..." << std::endl;
-    tuner();
+    legalityInformation info = getLegalityInfo(kingSquare, allyColor, pos);
 
+    generateQuietMoves(info, pos, moves, numOfMoves);
+    generateCaptures(info, pos, moves, numOfMoves);
 
-    std::cout << "Total positions stored:" << tuningData.size() << std::endl;
+    std::cout << "Total number of legal moves:" << numOfMoves << std::endl;
 
+    //for (int i = 0; i < numOfMoves; i++)
+    //{
+    //    printMove(moves[i]);
+    //}
 
-
-    */
 
 
 
@@ -465,7 +468,7 @@ int main(int argc, char* argv[])
                     int gamePhase = pos.getGamePhase();
                     if (gamePhase <= 8)
                     {
-                        MAX_DEPTH += 3;
+                        MAX_DEPTH += 4;
                     }
                     else if (gamePhase <= 12)
                     {

@@ -30,4 +30,6 @@ add_executable(AChess main.cpp
         PRNG.h
         TranspositionTable.cpp
         TranspositionTable.h
+        Tuning.cpp
+        Tuning.h
 )

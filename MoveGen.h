@@ -30,64 +30,13 @@ void generateKingMoves(const legalityInformation& info, Bitboard kingPos, Bitboa
 void generateWhiteKingMoves(const Position& pos, Move moves[], int& numOfMoves);
 void generateBlackKingMoves(const Position& pos, Move moves[], int& numOfMoves);
 
+// move generators. i split move generation into captures and non captures for staged move generation inside the search
+void generateLegalMoves(const legalityInformation& info, Position& pos, Move moves[], int &numOfMoves); // every legal move
+void generateCaptures(const legalityInformation& info, Position& pos, Move moves[], int &numOfMoves); // every legal capture
+void generateQuietMoves(const legalityInformation& info, Position& pos, Move moves[], int &numOfMoves); // every legal non-capture move
 
-void generateLegalMoves(const legalityInformation& info, Position& pos, Move moves[], int &numOfMoves);
 
-
-void generateCaptures(const legalityInformation& info, Position& pos, Move moves[], int &numOfMoves);
-//inline void printUnicode(UnicodePiece uP) {
-//    std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t> conv;
-//    std::cout << conv.to_bytes(static_cast<char32_t>(uP));
-//    std::cout << " ";
-//}
-//
-//void printBoard(const Position& pos)
-//{
-//    for (int rank = 0; rank < 8; rank++)
-//    {
-//        for (int file = 0; file < 8; file++)
-//        {
-//            Piece piece = pos.getPieceFromBoard(rank * 8 + file);
-//
-//            // print ranks
-//            if (!file)
-//            {
-//                std::cout << rank+1 << "   ";
-//            }
-//
-//            if (piece == NO_PIECE)
-//            {
-//                std::cout << " ."; continue;
-//            }
-//            printUnicode(static_cast<UnicodePiece>(9823 - piece));
-//        }
-//
-//        std::cout << "\n";
-//    }
-//    // print board files
-//    std::cout << "    a  b c  d  e  f g  h\n" << std::endl;
-//
-//    // print the side to move
-//    std::cout <<"Side to move: ";
-//    if (pos.isWhiteToMove()) { std::cout << "White\n";}
-//    else { std::cout << "Black\n";}
-//
-//    // print available castling rights
-//    std::cout <<"Castling rights: ";
-//    CastlingRights castlingRights = pos.getCastlingRights();
-//    std::cout << (castlingRights & WK ? "WK / " : "- / ");
-//    std::cout << (castlingRights & WQ ? "WQ / " : "- / ");
-//    std::cout << (castlingRights & BK ? "BK / " : "- / ");
-//    std::cout << (castlingRights & BQ ? "BQ  " : "-");
-//
-//    // print en passant square
-//    std::cout << "\nEn Passant square: ";
-//    std::string epSqName = squareName((Square)pos.getEnpassantSquare());
-//    std::cout << epSqName;
-//    std::cout << "\n";
-//    std::cout << "\n";
-//}
-
+// converts a move variable to readable format (chess board squares and flag display)
 inline void printMove(const Move move)
 {
     int fromSquare = move & 0x3F;
@@ -95,3 +44,10 @@ inline void printMove(const Move move)
     int flag = (move >> 12) & 0x3F;
     std::cout << "\nMove: Starting Square : " << squareName(static_cast<Square>(fromSquare)) << "\nEnding square: " << squareName(static_cast<Square>(toSquare)) << "Flag: " << flag << "\n";
 }
+
+
+void generateQuietWhitePawnMoves(const Position& pos, const legalityInformation& info, Move moves[], int& numOfMoves);
+void generateQuietBlackPawnMoves(const Position& pos, const legalityInformation& info, Move moves[], int& numOfMoves);
+
+void generateQuietKnightMoves(const legalityInformation& info, Bitboard knightPos, Bitboard occupied, Move moves[], int& numOfMoves);
+void generateQuietBishopMoves(const legalityInformation& info, Bitboard bishopPos, Bitboard occupied, Move moves[], int& numOfMoves);
