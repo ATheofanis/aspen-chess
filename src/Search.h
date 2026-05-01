@@ -8,7 +8,7 @@
 
 class Position;
 
-inline int MAX_DEPTH = 15;
+inline int MAX_DEPTH = 64;
 //constexpr int MAX_PLY = 30;
 
 //extern Move previousMoves[MAX_PLY];

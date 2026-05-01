@@ -10,7 +10,7 @@
 #include "MoveGen.h"
 #include "Score.h"
 #include "TranspositionTable.h"
-
+#include "Time.h"
 
 //Move previousMoves[MAX_PLY];
 
@@ -20,11 +20,25 @@ int transpositionCutoffs = 0;
 int quieNodes = 0;
 int deltaPrunes = 0;
 
+void printInfo(int depth)
+{
+    std::cout << "info string | Current Depth:" << depth << std::endl;
+    std::cout << "info string | Negamax Nodes:" << nodes << std::endl;
+    std::cout << "info string | Qsearch Nodes:" << quieNodes << std::endl;
+    std::cout << "\n";
+}
+
+
 int precomputedLMR[32][256];
 
 template<NodeType nodeType>
 int quiescence(Position& pos, int alpha, int beta, Move ttBestMove, int ply)
 {
+    if ((nodes & 2047) == 0 && tm.maximumExpired())
+    {
+        tm.stopSearch();
+        return 0;
+    }
 
     constexpr bool isPv = nodeType == NodeType::PV;
 
@@ -236,6 +250,12 @@ int quiescence(Position& pos, int alpha, int beta, Move ttBestMove, int ply)
 template<NodeType nodeType>
 int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMove, int ply, int rootDepth, bool allowNullMove)
 {
+    if ((nodes & 2047) == 0 && tm.maximumExpired())
+    {
+        tm.stopSearch();
+        return 0;
+    }
+
     constexpr bool isPv = (nodeType != NodeType::NonPV);
     constexpr bool rootNode = (nodeType == NodeType::Root);
 
@@ -620,28 +640,23 @@ Move findBestMove(Position pos)
     int alpha = -CHECKMATE;
     int beta = CHECKMATE;
 
+    int previousScore = VALUE_NONE;
+    Move previousMove = NO_MOVE;
+
+    // iterative deepening loop
     for (int depth = 1; depth <= MAX_DEPTH; depth++)
     {
         nodes = 0;
         quieNodes = 0;
         transpositionCutoffs = 0;
         deltaPrunes = 0;
-        auto startTime = std::chrono::high_resolution_clock::now();
-        int score = negaMaxAlphaBeta<NodeType::Root>(pos, alpha, beta, depth, bestMove, 0, depth, false);
-        auto endTime = std::chrono::high_resolution_clock::now();
 
-        long long milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
+        Move bmDummy = bestMove;
 
-        std::cout << "Depth: " << depth << std::endl;
-        std::cout << "Nodes: " << nodes << std::endl;
-        std::cout << "Nodes in quiescence search:" << quieNodes << std::endl;
-        std::cout << "info string milliseconds: " << milliseconds << std::endl;
-        //std::cout << "Transpositions: " << transpositionCutoffs << std::endl;
-        //std::cout << "Transposition Table Entries: " << entries << std::endl;
-        //std::cout << "Delta prunes: " << deltaPrunes << std::endl;
-        //std::cout << "PAWN HASH HITS: " << pawnHashHIT << std::endl;
-        //std::cout << "PAWN HASH MISSES: " << pawnHashMISS << std::endl;
-        std::cout << "\n";
+        int score = negaMaxAlphaBeta<NodeType::Root>(pos, alpha, beta, depth, bmDummy, 0, depth, false);
+
+
+        if (tm.getShouldStopFlag()) break;
 
 
         if ((score <= alpha || score >= beta))
@@ -649,20 +664,43 @@ Move findBestMove(Position pos)
             alpha -= 50;
             beta += 50;
 
-            score = negaMaxAlphaBeta<NodeType::Root>(pos, alpha, beta, depth, bestMove, 0, depth, false);
+            score = negaMaxAlphaBeta<NodeType::Root>(pos, alpha, beta, depth, bmDummy, 0, depth, false);
         }
+
+        if (tm.getShouldStopFlag()) break;
 
         if ((score <= alpha || score >= beta))
         {
             alpha = -CHECKMATE;
             beta = CHECKMATE;
 
-            score = negaMaxAlphaBeta<NodeType::Root>(pos, alpha, beta, depth, bestMove, 0, depth, false);
+            score = negaMaxAlphaBeta<NodeType::Root>(pos, alpha, beta, depth, bmDummy, 0, depth, false);
         }
+
+        printInfo(depth);
+
+        if (tm.getShouldStopFlag()) break;
 
         alpha = score - 50;
         beta = score + 50;
 
+
+        if (tm.optimumExpired())
+        {
+            if ((previousMove != NO_MOVE && previousMove != bestMove) || (previousScore != VALUE_NONE && ((previousScore - 50) > score)))
+            {
+                continue;
+            }
+            break;
+        }
+
+
+        if (tm.elapsedTime() * 3 > tm.optimum()) break;
+
+        bestMove = bmDummy;
+
+        previousScore = score;
+        previousMove = bestMove;
     }
 
     //std::cout << "TT entries: " << entries << std::endl;

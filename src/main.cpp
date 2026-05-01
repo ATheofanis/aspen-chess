@@ -17,6 +17,8 @@
 #include <vector>
 #include <sstream>
 
+#include "Time.h"
+
 class Position;
 
 // print the Unicode character
@@ -300,9 +302,6 @@ std::vector<std::string> tokenize(const std::string& command)
     return tokens;
 }
 
-
-
-
 inline void initializations()
 {
     initLMR();
@@ -337,15 +336,6 @@ int main(int argc, char* argv[])
     initializations();
 
 
-
-
-
-
-
-
-
-
-
     if (UCI_ENABLED)
     {
         std::string command;
@@ -377,7 +367,7 @@ int main(int argc, char* argv[])
                 else if (tokens[1] == "fen")
                 {
                     bool movesFlag = false;
-                    int movesTokenIndex;
+                    int movesTokenIndex = 0;
                     std::string fenString;
                     for (int i = 2; i < tokens.size(); i++)
                     {
@@ -402,24 +392,41 @@ int main(int argc, char* argv[])
 
             } else if (tokens[0] == "go")
             {
-                MAX_DEPTH = 16;
-                if (tokens[1] == "depth")
-                {
-                    MAX_DEPTH = std::atoi(tokens[2].c_str());
-                } else
-                {
-                    int gamePhase = pos.getGamePhase();
-                    if (gamePhase <= 8)
+                TimePoint wtime = 0, btime = 0, winc = 0, binc = 0;
+                int movestogo = 0;
+
+                for (int i = 1; i < tokens.size(); i++) {
+                    if (tokens[i] == "wtime") // white remaining time
                     {
-                        MAX_DEPTH += 4;
+                        wtime = std::atoi(tokens[i+1].c_str());
                     }
-                    else if (gamePhase <= 12)
+                    else if (tokens[i] == "btime") // black remaining time
                     {
-                        MAX_DEPTH += 2;
-                    } else if (gamePhase <= 16)
-                    {
-                        MAX_DEPTH += 1;
+                        btime = std::atoi(tokens[i+1].c_str());
                     }
+                    else if (tokens[i] == "winc") // white increment
+                    {
+                        winc = std::atoi(tokens[i+1].c_str());
+                    }
+                    else if (tokens[i] == "binc") // black increment
+                    {
+                        binc = std::atoi(tokens[i+1].c_str());
+                    }
+                    else if (tokens[i] == "movestogo") // moves to go passed by the GUI
+                    {
+                        movestogo = std::atoi(tokens[i+1].c_str());
+                    }
+                    else if (tokens[i] == "depth") // change the maximum depth if the depth command is passed
+                    {
+                        MAX_DEPTH = std::atoi(tokens[i+1].c_str());
+                    }
+                }
+
+                // start the time manager if wtime or btime were given
+                if (wtime || btime) {
+                    TimePoint myTime = (pos.isWhiteToMove()) ? wtime : btime;
+                    TimePoint myInc = (pos.isWhiteToMove()) ? winc : binc;
+                    tm.start(myTime, myInc, movestogo); // initialize the time manager for the side to move
                 }
 
                 // PRINT BEST MOVE ------------------======================================================

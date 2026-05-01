@@ -30,4 +30,6 @@ add_executable(AChess src/main.cpp
         src/TranspositionTable.h
         src/Tuning.cpp
         src/Tuning.h
+        src/Time.cpp
+        src/Time.h
 )
