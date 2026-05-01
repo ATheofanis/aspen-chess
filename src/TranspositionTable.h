@@ -14,42 +14,6 @@ constexpr int NO_HASH_ENTRY = -64000;
 
 inline int generation = 0;
 
-// the size of the pawn structure transposition table
-constexpr int pawnTableSize = 1 << 16;
-constexpr int pawnTableSizeMinusOne = pawnTableSize - 1;
-
-// Hashtable entry for pawns
-struct pawnHashEntry
-{
-    ZobristHash pawnZobristHash = 0;
-    int16_t pawnStructureEval = 0;
-
-    pawnHashEntry() = default;
-
-    pawnHashEntry(ZobristHash pawnZobrist, int pawnEval)
-    {
-        pawnZobristHash = pawnZobrist;
-        pawnStructureEval = pawnEval;
-    }
-};
-
-
-// global transposition table for pawns
-inline pawnHashEntry pawnHashTable[pawnTableSize];
-
-
-// save a position to the tt, or overwrite an existing hash entry
-void savePawnHash(ZobristHash pawnZobristHash, int pawnsEvaluation);
-
-// looks up a position in the transposition table and returns the entry if it exists
-int probePawnHash(ZobristHash pawnZobrist);
-
-// function to clear pawn transposition table
-inline void clearPawnTranspositionTable()
-{
-    memset(pawnHashTable, 0, sizeof(pawnHashEntry) * pawnTableSize);
-}
-
 
 // the probe function returns the data extracted from the tt entry in a TTData struct that contains only the info we need for the search later on
 struct TTData
@@ -79,10 +43,10 @@ struct TTEntry
     ZobristHash entryZobristKey = 0; // the position's zobrist key
     Move entryBestMove = 0;          // the best move of the position
     int16_t entryEvaluation = 0;     // the evaluation of the position
-    int16_t entryStaticEval = 0;
-    uint8_t entryDepth = -1;              // the current depth when the position was searched
-    uint8_t entryBound : 2;
-    uint8_t entryGen : 6;
+    int16_t entryStaticEval = 0;     // the static eval of the position
+    uint8_t entryDepth = -1;         // the current depth when the position was searched
+    uint8_t entryBound : 2;          // 2 bits for the bound of this entry
+    uint8_t entryGen : 6;            // the other 6 bits for the entry's generation (age)
 
     TTEntry() = default; // default constructor
 
@@ -97,6 +61,7 @@ struct TTEntry
         entryGen = entryGeneration;
     }
 
+    // returns a TTData struct from the current TTEntry
     TTData read() const
     {
         return TTData(entryEvaluation, entryStaticEval, entryDepth, entryBestMove, (Bound)entryBound);
@@ -109,7 +74,7 @@ struct TTEntry
 constexpr int TTSize = 1 << 21;
 
 // the TTSize is a power of 2. therefore in order to calculate the index of an entry which is zobrist % TTSize we can use bitwise AND like so:
-// index = zobrist & TTSize-1
+// index = zobrist & (TTSize-1)
 constexpr int TTSizeMinusOne = TTSize - 1;
 
 
@@ -132,3 +97,43 @@ inline void clearTranspositionTable()
 
 
 
+
+// ************ PAWN HASH TABLE *****************
+
+
+
+
+// the size of the pawn structure transposition table
+constexpr int pawnTableSize = 1 << 16;
+constexpr int pawnTableSizeMinusOne = pawnTableSize - 1;
+
+// Hashtable entry for pawn structures
+struct pawnHashEntry
+{
+    ZobristHash pawnZobristHash = 0;
+    int16_t pawnStructureEval = 0;
+
+    pawnHashEntry() = default;
+
+    pawnHashEntry(ZobristHash pawnZobrist, int pawnEval)
+    {
+        pawnZobristHash = pawnZobrist;
+        pawnStructureEval = pawnEval;
+    }
+};
+
+// global transposition table for pawns
+inline pawnHashEntry pawnHashTable[pawnTableSize];
+
+
+// save a position to the tt, or overwrite an existing hash entry
+void savePawnHash(ZobristHash pawnZobristHash, int pawnsEvaluation);
+
+// looks up a position in the transposition table and returns the entry if it exists
+int probePawnHash(ZobristHash pawnZobrist);
+
+// function to clear pawn transposition table
+inline void clearPawnTranspositionTable()
+{
+    memset(pawnHashTable, 0, sizeof(pawnHashEntry) * pawnTableSize);
+}

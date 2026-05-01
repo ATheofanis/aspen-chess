@@ -12,8 +12,11 @@ void TimeManager::start(TimePoint myTime, TimePoint myInc, int movesToGo)
     shouldStop = false;
     startingTime = now();
 
-    TimePoint remainingTime = myTime + myInc * (movesToGo-1); // remaining time is time left in addition to the total increment we can get from moves to go
+    TimePoint totalRemainingTime = myTime + myInc * (movesToGo-1); // remaining time is time left in addition to the total increment we can get from moves to go
 
-    optimumTimeLimit = remainingTime / movesToGo;
-    maximumTimeLimit = std::min(optimumTimeLimit * 3, remainingTime / 2);
+
+    optimumTimeLimit = totalRemainingTime / movesToGo;
+
+    // the maximum time limit must ensure the engine never runs out of time so it will never be more than half of the total time remaining
+    maximumTimeLimit = std::min(optimumTimeLimit * 3, totalRemainingTime / 2);
 }

@@ -9,10 +9,10 @@
 class Position;
 
 inline int MAX_DEPTH = 64;
-//constexpr int MAX_PLY = 30;
 
-//extern Move previousMoves[MAX_PLY];
 
+
+// Move picker class - to be continued
 class MovePicker
 {
 public:
@@ -24,10 +24,15 @@ private:
 };
 
 
-extern int precomputedLMR[32][256];
 
+extern int precomputedLMR[64][256];
+
+
+// the LMR formula is computed once at the beginning of the program to avoid calling std::log millions of times in the search
 inline void initLMR() {
-    for (int d = 0; d < 32; d++) {
+    // for every depth up to 64
+    for (int d = 0; d < 64; d++) {
+        // for every move up to 256
         for (int i = 0; i < 256; i++) {
             precomputedLMR[d][i] = 1 + std::log(d) * std::log(i) / 2.0;
         }
