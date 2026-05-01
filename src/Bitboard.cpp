@@ -121,7 +121,8 @@ void printBitboard(Bitboard bb)
 }
 
 
-
+// Initializer for the lineBetween array. It calculates the squares between every pair of squares in the chess board.
+// The line includes every square between square1 and square2 but also square2 itself
 void initLineBetween()
 {
     for (int sq1 = 0; sq1 < 64; sq1++)
@@ -132,17 +133,23 @@ void initLineBetween()
 
             lineBetween[sq1][sq2] = 0ULL;
 
-            int fileSq1 = sq1 % 8; // a6 = 40
+            // Calculate the file of each square
+            int fileSq1 = sq1 % 8;
             int fileSq2 = sq2 % 8;
 
+            // Calculate the rank of each square
             int rankSq1 = sq1 / 8;
             int rankSq2 = sq2 / 8;
 
+            // Use the squares delta to move horizontally, vertically or diagonally depending on the values of rank delta and file delta
             int rankDelta = rankSq2 - rankSq1;
             int fileDelta = fileSq2 - fileSq1;
 
             if (fileDelta != 0 && rankDelta != 0 && abs(fileDelta) != abs(rankDelta)) continue;
 
+            // We calculate the file and rank step which determine the direction of each step we take
+            // For example if the file delta is greater than 0 it means that the file of square2 is greater than the file of square1
+            // Then the file step is set to 1 because in order to reach the file of square2 coming from square1 we need to increment the current file index
             int fileStep = (fileDelta == 0) ? 0 : (fileDelta > 0 ? 1 : -1);
             int rankStep = (rankDelta == 0) ? 0 : (rankDelta > 0 ? 1 : -1);
 
@@ -151,14 +158,19 @@ void initLineBetween()
             int file = fileSq1;
             int rank = rankSq1;
 
+            // Loop through every square inbetween
             for (int i = 0; i < steps; i++)
             {
                 int sq = rank * 8 + file;
 
+                // Use OR to add the new square to the line between bitboard of the two squares
                 lineBetween[sq1][sq2] |= (1ULL << sq);
+                // increment rank and file based on the steps we calculated earlier
                 rank += rankStep;
                 file += fileStep;
             }
+            // include the square of square2 and exclude the square of square1
+            // This way we can immediately find the squares that a bishop or a rook is attacking with a simple array call
             lineBetween[sq1][sq2] |= (1ULL << sq2);
             lineBetween[sq1][sq2] &= ~(1ULL << sq1);
         }

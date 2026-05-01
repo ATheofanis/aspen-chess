@@ -277,8 +277,6 @@ void Position::makeMove(Move move)
 
         // for WK : if the from square was from the white kingside rook's starting position then castling rights for WK sohuld be disabled, same logic for queenside
 
-        //auto updatedCastleRights = (((fromMask & wkRookMask) >> 7) | ((fromMask & wqRookMask) << 1));
-        //updatedCastleRights |= (((toMask & bkRookMask) >> 61) | ((toMask & bqRookMask) >> 56));
 
         // if enemy rook was captured update black's castle rights, if own rook moved update the corresponding castle side right
         // if a move was made that corresponds to one of the 4 rook square masks then that means we need to update a castling right, that happens by
@@ -340,7 +338,6 @@ void Position::makeMove(Move move)
     if (flag)
     {
         // handle captures
-        // CORRECT ----------------------------------------------------------------
         if (flag == 4)
         {
             irreversiblePositionTop = numOfPositions;
@@ -382,10 +379,9 @@ void Position::makeMove(Move move)
 
             zobristHash ^= zobristPieces[toSquare][pieceMoved];
 
-        } //  ----------------------------------------------------------------
-
-        //   ----------------------------------------------------------------
-        else if (flag == 5) // en passant
+        }
+        // en passant
+        else if (flag == 5)
         {
             //Piece capPawn;
             if (whiteToMoveFlag)
@@ -433,18 +429,13 @@ void Position::makeMove(Move move)
                 zobristHash ^= zobristPieces[toSquare][bp];
             }
 
-        } // ----------------------------------------------------------------
-
-
+        }
         // captures are done , now handle promotions and promo-captures
-        else if (flag & 8) // handle promotions
+        else if (flag & 8)
         {
             // add promoted piece to mailbox
             // (colorDelta + flag % 4 + 1) gives the index of promoted piece based on the 16 bit move encoding i am using
             Piece promotedPiece = static_cast<Piece>(colorDelta + flag % 4 + 1);
-
-            //Piece capturedPiece = Board[toSquare];
-            //prevPosInfo.pieceCaptured = capturedPiece;
 
 
             if (flag & 4) // if move is promo-capture
@@ -511,7 +502,6 @@ void Position::makeMove(Move move)
             if (whiteToMoveFlag) // White castles
             {
 
-                //castleRights &= 12;
                 int rookStartSq = 7; // initialize with white kingside rook squares
                 int rookEndSq = 5; // initialize with white kingside rook squares
 
@@ -547,7 +537,6 @@ void Position::makeMove(Move move)
 
             else // Black castles
             {
-                //castleRights &= 3;
                 int rookStartSq = 63; // initialize with black kingside rook squares
                 int rookEndSq = 61; // initialize with black kingside rook squares
 
@@ -581,7 +570,7 @@ void Position::makeMove(Move move)
         }
 
     } // if flag 0, quiet move
-    else // quiet move -> ^= moveMask with the piece that moved and update white/black bb and occupied bb
+    else // quiet move : XOR moveMask with the piece that moved and update white/black bb and occupied bb
     {
         pieceBitboard[pieceMoved] ^= moveMask;
         Board[toSquare] = pieceMoved;
@@ -618,15 +607,6 @@ void Position::makeMove(Move move)
 
 
     previousPositions[numOfPositions++] = zobristHash;
-
-    // ASSERT
-    //if (pawnZobristHash != computePawnZobristHash())
-    //{
-    //    std::cout << "MOVE OF FLAG THAT CAUSED ISSUE:" << flag << std::endl;
-    //    std::cout << "EXPECTED ZOBRIST:" << computePawnZobristHash() << std::endl;
-    //    std::cout << "FAILED ZOBRIST:" << pawnZobristHash << std::endl;
-    //    assert(false);
-    //}
 
 }
 
@@ -687,9 +667,6 @@ void Position::makeCapture(Move move)
         whitePiecesBitboard ^= moveMask;
 
         // for WK : if the from square was from the white kingside rook's starting position then castling rights for WK sohuld be disabled, same logic for queenside
-
-        //auto updatedCastleRights = (((fromMask & wkRookMask) >> 7) | ((fromMask & wqRookMask) << 1));
-        //updatedCastleRights |= (((toMask & bkRookMask) >> 61) | ((toMask & bqRookMask) >> 56));
 
         // if enemy rook was captured update black's castle rights, if own rook moved update the corresponding castle side right
         // if a move was made that corresponds to one of the 4 rook square masks then that means we need to update a castling right, that happens by
@@ -917,9 +894,6 @@ void Position::makeCapture(Move move)
     }
 
     previousPositions[numOfPositions++] = zobristHash;
-
-    // ASSERT
-    //assert(pawnZobristHash == computePawnZobristHash());
 
 }
 // MAKE CAPTURE -----------------==============================
@@ -1227,10 +1201,7 @@ void Position::unmakeCapture()
 
         }
     }
-    //zobristHash ^= zobristBlackToMove;
 
-    // ASSERT
-    assert(pawnZobristHash == computePawnZobristHash());
 }
 // UNMAKE CAPTURE -----------------------------------====================================
 
@@ -1260,8 +1231,6 @@ void Position::calculatePstAndMaterialScore()
             }
         }
     }
-    //std::cout << "Total pst and mat score:" << getTotalPSTAndMaterialScore() << std::endl;
-    //std::cout << "GAME PHASE AFTER CALCULATE PST AND MAT SCORE: " << gamePhase << std::endl;
 }
 
 // for now return zobrist hash for easier debugging might change later to set the hash directly
@@ -1364,8 +1333,6 @@ Bitboard Position::getLeastValuablePiece(Bitboard pieces, int colorDelta, int &p
 // for SEE
 Bitboard Position::xRayAttackersToSquare(int targetSquare, Bitboard occupancy) const
 {
-    //std::cout << "Inside RAY ATTACKERS" << std::endl;
-
     Bitboard attackersBitboard = 0ULL;
 
     Bitboard allDiagonalAttackers = pieceBitboard[wB] | pieceBitboard[bB] | pieceBitboard[bQ] | pieceBitboard[wQ];
@@ -1394,14 +1361,10 @@ Bitboard Position::xRayAttackersToSquare(int targetSquare, Bitboard occupancy) c
     12. If see_value – trophy_value >= threshold then return TRUE (i.e. even of the opponent captures the new piece on offer, they will not each the threshold)
     13. If see_value < threshold then return FALSE (i.e. the opponent can stand-pat and the score is less than the threshold).
     14. While each side has potential captures go to Step 4.
-    */
+*/
 
 int Position::SEE( int toSquare, int targetPiece, int fromSquare, int attackerPiece)
 {
-    //std::cout << "Inside SEE" << std::endl;
-
-    int side = (attackerPiece < 6) ? 0 : 1; // if white side is 1 , if black side is 0
-
     int gain[32];
     int depth = 0;
     Bitboard mayXRay = (whitePiecesBitboard & ~ (pieceBitboard[wN] | pieceBitboard[wK])) | (blackPiecesBitboard & ~ (pieceBitboard[bN] | pieceBitboard[bK]));

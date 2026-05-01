@@ -47,7 +47,6 @@ int kingAttackersScore(const Position& pos)
     Bitboard aB = attackingBishops;
     Bitboard attackingKnights = pos.getPieceBitboard(attackerColorDelta + 1);
     Bitboard aK = attackingKnights;
-    //Bitboard attackingPawns   = pos.getPieceBitboard(attackerColorDelta + 0);
 
     Bitboard rookTypeAttackers = attackingQueens | attackingRooks;
 
@@ -151,15 +150,6 @@ int pawnStructureScore(const Position& pos)
         }
     }
 
-
-
-
-
-
-
-    //return score + ((numOfWhiteDoubled - numOfBlackDoubled) * 0) + (numOfWhiteIsolated - numOfBlackIsolated) * 0;
-
-    //return score + (numOfWhiteIsolated - numOfBlackIsolated) * isolatedPawnPenalty;
     return pawnScore;
 }
 // CALCULATE DOUBLED PAWN SCORE, ADD FOR WHITE SUBTRACT FOR BLACK --------------===============
@@ -263,8 +253,6 @@ int scoreBoard(const Position& pos)
     }
     score += whiteAttackScore - blackAttackScore;
 
-
-    //return score;
     return pos.isWhiteToMove() ? score : -score;
 }
 

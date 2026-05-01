@@ -21,8 +21,6 @@ struct positionInfo
     ZobristHash zobrist{};
     ZobristHash pawnZobrist{};
 
-    //int eval{};
-    //int pstScore{};
     int enPassantSquare{};
     int mgScore;
     int egScore;
@@ -81,10 +79,10 @@ public:
 
     Position();
 
-    // make (move) functions
+    // make move functions
     void makeMove(Move move); // any legal move
     void makeCapture(Move capture); // any legal capture
-    // for now pass epSq to update zobrist ep file
+
     void makeNullMove(int epSq) // null move for null move pruning
     {
         whiteToMoveFlag = !whiteToMoveFlag;
@@ -93,12 +91,10 @@ public:
 
         if (epSq != NO_SQUARE) zobristHash ^= zobristEnpassantFile[epSq % 8];
 
-        // ASSERT
-        //assert(zobristHash == computeZobristHash());
     }
 
 
-    // unmake (move) functions
+    // unmake move functions
     void unmakeMove();
     void unmakeCapture();
     void unmakeNullMove(int epSq) // undo null move for null move pruning
@@ -108,9 +104,6 @@ public:
         enPassantSquare = epSq;
 
         if (epSq != NO_SQUARE) zobristHash ^= zobristEnpassantFile[epSq % 8];
-
-        // ASSERT
-        //assert(zobristHash == computeZobristHash());
     }
 
     // return the bitboard of a given piece
@@ -179,9 +172,7 @@ public:
         if (mgPhase > 24) mgPhase = 24; // in case of early promotion
         int egPhase = 24 - mgPhase;
 
-        //std::cout << "mgPstAndMaterialScore:" << mgPstAndMaterialScore * mgPhase / 24 << std::endl;
-        //std::cout << "egPstAndMaterialScore:" << egPstAndMaterialScore * egPhase / 24 << std::endl;
-        //std::cout << "Total eval: " << (mgPstAndMaterialScore * mgPhase + egPstAndMaterialScore * egPhase) / 24 << std::endl;
+
         return (mgPstAndMaterialScore * mgPhase + egPstAndMaterialScore * egPhase) / 24;
     }
 
@@ -195,7 +186,6 @@ public:
     // check if current position has been repeated twice before (3-fold repetition rule)
     bool checkRepetition(ZobristHash currentPositionZobrist)
     {
-        //if (irreversiblePositionTop > 50) return true;
 
         int repetitionsCount = 0;
 
@@ -206,7 +196,6 @@ public:
                 repetitionsCount++;
                 if (repetitionsCount == 2)
                 {
-                    //std::cout << "info string repetition detected" << std::endl;
                     return true;
                 }
             }

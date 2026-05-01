@@ -86,15 +86,9 @@ constexpr int lsbIndex(Bitboard bb)
     return __builtin_ctzll(bb);
 }
 
-// returns the index of least valuable bit and pops it from the bitboard 
-//constexpr int popLsbAndReturnIndex(Bitboard &b)
-//{
-//    int index = std::countr_zero(b);
-//    b &= b - 1;
-//    return index;
-//}
 
-// returns the index of least valuable bit and pops it from the bitboard -- FOR COMPILERS WITHOUT C++23
+
+// returns the index of least valuable bit and pops it from the bitboard
 constexpr int popLsbAndReturnIndex(Bitboard &b)
 {
     int index = __builtin_ctzll(b);

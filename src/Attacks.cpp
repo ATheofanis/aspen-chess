@@ -344,55 +344,34 @@ bool squareUnderAttack(int targetSquare, Color attackingSideColor, const Positio
     // delta is 6 for black and 0 for white for piece indecies
     int attackingSideDelta = (attackingSideColor == White) ? 0 : 6;
 
-    //std::cout << "attacking side delta: " << attackingSideDelta << std::endl;
-
     Bitboard attackingQueen = pos.getPieceBitboard(attackingSideDelta + 4);
 
-
-
-    // tests--------------------------
 
     // check rook and queen
     if ( getRookAttacks(targetSquare, occupied)  &  (pos.getPieceBitboard(attackingSideDelta + 3) | attackingQueen) )
     {
-        // test ----------------------------
-        //std::cout << "ATTACKED BY ROOK OR QUEEN" << std::endl;
-        // test ----------------------------
         return true;
     }
     // check bishop and queen
     if ( getBishopAttacks(targetSquare, occupied)  &  (pos.getPieceBitboard(attackingSideDelta + 2) | attackingQueen) )
     {
-        // test ----------------------------
-        //std::cout << "ATTACKED BY bishop OR QUEEN" << std::endl;
-        // test ----------------------------
         return true;
     }
     // check knights
     if ( knightAttacks[targetSquare]  &  pos.getPieceBitboard(attackingSideDelta + 1) )
     {
-        // test ----------------------------
-        //std::cout << "ATTACKED BY KNIGHT" << std::endl;
-        // test ----------------------------
         return true;
     }
     // for enemy pawns to check if a white piece is under attack we can check the attacking squares of a white pawn that would be in the target square's position
     // then if a black pawn is in that position the square is under attack
     if ( pawnAttacks[(attackingSideColor == White) ? Black : White][targetSquare] &  pos.getPieceBitboard(attackingSideDelta))
     {
-        // test ----------------------------
-        //std::cout << "ATTACKED BY PAWN" << std::endl;
-        // test ----------------------------
         return true;
     }
 
 
-
     if ( kingAttacks[targetSquare]  &  pos.getPieceBitboard(attackingSideDelta + 5) )
     {
-        // test ----------------------------
-        //std::cout << "ATTACKED BY KING" << std::endl;
-        // test ----------------------------
         return true;
     }
 
@@ -409,17 +388,8 @@ bool squareUnderAttackByRookPiece(int targetSquare, Color attackingSideColor, co
 
 
     // check rook and queen
-
-
-
-    //std::cout << "rook attacks and rook/queen BB: " << std::endl;
-
-
     if ( getRookAttacks(targetSquare, occupied)  &  (pos.getPieceBitboard(attackingSideDelta + 3) | (pos.getPieceBitboard(attackingSideDelta + 4))))
     {
-        // test ----------------------------
-        //std::cout << "ATTACKED BY ROOK OR QUEEN" << std::endl;
-        // test ----------------------------
         return true;
     }
 
@@ -433,27 +403,17 @@ bool squareUnderAttackBySliderPiece(int targetSquare, Color attackingSideColor, 
     int attackingSideDelta = (attackingSideColor == White) ? 0 : 6;
 
 
-    // check rook and queen
-
-
     Bitboard attackingQueen = pos.getPieceBitboard(attackingSideDelta + 4);
 
 
     // check rook and queen
-
     if ( getRookAttacks(targetSquare, occupied)  &  (pos.getPieceBitboard(attackingSideDelta + 3) | attackingQueen) )
     {
-        // test ----------------------------
-        //std::cout << "ATTACKED BY ROOK OR QUEEN" << std::endl;
-        // test ----------------------------
         return true;
     }
     // check bishop and queen
     if ( getBishopAttacks(targetSquare, occupied)  &  (pos.getPieceBitboard(attackingSideDelta + 2) | attackingQueen) )
     {
-        // test ----------------------------
-        //std::cout << "ATTACKED BY bishop OR QUEEN" << std::endl;
-        // test ----------------------------
         return true;
     }
 

@@ -213,14 +213,7 @@ Move parseMove(const std::string& moveString, Position pos)
     legalityInformation info = getLegalityInfo(kingSq, allyColor, pos);
 
     generateLegalMoves(info, pos, moves, numOfMoves);
-    // test
-    //for (int i = 0 ; i < numOfMoves; i++)
-    //{
-    //    std::cout << "==========================================" << std::endl;
-    //    std::cout << "MOVE RAW:" << moves[i];
-    //    printMove(moves[i]);
-    //    std::cout << "==========================================" << std::endl;
-    //}
+
 
     Move startSq = (moveString[0] - 'a') + (moveString[1] - '1') * 8;
     Move endSq = (moveString[2] - 'a') + (moveString[3] - '1') * 8;
