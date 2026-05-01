@@ -12,13 +12,15 @@
 #include <unordered_map>
 #include <chrono>
 
+
+// this file holds various enum's, arrays and variables with the 'using' keyword
+
 using Bitboard = uint64_t;
 using ZobristHash = uint64_t;
 
 using TimePoint = std::chrono::milliseconds::rep;
 
-constexpr int MAX_PLY = 30;
-
+constexpr int MAX_PLY = 64;
 
 // board squares ENUM
 enum Square : int {

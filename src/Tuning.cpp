@@ -10,7 +10,6 @@ double calculateError(int bonus, double K)
 {
     double totalError = 0;
 
-
     // for every entry calculate the total score of the position using previously stored static eval as the base
     // then calculate the sigmoid which returns the win probability
     // the total error is then calculated by adding up all the squares of the diff's of 'result - sigmoid'
@@ -30,34 +29,7 @@ double calculateError(int bonus, double K)
 }
 
 
-
-/*
-
-// calculate error for penalties
-double calculateError(int penalty, double K)
-{
-    double totalError = 0;
-
-
-    // for every entry calculate the total score of the position using previously stored static eval as the base
-    // then calculate the sigmoid which returns the win probability
-    // the total error is then calculated by adding up all the squares of the diff's of 'result - sigmoid'
-    // and for the last step divide the total error sum with the number of entries to return the total error
-    for (const auto& tuningEntry : tuningData)
-    {
-        double score = (double)tuningEntry.staticEval + (double)tuningEntry.isolatedPawnsCount * (double)penalty;
-
-        double sigmoid = 1.0 / (1.0 + exp(-K * score/ 400.0));
-
-        double error = tuningEntry.result - sigmoid;
-
-        totalError += error * error;
-    }
-
-    return totalError / (double)tuningData.size();
-}
-*/
-
+// to read line by line from a file containing game information, like board position and which side won
 void parseLineForTuning(const std::string& line, Position& pos)
 {
     TuningEntry newEntry;
@@ -74,9 +46,9 @@ void parseLineForTuning(const std::string& line, Position& pos)
     newEntry.result = result;
     newEntry.staticEval = scoreBoard(pos);
 
-    //newEntry.doubledPawnsCount = numOfDoubledPawns(White, pos) - numOfDoubledPawns(Black, pos);
     newEntry.bishopPairsCount = getBishopPairDiff(pos);
 
+    // to test that the tuning data is parsed correctly
     if (tuningData.size() < 6)
     {
         std::cout << "Num of bishop pairs:" << newEntry.bishopPairsCount << std::endl;
@@ -89,39 +61,6 @@ void parseLineForTuning(const std::string& line, Position& pos)
 
 
 
-/*
-// parse for isolated pawns
-void parseLineForTuning(const std::string& line, Position& pos)
-{
-    TuningEntry newEntry;
-    pos.loadFen(line);
-
-    double result = 0.5;
-    if (line.find("\"1-0\"") != std::string::npos)
-    {
-        result = 1.0;
-    } else if (line.find("\"0-1\"") != std::string::npos)
-    {
-        result = 0.0;
-    }
-    newEntry.result = result;
-    newEntry.staticEval = scoreBoard(pos);
-
-    //newEntry.doubledPawnsCount = numOfDoubledPawns(White, pos) - numOfDoubledPawns(Black, pos);
-    newEntry.isolatedPawnsCount = numOfIsolatedPawns(White, pos) - numOfIsolatedPawns(Black, pos);
-
-    totalIsolatedPawns += std::abs(newEntry.isolatedPawnsCount);
-    if (tuningData.size() < 6)
-    {
-        std::cout << " result : " << newEntry.result << std::endl;
-        std::cout << "static eval: " << newEntry.staticEval << std::endl;
-        std::cout << "Num of double:" << newEntry.isolatedPawnsCount << std::endl;
-    }
-
-
-    tuningData.push_back(newEntry);
-}
-*/
 
 
 
@@ -230,12 +169,6 @@ int getSemiOpenFileRooksDiff(const Position& pos)
         {
             numOfRooksOnSemi++;
         }
-
-        //if ((file & wps) == 0 && (file & bps))
-        //{
-        //    numOfRooksOnSemi++;
-        //}
-
     }
 
 
@@ -253,7 +186,7 @@ int getSemiOpenFileRooksDiff(const Position& pos)
 }
 
 
-
+// returns the difference of white bishop pair and black bishop pair
 int getBishopPairDiff(const Position& pos)
 {
     int bishopPairDiff = 0;
@@ -277,6 +210,7 @@ void tuner()
     int bestBonus = 0;
     double minError = 1.0;
 
+    // run the tuner for a range of K values to find the K leading to the least amount of errors
     for (double K = 1.5; K <= 5.0; K += 0.05)
     {
         for (int bonus = 0; bonus <= 30; bonus++)
@@ -296,31 +230,3 @@ void tuner()
 }
 
 
-
-
-// tuner for penalties
-/*
-void tuner()
-{
-    double bestK = 2.0;
-    int bestPenalty = 0;
-    double minError = 1.0;
-
-    for (double K = 1; K <= 5.0; K += 0.05)
-    {
-        for (int penalty = -1; penalty >= -50; penalty--)
-        {
-            double error = calculateError(penalty, K);
-            if (error < minError)
-            {
-                minError = error;
-                bestK = K;
-                bestPenalty = penalty;
-            } else { break; }
-        }
-        std::cout << "K: " << K << " Error: " << minError << std::endl;
-    }
-
-    std::cout << "Best K: " << bestK << " Best Penalty: " << bestPenalty << std::endl;
-}
-*/
