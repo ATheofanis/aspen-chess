@@ -70,6 +70,7 @@ enum Piece : int {
 //  6   7   8   9   10  11
     bp, bN, bB, bR, bQ, bK,
 
+    // 12
     NO_PIECE
 };
 
@@ -108,9 +109,10 @@ constexpr CastlingRights BK = 4;
 constexpr CastlingRights BQ = 8;
 
 
+// for debugging
 enum class UnicodePiece : char32_t {
     // white
-    WhitePawn   = U'♟',  // U+265F - 9823
+    WhitePawn   = U'♟',  // U+265F
     WhiteKnight = U'♞',  // U+265E
     WhiteBishop = U'♝',  // U+265D
     WhiteRook   = U'♜',  // U+265C
@@ -124,7 +126,7 @@ enum class UnicodePiece : char32_t {
     BlackBishop = U'♗',  // U+2657
     BlackRook   = U'♖',  // U+2656
     BlackQueen  = U'♕',  // U+2655
-    BlackKing   = U'♔',  // U+2654 - 9812
+    BlackKing   = U'♔',  // U+2654
 };
 
 
@@ -142,7 +144,8 @@ inline Color pieceColor(Piece p)
     return Black;
 }
 
-
+// there are 3 types of nodes in the search tree, the root nodes, the principal variation nodes and the non principal variation nodes.
+// each type is treated differently inside the search tree
 enum class NodeType : int {
     PV, NonPV, Root
 };
@@ -150,7 +153,7 @@ enum class NodeType : int {
 
 // enum type for transposition table hash entry
 enum class Bound : uint8_t {
-              // UPPERBOUND , LOWERBOUND
+    // EXACT   , UPPERBOUND , LOWERBOUND
     BOUND_EXACT, BOUND_ALPHA, BOUND_BETA, BOUND_NONE
 
 };

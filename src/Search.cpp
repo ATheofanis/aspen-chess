@@ -530,7 +530,7 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
         if (depth > 3 && i > 3 && !isInCheck && !(moveFlag & 4 || moveFlag & 8))
         {
             depthReduction = precomputedLMR[depth][i];
-            if ((ttBestMove >> 12 & 0x3F) & 4) depthReduction++; // idea from stockfish , reduce more if tt move is a capture
+            //if ((ttBestMove >> 12 & 0x3F) & 4) depthReduction++; // idea from stockfish , reduce more if tt move is a capture
         }
 
 

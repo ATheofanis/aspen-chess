@@ -329,7 +329,7 @@ inline void initializations()
 std::string startPos = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 std::string veryTrickyCapturesPos = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
 
-bool UCI_ENABLED = false;
+bool UCI_ENABLED = true;
 
 int main(int argc, char* argv[])
 {
@@ -338,53 +338,6 @@ int main(int argc, char* argv[])
 
 
 
-    Position pos;
-    pos.loadFen("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8");
-
-
-    Move moves[256];
-    int numOfMoves = 0;
-
-    Color allyColor;
-    int kingSquare;
-    // store ally color and king location for legality info
-    if (pos.isWhiteToMove())
-    {
-        allyColor = White;
-        kingSquare = lsbIndex(pos.getPieceBitboard(wK));
-    }
-    else
-    {
-        allyColor = Black;
-        kingSquare = lsbIndex(pos.getPieceBitboard(bK));
-    }
-
-    legalityInformation info = getLegalityInfo(kingSquare, allyColor, pos);
-
-    generateQuietMoves(info, pos, moves, numOfMoves);
-    generateCaptures(info, pos, moves, numOfMoves);
-
-    std::cout << "Total number of legal moves:" << numOfMoves << std::endl;
-
-    //for (int i = 0; i < numOfMoves; i++)
-    //{
-    //    printMove(moves[i]);
-    //}
-
-
-
-
-
-
-
-    // TESTS ---------------------------------==============================================================
-
-
-    //Position testPos;
-    //testPos.loadFen("8/1q6/2k5/8/4p3/8/6K1/8 b - - 0 1");
-    //std::cout << scoreBoard(testPos) << std::endl;
-//
-    //std::cout << numOfDoubledPawns(White, testPos);
 
 
 
@@ -393,16 +346,6 @@ int main(int argc, char* argv[])
 
 
 
-
-
-
-
-
-
-
-
-
-    // TESTS ---------------------------------==============================================================
     if (UCI_ENABLED)
     {
         std::string command;

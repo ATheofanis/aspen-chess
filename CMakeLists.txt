@@ -6,30 +6,28 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include_directories(.)
 
-add_executable(AChess main.cpp
-        Types.h
-        Bitboard.cpp
-        Bitboard.h
-        Attacks.cpp
-        Attacks.h
-        MagicNumbers.cpp
-        MagicNumbers.h
-        Position.cpp
-        Position.h
-        MoveGen.cpp
-        MoveGen.h
-        Score.cpp
-        Score.h
-        Perft.cpp
-        Perft.h
-        Search.cpp
-        Search.h
-        Zobrist.cpp
-        Zobrist.h
-        PRNG.cpp
-        PRNG.h
-        TranspositionTable.cpp
-        TranspositionTable.h
-        Tuning.cpp
-        Tuning.h
+add_executable(AChess src/main.cpp
+        src/Types.h
+        src/Bitboard.cpp
+        src/Bitboard.h
+        src/Attacks.cpp
+        src/Attacks.h
+        src/MagicNumbers.cpp
+        src/MagicNumbers.h
+        src/Position.cpp
+        src/Position.h
+        src/MoveGen.cpp
+        src/MoveGen.h
+        src/Score.cpp
+        src/Score.h
+        src/Search.cpp
+        src/Search.h
+        src/Zobrist.cpp
+        src/Zobrist.h
+        src/PRNG.cpp
+        src/PRNG.h
+        src/TranspositionTable.cpp
+        src/TranspositionTable.h
+        src/Tuning.cpp
+        src/Tuning.h
 )

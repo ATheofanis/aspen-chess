@@ -16,7 +16,6 @@ ZobristHash zobristEnpassantFile[8];
 ZobristHash zobristBlackToMove;
 
 
-
 // initialize 64 squares for every piece type (12) with a random 64bit number, same for :
 // 4 numbers to indicate castling rights one for each type (WK, WQ, BK, BQ)
 // 8 numbers for every file to indicate that enpassant square is in that file
