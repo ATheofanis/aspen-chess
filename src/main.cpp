@@ -436,7 +436,7 @@ int main(int argc, char* argv[])
                 std::cout << "readyok\n" << std::endl;
             } else if (tokens[0] == "uci")
             {
-                std::cout << "id name ABot\n";
+                std::cout << "id name Aspen 0.1.0\n";
                 std::cout << "id author ATheo\n";
                 std::cout << "uciok\n";
             } else if (tokens[0] == "ucinewgame")
