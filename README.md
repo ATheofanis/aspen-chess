@@ -1,0 +1,55 @@
+# Aspen Chess Engine
+
+Aspen is a UCI chess engine written in C++.
+
+## Download
+
+You can find the latest stable release on the [Releases](../../releases) page.
+
+
+## Features
+
+### Move Generation
+Fast legal move generation using magic bitboards.
+
+### Search
+Iterative deepening with aspiration windows over a negamax search with the following enhancements:
+- Alpha-Beta pruning with Principal Variation Search (PVS)
+- Transposition Table (TT) probing
+- Pawn hash table
+- Null Move Pruning (NMP)
+- Futility Pruning, Extended Futility Pruning, Reverse Futility Pruning
+- Razoring
+- Late Move Reduction (LMR)
+- Move ordering: TT move, Killer moves, History heuristic, Static Exchange Evaluation (SEE)
+
+### Evaluation
+Hand-crafted evaluation function including:
+- PeSTO piece-square tables with tapered evaluation
+- Pawn structure evaluation
+- King safety
+- Bishop pair bonus
+- Rook open file bonus
+
+All values are tuned using Texel tuning.
+
+
+## Upcoming
+
+- Piece mobility added to the evaluation
+- Move ordering improvements
+- UCI output improvements
+- Custom NNUE
+
+## Usage
+
+Aspen communicates using the UCI Protocol and is therefore compatible with any Chess GUI that supports UCI such as [Arena](http://www.playwitharena.de/) or [CuteChess](https://cutechess.com/). Simply add the executable as an engine in your GUI of choice.
+
+## Acknowledgements
+
+- [Eddie Sharick](https://www.youtube.com/@eddiesharick6649/videos) - his python chess engine series served as an introduction to chess programming and motivated me to continue
+- [Chess Programming Wiki](https://www.chessprogramming.org/) — great resource on chess programming concepts and history
+- [Talk Chess](https://talkchess.com/) — countless forums and discussions on advanced engine topics
+- [Chess Programming on YouTube](https://www.youtube.com/@chessprogramming591) — didactic series that made many concepts easily understandable. His magic bitboards implementation was directly used in Aspen
+- [Sebastian Lague](https://www.youtube.com/@SebastianLague) — his Chess Programming series was a great source of inspiration
+- [Stockfish Team](https://stockfishchess.org/) — their open source engine was an invaluable reference for advanced concepts
