@@ -19,12 +19,9 @@ int quieNodes = 0;
 int deltaPrunes = 0;
 
 // prints current depth and number of nodes searched for negamax and qsearch for the position
-void printInfo(int depth)
+void printInfo(int depth, int score)
 {
-    std::cout << "info string | Current Depth:" << depth << std::endl;
-    std::cout << "info string | Negamax Nodes:" << nodes << std::endl;
-    std::cout << "info string | Qsearch Nodes:" << quieNodes << std::endl;
-    std::cout << "\n";
+    std::cout << "info depth " << depth << " score cp " << score << " nodes " << nodes << std::endl;
 }
 
 
@@ -639,6 +636,8 @@ Move findBestMove(Position pos)
     int previousScore = VALUE_NONE;
     Move previousMove = NO_MOVE;
 
+    //std::string
+
     // Iterative deepening loop
     for (int depth = 1; depth <= MAX_DEPTH; depth++)
     {
@@ -676,8 +675,13 @@ Move findBestMove(Position pos)
             score = negaMaxAlphaBeta<NodeType::Root>(pos, alpha, beta, depth, bmDummy, 0, depth, false);
         }
 
+        bestMove = bmDummy;
+
+        previousScore = score;
+        previousMove = bestMove;
+
         // Print search statistics (Negamax nodes, QSearch nodes and current search depth)
-        printInfo(depth);
+        printInfo(depth, score);
 
         if (tm.getShouldStopFlag()) break;
 
@@ -705,10 +709,6 @@ Move findBestMove(Position pos)
         // Therefore we attempt to predict if we have enough time left to finish that search, if not then we stop the search here
         if (tm.elapsedTime() * 3 > tm.optimum()) break;
 
-        bestMove = bmDummy;
-
-        previousScore = score;
-        previousMove = bestMove;
     }
 
 
