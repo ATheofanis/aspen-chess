@@ -344,7 +344,7 @@ int main(int argc, char* argv[])
             if (tokens[0] == "position")
             {
                 // non fen string ---------
-                if (tokens[1] == "startpos")
+                if (tokens.size() > 2 && tokens[1] == "startpos")
                 {
                     pos.loadFen(startPos);
 
@@ -385,8 +385,8 @@ int main(int argc, char* argv[])
 
             } else if (tokens[0] == "go")
             {
-                TimePoint wtime = 0, btime = 0, winc = 0, binc = 0;
-                int movestogo = 0;
+                TimePoint wtime = 5000, btime = 5000, winc = 0, binc = 0;
+                int movestogo = 40;
 
                 for (int i = 1; i < tokens.size(); i++) {
                     if (tokens[i] == "wtime") // white remaining time
