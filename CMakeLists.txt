@@ -32,4 +32,6 @@ add_executable(AChess src/main.cpp
         src/Tuning.h
         src/Time.cpp
         src/Time.h
+        src/DataGen.cpp
+        src/DataGen.h
 )

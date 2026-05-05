@@ -17,6 +17,7 @@
 #include <vector>
 #include <sstream>
 
+#include "DataGen.h"
 #include "Time.h"
 
 class Position;
@@ -174,7 +175,8 @@ void dividePerft(Position& pos, int depth)
 void findBestMoveTime(Position pos)
 {
     auto startTime = std::chrono::high_resolution_clock::now();
-    Move bestMove = (findBestMove(pos));
+    int evalDummy;
+    Move bestMove = (findBestMove(pos, evalDummy));
     printMove(bestMove);
     std::cout << "RAW BEST MOVE:" << bestMove << std::endl;
     auto endTime = std::chrono::high_resolution_clock::now();
@@ -321,7 +323,7 @@ inline void initializations()
 std::string startPos = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 std::string veryTrickyCapturesPos = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
 
-bool UCI_ENABLED = false;
+bool UCI_ENABLED = true;
 
 int main(int argc, char* argv[])
 {
@@ -350,11 +352,27 @@ int main(int argc, char* argv[])
             if (command.empty()) continue;
 
             std::vector<std::string> tokens = tokenize(command);
+
+            // Custom command for data generation
+            if (tokens[0] == "begin")
+            {
+                if (tokens.size() >= 2 && tokens[1] == "datagen")
+                {
+                    NumberOfGames = std::atoi(tokens[2].c_str());
+
+                    TimePoint startingTime = now();
+                    MAX_NODES = dataGenMaxNodes;
+                    DataGenFlag = true;
+                    generateData();
+                    TimePoint totalTime = now() - startingTime;
+                    std::cout << "Data generation finished. Generated " << NumberOfGames << "games in " << totalTime << " ms." << std::endl;
+                }
+            }
             // position command
-            if (tokens[0] == "position")
+            else if (tokens[0] == "position")
             {
                 // non fen string ---------
-                if (tokens.size() > 2 && tokens[1] == "startpos")
+                if (tokens.size() >= 2 && tokens[1] == "startpos")
                 {
                     pos.loadFen(startPos);
 
@@ -395,8 +413,9 @@ int main(int argc, char* argv[])
 
             } else if (tokens[0] == "go")
             {
-                TimePoint wtime = 5000, btime = 5000, winc = 0, binc = 0;
-                int movestogo = 40;
+                MAX_NODES = std::numeric_limits<uint64_t>::max();
+                TimePoint wtime = 50000, btime = 50000, winc = 0, binc = 0;
+                int movestogo = 25;
 
                 for (int i = 1; i < tokens.size(); i++) {
                     if (tokens[i] == "wtime") // white remaining time
@@ -423,6 +442,10 @@ int main(int argc, char* argv[])
                     {
                         MAX_DEPTH = std::atoi(tokens[i+1].c_str());
                     }
+                    else if (tokens[i] == "nodes") // set the maximum amount of nodes that can be searched
+                    {
+                        MAX_NODES = std::atoi(tokens[i+1].c_str());
+                    }
                 }
 
                 // start the time manager if wtime or btime were given
@@ -433,7 +456,8 @@ int main(int argc, char* argv[])
                 }
 
                 // PRINT BEST MOVE ------------------======================================================
-                Move bestMove = findBestMove(pos);
+                int evalDummy;
+                Move bestMove = findBestMove(pos, evalDummy);
 
                 std::cout << "bestmove ";
                 printMoveNoMessages(bestMove);
