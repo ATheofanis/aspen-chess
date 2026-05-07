@@ -13,7 +13,6 @@
 #include "Bitboard.h"
 #include "Tuning.h"
 
-#include <windows.h>
 
 #include "MoveGen.h"
 #include "Position.h"
@@ -34,7 +33,6 @@ void init()
     clearPawnTranspositionTable();
     seedingForXoshiro256aa();
     initPSTtables();
-    SetConsoleOutputCP(CP_UTF8);
     initPawnAttacks();
     initKnightAttacks();
     initKingAttacks();
