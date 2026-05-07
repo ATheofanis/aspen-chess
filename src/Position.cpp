@@ -16,7 +16,7 @@ void Position::clearPosition()
     {
         sq = NO_PIECE;
     }
-    for (unsigned long long & piece : pieceBitboard) {
+    for (auto & piece : pieceBitboard) {
         piece = 0ULL;
     }
     blackPiecesBitboard = 0ULL;

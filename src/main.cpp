@@ -6,7 +6,7 @@
 #include "Bitboard.h"
 #include "Tuning.h"
 
-#include <windows.h>
+
 
 #include "MoveGen.h"
 #include "Position.h"
@@ -305,7 +305,6 @@ inline void initializations()
     clearPawnTranspositionTable();
     seedingForXoshiro256aa();
     initPSTtables();
-    SetConsoleOutputCP(CP_UTF8);
     initPawnAttacks();
     initKnightAttacks();
     initKingAttacks();
@@ -405,7 +404,7 @@ int main(int argc, char* argv[])
             {
                 MAX_NODES = std::numeric_limits<uint64_t>::max();
                 TimePoint wtime = 50000, btime = 50000, winc = 0, binc = 0;
-                int movestogo = 25;
+                int movestogo = 1;
 
                 for (int i = 1; i < tokens.size(); i++) {
                     if (tokens[i] == "wtime") // white remaining time
