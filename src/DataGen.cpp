@@ -113,7 +113,7 @@ void generateData()
 
             pos.makeMove(randomMove);
 
-            hashHistory.push_back(pos.getZobristHash());
+            //hashHistory.push_back(pos.getZobristHash());
 
             tm.start(500000, 500000, 1);
 

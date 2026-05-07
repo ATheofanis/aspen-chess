@@ -16,6 +16,7 @@
 #include "Zobrist.h"
 #include <vector>
 #include <sstream>
+#include <fstream>
 
 #include "DataGen.h"
 #include "Time.h"
@@ -318,8 +319,6 @@ inline void initializations()
 
 
 
-
-
 std::string startPos = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 std::string veryTrickyCapturesPos = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
 
@@ -329,18 +328,9 @@ int main(int argc, char* argv[])
 {
     initializations();
 
-    Position pos;
-    Move m = parseMove("e2e4", pos);
-    pos.makeMove(m);
-    m = parseMove("d7d5", pos);
-    pos.makeMove(m);
-    m = parseMove("e1e2", pos);
-    pos.makeMove(m);
-
-    std::string fenStr = pos.boardToFen();
-    std::cout << "fen str : " << fenStr << std::endl;
 
 
+    // Start the UCI loop if UCI is enabled
     if (UCI_ENABLED)
     {
         std::string command;
