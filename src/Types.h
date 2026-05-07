@@ -22,6 +22,9 @@ using TimePoint = std::chrono::milliseconds::rep;
 
 constexpr int MAX_PLY = 64;
 
+// returns the character of a piece given its piece index, for example 0 returns P for white pawn, 6 returns p for black pawn
+constexpr char pieceToCharacter[] = "PNBRQKpnbrqk";
+
 // board squares ENUM
 enum Square : int {
     a1, b1, c1, d1, e1, f1, g1, h1,

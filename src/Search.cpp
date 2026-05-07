@@ -34,7 +34,7 @@ int quiescence(Position& pos, int alpha, int beta, Move ttBestMove, int ply)
 {
 
     // first check if the maximum time limit has been exceeded
-    if ((nodes & 2047) == 0 && tm.maximumExpired())
+    if (((nodes & 2047) == 0 && tm.maximumExpired()) || (nodes >= MAX_NODES))
     {
         // set the stop search flag of the timer manager to true so that we know not to trust the score and the bestMove found in this depth
         tm.stopSearch();
@@ -260,7 +260,7 @@ int quiescence(Position& pos, int alpha, int beta, Move ttBestMove, int ply)
 template<NodeType nodeType>
 int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMove, int ply, int rootDepth, bool allowNullMove)
 {
-    if ((nodes & 2047) == 0 && tm.maximumExpired())
+    if (((nodes & 2047) == 0 && tm.maximumExpired()) || (nodes >= MAX_NODES))
     {
         tm.stopSearch();
         return 0;
@@ -618,7 +618,7 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
 
 
 // This function initiates the search using iterative deepening and aspiration windows
-Move findBestMove(Position pos)
+Move findBestMove(Position pos, int& posEval)
 {
     // Increment generation for transposition table aging replacement scheme
     generation++;
@@ -650,6 +650,7 @@ Move findBestMove(Position pos)
         Move bmDummy = bestMove;
 
         int score = negaMaxAlphaBeta<NodeType::Root>(pos, alpha, beta, depth, bmDummy, 0, depth, false);
+        posEval = score;
 
         // If the time management flag is set to true, it means that the search was interrupted.
         // The results of an interrupted search are discarded since they are incomplete
@@ -666,6 +667,8 @@ Move findBestMove(Position pos)
 
         if (tm.getShouldStopFlag()) break;
 
+        posEval = score;
+
         // If re-searching with a wider window still results in an out of bounds score, then search again with a full window
         if ((score <= alpha || score >= beta))
         {
@@ -681,9 +684,10 @@ Move findBestMove(Position pos)
         previousMove = bestMove;
 
         // Print search statistics (Negamax nodes, QSearch nodes and current search depth)
-        printInfo(depth, score);
+        if (!DataGenFlag) printInfo(depth, score); // only print info if we are not generating self play data
 
         if (tm.getShouldStopFlag()) break;
+        posEval = score;
 
         // Set the new aspiration window based on the score we found at this depth
         // This way the window for the next depth will be narrow and will lead to more cutoffs than if it were a full search window

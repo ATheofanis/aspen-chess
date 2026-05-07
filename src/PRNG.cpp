@@ -4,6 +4,8 @@
 
 #include "PRNG.h"
 
+#include <ctime>
+
 // xoshiro256** pseudo random number generator. Code from https://prng.di.unimi.it/xoshiro256starstar.c:
 
 
@@ -47,7 +49,8 @@ uint64_t next() {
 // splitmix64 pseudo code: https://rosettacode.org/wiki/Pseudo-random_numbers/Splitmix64
 
 // for seeding we use splitmix64
-static uint64_t splitmix64State = 12587915872;
+//static uint64_t splitmix64State = 12587915872;
+static uint64_t splitmix64State = static_cast<uint64_t>(std::time(nullptr)); // temporary for datagen
 
 // use splitmix64 generator for seeding (to fill s - state)
 uint64_t splitmix64()

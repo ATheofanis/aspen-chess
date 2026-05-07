@@ -16,7 +16,7 @@ void Position::clearPosition()
     {
         sq = NO_PIECE;
     }
-    for (unsigned long long & piece : pieceBitboard) {
+    for (auto & piece : pieceBitboard) {
         piece = 0ULL;
     }
     blackPiecesBitboard = 0ULL;
@@ -1394,6 +1394,89 @@ int Position::SEE( int toSquare, int targetPiece, int fromSquare, int attackerPi
 
     return gain[0];
 
+}
+
+// Converts a position to a fen string for general debugging and for NNUE data generation
+std::string Position::boardToFen() const
+{
+    std::string fenStr;
+
+    // Loop through every rank and file
+    for (int rank = 7; rank >= 0; rank--)
+    {
+        int emptyCount = 0;
+        for (int file = 0; file < 8; file++)
+        {
+            int sq = rank * 8 + file;
+            Piece p = Board[sq];
+
+            if (p == NO_PIECE)
+            {
+                emptyCount++;
+            }
+            else
+            {
+                if (emptyCount > 0)
+                {
+                    fenStr += std::to_string(emptyCount); // Add the number of empty squares before the piece
+                    emptyCount = 0;
+                }
+
+                fenStr += pieceToCharacter[static_cast<int>(p)];
+            }
+        }
+
+        if (emptyCount > 0) fenStr += std::to_string(emptyCount); // Number of empty squares after the last piece found in the rank
+        if (rank > 0) fenStr += '/';
+    }
+
+    // Add the side to move character
+    fenStr += whiteToMoveFlag ? " w " : " b ";
+
+    // Check its castling right and add it to the fen string if it is legal
+    std::string castlingRights;
+
+    // White kingside
+    if (castleRights & WK)
+    {
+        castlingRights += 'K';
+    }
+    // White queenside
+    if (castleRights & WQ)
+    {
+        castlingRights += 'Q';
+    }
+    // Black kingside
+    if (castleRights & BK)
+    {
+        castlingRights += 'k';
+    }
+    // Black queenside
+    if (castleRights & BQ)
+    {
+        castlingRights += 'q';
+    }
+
+    // If non of the above castling rights are allowed then add '-' to the fen string
+    if (castlingRights.empty()) castlingRights = "-";
+
+    fenStr += castlingRights;
+    fenStr += ' ';
+
+    // We also add the en passant square if it exists
+    if (enPassantSquare == NO_SQUARE)
+    {
+        fenStr += '-';
+    }
+    else
+    {
+        fenStr += SquareNames[enPassantSquare];
+    }
+
+    // For now hard coded half time and full time clocks because i have not implemented them in my position class
+    fenStr += " 0 1";
+
+    return fenStr;
 }
 
 

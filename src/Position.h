@@ -230,6 +230,9 @@ public:
         return squareUnderAttack(kingSquare, attackingSideColor, *this, occupiedSquaresBitboard);
     }
 
+
+    std::string boardToFen() const;
+
 };
 
 
