@@ -1,6 +1,7 @@
 #include <cassert>
 #include <iostream>
-
+#include "nnue/Nnue.h"
+#include "nnue/Accumulator.h"
 
 #include "Attacks.h"
 #include "Bitboard.h"
@@ -313,6 +314,7 @@ inline void initializations()
     initLineBetween();
     initZobrist();
     initializePawnStructureMasks();
+    loadQuantised("src\\aspen-net.bin");
 }
 
 
@@ -322,11 +324,11 @@ std::string startPos = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
 std::string veryTrickyCapturesPos = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
 
 bool UCI_ENABLED = true;
+bool test = ~UCI_ENABLED;
 
 int main(int argc, char* argv[])
 {
     initializations();
-
 
 
     // Start the UCI loop if UCI is enabled
@@ -399,8 +401,9 @@ int main(int argc, char* argv[])
 
                     // fen string --------------
                 }
-
-            } else if (tokens[0] == "go")
+                accumulator.initializeAccumulator(pos);
+            }
+            else if (tokens[0] == "go")
             {
                 MAX_NODES = std::numeric_limits<uint64_t>::max();
                 TimePoint wtime = 50000, btime = 50000, winc = 0, binc = 0;

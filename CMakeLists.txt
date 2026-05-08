@@ -34,4 +34,9 @@ add_executable(AChess src/main.cpp
         src/Time.h
         src/DataGen.cpp
         src/DataGen.h
+        src/nnue/nnue.cpp
+        src/nnue/nnue.h
+        src/nnue/accumulator.cpp
+        src/nnue/accumulator.h
+        src/nnue/Architecture.h
 )

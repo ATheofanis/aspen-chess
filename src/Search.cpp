@@ -59,7 +59,7 @@ int quiescence(Position& pos, int alpha, int beta, Move ttBestMove, int ply)
         ttBestMove = ttData.bestMove;
     } else
     {
-        staticValue = scoreBoard(pos);
+        staticValue = scoreBoardNNUE(pos);
     }
 
 
@@ -327,7 +327,7 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
 
     } else // otherwise manually calculate the static evaluation
     {
-        staticValue = scoreBoard(pos);
+        staticValue = scoreBoardNNUE(pos);
         ttBestMove = NO_MOVE;
     }
 

@@ -6,6 +6,7 @@
 #include "Position.h"
 #include "Search.h"
 #include "Bitboard.h"
+#include "nnue/Accumulator.h"
 
 class Position;
 
@@ -286,5 +287,7 @@ inline void initPSTtables()
 int scoreQuiescenceMove(const Move& move, Position& pos, const Move& bestMove);
 
 int scoreMove(const Move& move, const Position& pos, const Move& hashMove, const int& ply);
+
+int scoreBoardNNUE(const Position& pos);
 
 int scoreBoard(const Position& pos);

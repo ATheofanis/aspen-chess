@@ -209,7 +209,18 @@ int getBishopPairScore(const Position& pos)
 }
 
 
+// NNUE evaluation of the position
+int scoreBoardNNUE(const Position& pos)
+{
+    Accumulator acc(pos);
 
+    // Call the NNUE evaluation function
+    int NNUEscore = evaluateNNUE(acc, pos.isWhiteToMove() ? White : Black);
+
+    return NNUEscore;
+}
+
+// Hand-crafted Evaluation score of the position
 int scoreBoard(const Position& pos)
 {
     int score = 0;
@@ -256,7 +267,7 @@ int scoreBoard(const Position& pos)
     return pos.isWhiteToMove() ? score : -score;
 }
 
-
+// Function used for move ordering, specifically inside quiescent search
 int scoreQuiescenceMove(const Move& move, Position& pos, const Move& hashMove)
 {
     int score = 0;
@@ -289,6 +300,8 @@ int scoreQuiescenceMove(const Move& move, Position& pos, const Move& hashMove)
 
 }
 
+
+// Function used to order moves from best to worst
 int scoreMove(const Move& move, const Position& pos, const Move& hashMove, const int& ply)
 {
     if (move == hashMove)
