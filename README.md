@@ -2,11 +2,12 @@
 
 Aspen is a UCI chess engine written in C++ that evaluates positions using a custom NNUE.
 
+You can play against it online on [lichess](https://lichess.org/@/AspenBot).
+
 ## Download
 
 You can find the latest stable release on the [Releases](../../releases) page.
 
-You can play against it online on [lichess](https://lichess.org/@/AspenBot).
 
 ## Features
 
