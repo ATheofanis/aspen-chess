@@ -31,6 +31,8 @@ public:
     void removePiece(int fromSq, int pieceIndex);
 
     void addPiece(int toSq, int pieceIndex);
+
+    void makeMove(Move move, int movingPieceIndex, int capturedPieceSquare, int capturedPieceIndex);
 };
 
 

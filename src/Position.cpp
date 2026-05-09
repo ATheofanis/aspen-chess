@@ -27,6 +27,7 @@ void Position::clearPosition()
     enPassantSquare = NO_SQUARE;
     castleRights = 0;
 
+
 }
 
 
@@ -101,6 +102,7 @@ void Position::setStartPos()
     }
     zobristHash = computeZobristHash();
     pawnZobristHash = computePawnZobristHash();
+
 }
 
 Position::Position()
@@ -251,13 +253,21 @@ void Position::makeMove(Move move)
     int flag = (move >> 12) & 0x3F;
 
 
+    // Initialize accumulator variables for incremental updates
+    int accumulatorMovingPieceIndex = Board[fromSquare];
+    int accumulatorCapturedPieceIndex = 12;
+    int accumulatorCapturedPieceSquare = -1;
+
+
     // create square masks for later
     Bitboard fromMask = 1ULL << fromSquare;
     Bitboard toMask = 1ULL << toSquare;
     Bitboard moveMask = fromMask | toMask;
 
     Piece pieceMoved = Board[fromSquare];
+
     bool pieceMovedIsPawn = (pieceMoved == 6) || (pieceMoved == 0);
+
     if (pieceMovedIsPawn)
     {
         irreversiblePositionTop = numOfPositions;
@@ -379,11 +389,15 @@ void Position::makeMove(Move move)
 
             zobristHash ^= zobristPieces[toSquare][pieceMoved];
 
+            // Accumulator
+            accumulatorCapturedPieceIndex = Board[toSquare];
+            accumulatorCapturedPieceSquare = toSquare;
+
         }
         // en passant
         else if (flag == 5)
         {
-            //Piece capPawn;
+            // If white played en-passant
             if (whiteToMoveFlag)
             {
                 prevPosInfo.pieceCaptured = bp;
@@ -406,9 +420,13 @@ void Position::makeMove(Move move)
                 zobristHash ^= zobristPieces[epCapSq][bp];
                 zobristHash ^= zobristPieces[toSquare][wp];
 
+                // Accumulator
+                accumulatorCapturedPieceIndex = 6;
+                accumulatorCapturedPieceSquare = epCapSq;
+
             } else
             {
-                // black makes ep
+                // black plays en-passant
                 prevPosInfo.pieceCaptured = wp;
                 int epCapSq = toSquare + 8;
                 // remove captured pawn from bp bitboard and Board mailbox:
@@ -427,10 +445,14 @@ void Position::makeMove(Move move)
                 pawnZobristHash ^= zobristPieces[epCapSq][wp];
                 zobristHash ^= zobristPieces[epCapSq][wp];
                 zobristHash ^= zobristPieces[toSquare][bp];
+
+                // Accumulator
+                accumulatorCapturedPieceIndex = 0;
+                accumulatorCapturedPieceSquare = epCapSq;
             }
 
         }
-        // captures are done , now handle promotions and promo-captures
+        // normal captures are done , now handle promotions and promo-captures
         else if (flag & 8)
         {
             // add promoted piece to mailbox
@@ -463,6 +485,11 @@ void Position::makeMove(Move move)
 
                     whitePiecesBitboard &= ~toMask;
                 }
+
+                // Accumulator
+                accumulatorCapturedPieceIndex = capturedPiece;
+                accumulatorCapturedPieceSquare = toSquare;
+
             }
 
             Board[toSquare] = promotedPiece; // add promoted piece to the board
@@ -578,6 +605,9 @@ void Position::makeMove(Move move)
     }
 
     zobristHash ^= zobristBlackToMove;
+
+    // Update the global accumulator
+    accumulator.makeMove(move, accumulatorMovingPieceIndex , accumulatorCapturedPieceSquare, accumulatorCapturedPieceIndex);
 
     whiteToMoveFlag = !whiteToMoveFlag;
     prevPositionsLog[positionLogTop++] = prevPosInfo;

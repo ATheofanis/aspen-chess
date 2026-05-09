@@ -97,6 +97,7 @@ void Accumulator::removePiece(int fromSq, int pieceIndex)
     }
 }
 
+
 void Accumulator::addPiece(int toSq, int pieceIndex)
 {
     if (pieceIndex != 12)
@@ -120,6 +121,39 @@ void Accumulator::addPiece(int toSq, int pieceIndex)
     }
 }
 
+// Function to update the accumulator when a move is made
+void Accumulator::makeMove(Move move, int movingPieceIndex, int capturedPieceSquare, int capturedPieceIndex)
+{
+    int fromSquare = move & 0x3F;
+    int toSquare = (move >> 6) & 0x3F;
+    int flag = (move >> 12) & 0x3F;
+
+    // Remove the piece if the move was a capture
+    if (capturedPieceIndex != 12)
+    {
+        removePiece(capturedPieceSquare, capturedPieceIndex);
+    }
+
+    // Handle promotions
+    if (flag & 8)
+    {
+        int colorDelta = (movingPieceIndex < 6) ? 0 : 6;
+
+        int promotedPieceIndex = colorDelta + flag % 4 + 1;
+
+        removePiece(fromSquare, movingPieceIndex);
+        addPiece(toSquare, promotedPieceIndex);
+    } else
+    {
+        movePiece(fromSquare, toSquare, movingPieceIndex);
+    }
+
+    // Also move the rook if the move was queenside or kingside castles
+    if (flag == 2 || flag == 3)
+    {
+
+    }
+}
 
 
 Accumulator accumulator;
