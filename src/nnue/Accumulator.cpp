@@ -149,7 +149,7 @@ void Accumulator::makeMove(Move move, int movingPieceIndex, int capturedPieceSqu
     }
 
     // Also move the rook if the move was queenside or kingside castles
-    if (flag == 2 || flag == 3)
+    if (flag == 2)
     {
 
     }

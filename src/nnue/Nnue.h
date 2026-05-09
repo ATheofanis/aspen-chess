@@ -31,6 +31,6 @@ int evaluateNNUE(const Accumulator& acc, Color sideToMove);
 // SCReLU - (Squared Clipped ReLU) Activation Function
 inline int SCReLU(int value)
 {
-    int CReLU = std::max(0, std::min(value, Quantization0));
-    return (CReLU * CReLU) / Quantization0;
+    int CReLU = std::max(0, std::min(value, QuantizationA));
+    return (CReLU * CReLU) / QuantizationA;
 }
