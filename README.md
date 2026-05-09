@@ -1,6 +1,6 @@
 # Aspen Chess Engine
 
-Aspen is a UCI chess engine written in C++.
+Aspen is a UCI chess engine written in C++ that evaluates positions using a custom NNUE.
 
 ## Download
 
@@ -24,22 +24,10 @@ Iterative deepening with aspiration windows over a negamax search with the follo
 - Move ordering: TT move, Killer moves, History heuristic, Static Exchange Evaluation (SEE)
 
 ### Evaluation
-Hand-crafted evaluation function including:
-- PeSTO piece-square tables with tapered evaluation
-- Pawn structure evaluation
-- King safety
-- Bishop pair bonus
-- Rook open file bonus
 
-All values are tuned using Texel tuning.
+Aspen uses a (768 → 256) × 2 → 1 NNUE architecture, trained with [Bullet](https://github.com/jw1912/bullet). 
+The NNUE was trained exclusively on self-generated data from previous versions of Aspen.
 
-
-## Upcoming
-
-- Piece mobility added to the evaluation
-- Move ordering improvements
-- UCI output improvements
-- Custom NNUE
 
 ## Usage
 
@@ -53,3 +41,4 @@ Aspen communicates using the UCI Protocol and is therefore compatible with any C
 - [Chess Programming on YouTube](https://www.youtube.com/@chessprogramming591) — didactic series that made many concepts easily understandable. His magic bitboards implementation was directly used in Aspen
 - [Sebastian Lague](https://www.youtube.com/@SebastianLague) — his Chess Programming series was a great source of inspiration
 - [Stockfish Team](https://stockfishchess.org/) — their open source engine was an invaluable reference for advanced concepts
+- [Bullet](https://github.com/jw1912/bullet) - which I used to train Aspen's neural network
