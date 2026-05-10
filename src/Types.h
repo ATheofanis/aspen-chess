@@ -20,7 +20,7 @@ using ZobristHash = uint64_t;
 
 using TimePoint = std::chrono::milliseconds::rep;
 
-constexpr int MAX_PLY = 64;
+constexpr int MAX_PLY = 128;
 
 // returns the character of a piece given its piece index, for example 0 returns P for white pawn, 6 returns p for black pawn
 constexpr char pieceToCharacter[] = "PNBRQKpnbrqk";

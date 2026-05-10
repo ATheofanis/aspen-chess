@@ -210,12 +210,10 @@ int getBishopPairScore(const Position& pos)
 
 
 // NNUE evaluation of the position
-int scoreBoardNNUE(const Position& pos)
+int scoreBoardNNUE(const Position& pos, Accumulator accumulator)
 {
-    Accumulator acc(pos);
-
     // Call the NNUE evaluation function
-    int NNUEscore = evaluateNNUE(acc, pos.isWhiteToMove() ? White : Black);
+    int NNUEscore = evaluateNNUE(accumulator, pos.isWhiteToMove() ? White : Black);
 
     return NNUEscore;
 }

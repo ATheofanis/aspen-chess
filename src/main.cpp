@@ -24,6 +24,8 @@
 
 class Position;
 
+int globalMTG = 90;
+
 // print the Unicode character
 inline void printUnicode(UnicodePiece uP) {
     std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t> conv;
@@ -401,13 +403,12 @@ int main(int argc, char* argv[])
 
                     // fen string --------------
                 }
-                accumulator.initializeAccumulator(pos);
             }
             else if (tokens[0] == "go")
             {
                 MAX_NODES = std::numeric_limits<uint64_t>::max();
                 TimePoint wtime = 50000, btime = 50000, winc = 0, binc = 0;
-                int movestogo = 1;
+                int movestogo = globalMTG;
 
                 for (int i = 1; i < tokens.size(); i++) {
                     if (tokens[i] == "wtime") // white remaining time
@@ -456,6 +457,12 @@ int main(int argc, char* argv[])
                 std::cout << std::endl;
                 // PRINT BEST MOVE ------------------======================================================
 
+                globalMTG--;
+                if (globalMTG <= 0)
+                {
+                    globalMTG = 20;
+                }
+
             }
             else if (tokens[0] == "isready")
             {
@@ -467,6 +474,7 @@ int main(int argc, char* argv[])
                 std::cout << "uciok\n";
             } else if (tokens[0] == "ucinewgame")
             {
+                globalMTG = 100;
                 clearTranspositionTable();
                 clearPawnTranspositionTable();
             }

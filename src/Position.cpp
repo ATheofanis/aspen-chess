@@ -252,13 +252,6 @@ void Position::makeMove(Move move)
     int toSquare = (move >> 6) & 0x3F;
     int flag = (move >> 12) & 0x3F;
 
-
-    // Initialize accumulator variables for incremental updates
-    int accumulatorMovingPieceIndex = Board[fromSquare];
-    int accumulatorCapturedPieceIndex = 12;
-    int accumulatorCapturedPieceSquare = -1;
-
-
     // create square masks for later
     Bitboard fromMask = 1ULL << fromSquare;
     Bitboard toMask = 1ULL << toSquare;
@@ -388,11 +381,6 @@ void Position::makeMove(Move move)
             }
 
             zobristHash ^= zobristPieces[toSquare][pieceMoved];
-
-            // Accumulator
-            accumulatorCapturedPieceIndex = Board[toSquare];
-            accumulatorCapturedPieceSquare = toSquare;
-
         }
         // en passant
         else if (flag == 5)
@@ -419,12 +407,8 @@ void Position::makeMove(Move move)
                 pawnZobristHash ^= zobristPieces[epCapSq][bp];
                 zobristHash ^= zobristPieces[epCapSq][bp];
                 zobristHash ^= zobristPieces[toSquare][wp];
-
-                // Accumulator
-                accumulatorCapturedPieceIndex = 6;
-                accumulatorCapturedPieceSquare = epCapSq;
-
-            } else
+            }
+            else
             {
                 // black plays en-passant
                 prevPosInfo.pieceCaptured = wp;
@@ -445,10 +429,6 @@ void Position::makeMove(Move move)
                 pawnZobristHash ^= zobristPieces[epCapSq][wp];
                 zobristHash ^= zobristPieces[epCapSq][wp];
                 zobristHash ^= zobristPieces[toSquare][bp];
-
-                // Accumulator
-                accumulatorCapturedPieceIndex = 0;
-                accumulatorCapturedPieceSquare = epCapSq;
             }
 
         }
@@ -485,11 +465,6 @@ void Position::makeMove(Move move)
 
                     whitePiecesBitboard &= ~toMask;
                 }
-
-                // Accumulator
-                accumulatorCapturedPieceIndex = capturedPiece;
-                accumulatorCapturedPieceSquare = toSquare;
-
             }
 
             Board[toSquare] = promotedPiece; // add promoted piece to the board
@@ -606,9 +581,6 @@ void Position::makeMove(Move move)
 
     zobristHash ^= zobristBlackToMove;
 
-    // Update the global accumulator
-    accumulator.makeMove(move, accumulatorMovingPieceIndex , accumulatorCapturedPieceSquare, accumulatorCapturedPieceIndex);
-
     whiteToMoveFlag = !whiteToMoveFlag;
     prevPositionsLog[positionLogTop++] = prevPosInfo;
 
@@ -667,11 +639,11 @@ void Position::makeCapture(Move move)
     CastlingRights oldCastleRights = castleRights;
 
 
-
     // extract move info
     int fromSquare = move & 0x3F;
     int toSquare = (move >> 6) & 0x3F;
     int flag = (move >> 12) & 0x3F;
+
 
 
     // create square masks for later
@@ -821,7 +793,8 @@ void Position::makeCapture(Move move)
             zobristHash ^= zobristPieces[epCapSq][bp];
             zobristHash ^= zobristPieces[toSquare][wp];
 
-        } else
+        }
+        else
         {
             // black makes ep
             prevPosInfo.pieceCaptured = wp;
@@ -842,6 +815,7 @@ void Position::makeCapture(Move move)
             pawnZobristHash ^= zobristPieces[epCapSq][wp];
             zobristHash ^= zobristPieces[epCapSq][wp];
             zobristHash ^= zobristPieces[toSquare][bp];
+
         }
     }
 
@@ -898,6 +872,7 @@ void Position::makeCapture(Move move)
     }
 
     zobristHash ^= zobristBlackToMove;
+
 
     whiteToMoveFlag = !whiteToMoveFlag;
     prevPositionsLog[positionLogTop++] = prevPosInfo;

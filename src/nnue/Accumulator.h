@@ -32,8 +32,5 @@ public:
 
     void addPiece(int toSq, int pieceIndex);
 
-    void makeMove(Move move, int movingPieceIndex, int capturedPieceSquare, int capturedPieceIndex);
+    void makeMove(Move move, const Position& pos);
 };
-
-
-extern Accumulator accumulator;

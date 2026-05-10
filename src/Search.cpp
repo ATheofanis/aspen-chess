@@ -30,7 +30,7 @@ int precomputedLMR[64][256];
 
 // QSearch with TT probing (non-PV nodes only). This qsearch implementation only searches for captures
 template<NodeType nodeType>
-int quiescence(Position& pos, int alpha, int beta, Move ttBestMove, int ply)
+int quiescence(Position& pos, int alpha, int beta, Move ttBestMove, int ply, SearchStack* ss)
 {
 
     // first check if the maximum time limit has been exceeded
@@ -59,7 +59,7 @@ int quiescence(Position& pos, int alpha, int beta, Move ttBestMove, int ply)
         ttBestMove = ttData.bestMove;
     } else
     {
-        staticValue = scoreBoardNNUE(pos);
+        staticValue = scoreBoardNNUE(pos, ss->accumulator);
     }
 
 
@@ -200,10 +200,12 @@ int quiescence(Position& pos, int alpha, int beta, Move ttBestMove, int ply)
             if (pos.SEE(toSquare, capturedPiece, fromSquare, attacker) < 0) continue;
         }
 
+        (ss+1)->accumulator = ss->accumulator;
+        (ss+1)->accumulator.makeMove(capture, pos);
 
         // make move, search it then unmake to get its score from qsearch
         pos.makeCapture(capture);
-        int score = -quiescence<nodeType>(pos, -beta, -alpha, NO_MOVE, ply + 1);
+        int score = -quiescence<nodeType>(pos, -beta, -alpha, NO_MOVE, ply + 1, ss+1);
         pos.unmakeCapture();
 
 
@@ -258,7 +260,7 @@ int quiescence(Position& pos, int alpha, int beta, Move ttBestMove, int ply)
  *      - Static Exchange Evaluation (SEE)
  */
 template<NodeType nodeType>
-int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMove, int ply, int rootDepth, bool allowNullMove)
+int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMove, int ply, int rootDepth, bool allowNullMove, SearchStack* ss)
 {
     if (((nodes & 2047) == 0 && tm.maximumExpired()) || (nodes >= MAX_NODES))
     {
@@ -282,7 +284,7 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
             depth = 1;
         } else
         {
-            int qVal =  quiescence<nodeType>(pos, alpha, beta, NO_MOVE, ply);
+            int qVal =  quiescence<nodeType>(pos, alpha, beta, NO_MOVE, ply, ss);
             //save(posZobrist, depth, qVal, Bound::BOUND_EXACT, NO_MOVE, ply);
             return qVal;
         }
@@ -327,7 +329,7 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
 
     } else // otherwise manually calculate the static evaluation
     {
-        staticValue = scoreBoardNNUE(pos);
+        staticValue = scoreBoardNNUE(pos, ss->accumulator);
         ttBestMove = NO_MOVE;
     }
 
@@ -347,7 +349,7 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
         int margin = 100 + depth * 200;
         if (staticValue + margin < beta)
         {
-            int qValue =  quiescence<nodeType>(pos, alpha, beta, NO_MOVE, ply);
+            int qValue =  quiescence<nodeType>(pos, alpha, beta, NO_MOVE, ply, ss);
             if (qValue < beta) return qValue;
         }
     }
@@ -358,8 +360,10 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
     {
         int r = std::min(depth, 3 + depth / 3); // NMP Reduction
         int epSq = pos.getEnpassantSquare();
+
+        (ss+1)->accumulator = ss->accumulator;
         pos.makeNullMove(epSq);
-        int v = -negaMaxAlphaBeta<NodeType::NonPV>(pos, -beta, -(beta - 1), std::max(1, depth - r), bestMove, ply+1, rootDepth, false);
+        int v = -negaMaxAlphaBeta<NodeType::NonPV>(pos, -beta, -(beta - 1), std::max(1, depth - r), bestMove, ply+1, rootDepth, false, ss+1);
         pos.unmakeNullMove(epSq);
         if (v >= beta)
         {
@@ -447,10 +451,13 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
 
     Move firstMove = moves[0];
 
+    // Update the accumulator for the next ply
+    (ss+1)->accumulator = ss->accumulator;
+    (ss+1)->accumulator.makeMove(firstMove, pos);
     pos.makeMove(firstMove);
 
     // full window for first move
-    int score = -negaMaxAlphaBeta<nodeType>(pos, -beta, -alpha, depth - 1, bestMove, ply+1, rootDepth, true);
+    int score = -negaMaxAlphaBeta<nodeType>(pos, -beta, -alpha, depth - 1, bestMove, ply+1, rootDepth, true, ss+1);
     pos.unmakeMove();
 
 
@@ -537,6 +544,8 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
         }
 
 
+        (ss+1)->accumulator = ss->accumulator;
+        (ss+1)->accumulator.makeMove(moves[i], pos);
         pos.makeMove(moves[i]);
 
         // LMR: Reduce the search depth of a move based on current depth and move index
@@ -557,14 +566,14 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
 
 
         // null window to first check if the move is good enough to warrant a full window search which happens when the move's score is above alpha
-        score = -negaMaxAlphaBeta<NodeType::NonPV>(pos, -alpha-1, -alpha, reducedDepth, bestMove, ply+1, rootDepth, true);
+        score = -negaMaxAlphaBeta<NodeType::NonPV>(pos, -alpha-1, -alpha, reducedDepth, bestMove, ply+1, rootDepth, true, ss+1);
 
         // re-search if move score stayed within the null window
         if constexpr (isPv)
         {
             if ((score > alpha) && (rootNode || score < beta))
             {
-                score = -negaMaxAlphaBeta<NodeType::PV>(pos, -beta, -alpha, depth - 1, bestMove, ply+1, rootDepth, true);
+                score = -negaMaxAlphaBeta<NodeType::PV>(pos, -beta, -alpha, depth - 1, bestMove, ply+1, rootDepth, true, ss+1);
             }
         }
         pos.unmakeMove();
@@ -636,7 +645,8 @@ Move findBestMove(Position pos, int& posEval)
     int previousScore = VALUE_NONE;
     Move previousMove = NO_MOVE;
 
-    //std::string
+    SearchStack ss[MAX_PLY];
+    ss[0].accumulator.initializeAccumulator(pos);
 
     // Iterative deepening loop
     for (int depth = 1; depth <= MAX_DEPTH; depth++)
@@ -649,7 +659,7 @@ Move findBestMove(Position pos, int& posEval)
 
         Move bmDummy = bestMove;
 
-        int score = negaMaxAlphaBeta<NodeType::Root>(pos, alpha, beta, depth, bmDummy, 0, depth, false);
+        int score = negaMaxAlphaBeta<NodeType::Root>(pos, alpha, beta, depth, bmDummy, 0, depth, false, ss);
         posEval = score;
 
         // If the time management flag is set to true, it means that the search was interrupted.
@@ -662,7 +672,7 @@ Move findBestMove(Position pos, int& posEval)
             alpha -= 50;
             beta += 50;
 
-            score = negaMaxAlphaBeta<NodeType::Root>(pos, alpha, beta, depth, bmDummy, 0, depth, false);
+            score = negaMaxAlphaBeta<NodeType::Root>(pos, alpha, beta, depth, bmDummy, 0, depth, false, ss);
         }
 
         if (tm.getShouldStopFlag()) break;
@@ -675,7 +685,7 @@ Move findBestMove(Position pos, int& posEval)
             alpha = -CHECKMATE;
             beta = CHECKMATE;
 
-            score = negaMaxAlphaBeta<NodeType::Root>(pos, alpha, beta, depth, bmDummy, 0, depth, false);
+            score = negaMaxAlphaBeta<NodeType::Root>(pos, alpha, beta, depth, bmDummy, 0, depth, false, ss);
         }
 
         bestMove = bmDummy;

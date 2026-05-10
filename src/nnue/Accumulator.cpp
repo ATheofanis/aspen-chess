@@ -122,38 +122,76 @@ void Accumulator::addPiece(int toSq, int pieceIndex)
 }
 
 // Function to update the accumulator when a move is made
-void Accumulator::makeMove(Move move, int movingPieceIndex, int capturedPieceSquare, int capturedPieceIndex)
+void Accumulator::makeMove(Move move, const Position& pos)
 {
     int fromSquare = move & 0x3F;
     int toSquare = (move >> 6) & 0x3F;
     int flag = (move >> 12) & 0x3F;
 
-    // Remove the piece if the move was a capture
-    if (capturedPieceIndex != 12)
+    int movingPieceIndex = pos.getPieceFromBoard(fromSquare);
+
+    bool whiteToMove = movingPieceIndex < 6 ? true : false;
+
+    // First handle en-passant captures
+    if (flag == 5)
     {
-        removePiece(capturedPieceSquare, capturedPieceIndex);
+        if (whiteToMove) // white played en-passant
+        {
+            int epCapSq = toSquare - 8;
+            movePiece(fromSquare, toSquare, wp);
+            removePiece(epCapSq, bp);
+        }
+        else // black played en-passant
+        {
+            int epCapSq = toSquare + 8;
+            movePiece(fromSquare, toSquare, bp);
+            removePiece(epCapSq, wp);
+        }
+    }
+    else
+    {
+
+        if (flag & 4)
+        {
+            removePiece(toSquare, pos.getPieceFromBoard(toSquare));
+        }
+
+        if (flag & 8)
+        {
+            int colorDelta = whiteToMove ? 0 : 6;
+            int promotedPieceIndex = colorDelta + flag % 4 + 1;
+
+            removePiece(fromSquare, movingPieceIndex);
+            addPiece(toSquare, promotedPieceIndex);
+        } else
+        {
+            movePiece(fromSquare, toSquare, movingPieceIndex);
+
+            // Also move the rook if the move was queenside or kingside castles
+            if (flag == 2)
+            {
+                if (whiteToMove) // h1 to f1 (7 - 5)
+                {
+                    movePiece(7, 5, wR);
+                }
+                else // h8 to f8 (63 - 61)
+                {
+                    movePiece(63, 61, bR);
+                }
+            }
+            else if (flag == 3)
+            {
+                if (whiteToMove) // a1 to d1 (0 - 3)
+                {
+                    movePiece(0, 3, wR);
+                }
+                else // a8 to d8 (56 - 59)
+                {
+                    movePiece(56, 59, bR);
+                }
+            }
+
+        }
     }
 
-    // Handle promotions
-    if (flag & 8)
-    {
-        int colorDelta = (movingPieceIndex < 6) ? 0 : 6;
-
-        int promotedPieceIndex = colorDelta + flag % 4 + 1;
-
-        removePiece(fromSquare, movingPieceIndex);
-        addPiece(toSquare, promotedPieceIndex);
-    } else
-    {
-        movePiece(fromSquare, toSquare, movingPieceIndex);
-    }
-
-    // Also move the rook if the move was queenside or kingside castles
-    if (flag == 2)
-    {
-
-    }
 }
-
-
-Accumulator accumulator;
