@@ -250,7 +250,7 @@ void Position::makeMove(Move move)
     // extract move info
     int fromSquare = move & 0x3F;
     int toSquare = (move >> 6) & 0x3F;
-    int flag = (move >> 12) & 0x3F;
+    int flag = (move >> 12) & 0xF;
 
     // create square masks for later
     Bitboard fromMask = 1ULL << fromSquare;
@@ -642,7 +642,7 @@ void Position::makeCapture(Move move)
     // extract move info
     int fromSquare = move & 0x3F;
     int toSquare = (move >> 6) & 0x3F;
-    int flag = (move >> 12) & 0x3F;
+    int flag = (move >> 12) & 0xF;
 
 
 
@@ -940,7 +940,7 @@ void Position::unmakeMove()
     // extract move info
     int fromSquare = move & 0x3F;
     int toSquare = (move >> 6) & 0x3F;
-    int flag = (move >> 12) & 0x3F;
+    int flag = (move >> 12) & 0xF;
 
 
     // create square masks for later
@@ -1102,7 +1102,7 @@ void Position::unmakeCapture()
     // extract move info
     int fromSquare = move & 0x3F;
     int toSquare = (move >> 6) & 0x3F;
-    int flag = (move >> 12) & 0x3F;
+    int flag = (move >> 12) & 0xF;
 
 
     // create square masks for later

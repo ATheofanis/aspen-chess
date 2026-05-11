@@ -30,21 +30,15 @@ int evaluateNNUE(const Accumulator& acc, Color sideToMove)
 
     for (int i = 0; i < HiddenSize; i++)
     {
-        int activation = SCReLU(stmAcc[i]);
+        int stmActivation = SCReLU(stmAcc[i]);
+        int nstmActivation = SCReLU(nstmAcc[i]);
 
-        score += activation * NNUE.outputWeights[i];
+        score += stmActivation * NNUE.outputWeights[i];
+        score += nstmActivation * NNUE.outputWeights[HiddenSize + i];
     }
-
-
-    for (int i = 0; i < HiddenSize; i++)
-    {
-        int activation = SCReLU(nstmAcc[i]);
-
-        score += activation * NNUE.outputWeights[HiddenSize + i];
-    }
-
 
     return (static_cast<int64_t>(score) * Scale) / (TotalQ);
 }
+
 
 

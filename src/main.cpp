@@ -85,7 +85,7 @@ void printMoveNoMessages(Move& move)
 
     int fromSquare = move & 0x3F;
     int toSquare = (move >> 6) & 0x3F;
-    int flag = (move >> 12) & 0x3F;
+    int flag = (move >> 12) & 0xF;
     std::cout << squareName(static_cast<Square>(fromSquare)) << squareName(static_cast<Square>(toSquare));
     if (flag & 8)
     {
@@ -251,7 +251,7 @@ Move parseMove(const std::string& moveString, Position pos)
         Move currMove = moves[i];
         int fromSquare = currMove & 0x3F;
         int toSquare = (currMove >> 6) & 0x3F;
-        int flag = (currMove >> 12) & 0x3F;
+        int flag = (currMove >> 12) & 0xF;
         if (startSq == fromSquare && endSq == toSquare)
         {
             if (flag & 8)

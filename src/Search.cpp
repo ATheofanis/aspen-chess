@@ -325,7 +325,7 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
 
         ttBestMove = ttData.bestMove;
 
-        ttMoveIsCapture =  (bool)((ttBestMove >> 12 & 0x3F) & 4);
+        ttMoveIsCapture =  (bool)((ttBestMove >> 12 & 0xF) & 4);
 
     } else // otherwise manually calculate the static evaluation
     {
@@ -463,7 +463,7 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
 
     int firstMovefromSquare = firstMove & 0x3F;
     int firstMovetoSquare = (firstMove >> 6) & 0x3F;
-    int firstMoveFlag = firstMove >> 12 & 0x3F;
+    int firstMoveFlag = firstMove >> 12 & 0xF;
 
     if (score > alpha)
     {
@@ -534,7 +534,7 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
 
         int fromSquare = move & 0x3F;
         int toSquare = (move >> 6) & 0x3F;
-        int moveFlag = move >> 12 & 0x3F;
+        int moveFlag = move >> 12 & 0xF;
 
 
         // futility and extended futility prune

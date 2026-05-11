@@ -32,5 +32,12 @@ public:
 
     void addPiece(int toSq, int pieceIndex);
 
+    template<bool isPromotionCaptureMove>
+    void makeCapture(int fromSq, int toSq, int movingPieceIndex, int capSq, int capPieceIndex, int promotionPieceIndex = 12);
+
+    void makePromotion(int fromSq, int toSq, int movingPieceIndex, int promotionPieceIndex);
+
+    void makeCastle(int kingFromSq, int kingToSq, int kingPieceIndex, int rookFromSq, int rookToSq, int rookPieceIndex);
+
     void makeMove(Move move, const Position& pos);
 };

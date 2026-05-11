@@ -276,7 +276,7 @@ int scoreQuiescenceMove(const Move& move, Position& pos, const Move& hashMove)
 
     int fromSquare = move & 0x3F;
     int toSquare = (move >> 6) & 0x3F;
-    int flag = (move >> 12) & 0x3F;
+    int flag = (move >> 12) & 0xF;
 
     // MVV-LVA for quiescence
 
@@ -309,7 +309,7 @@ int scoreMove(const Move& move, const Position& pos, const Move& hashMove, const
 
 
 
-    int flag = (move >> 12) & 0x3F;
+    int flag = (move >> 12) & 0xF;
 
     // MVV-LVA for capture moves
     if (flag & 4)
