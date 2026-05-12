@@ -59,13 +59,11 @@ void resizeTranspositionTable(int megabytes)
     // Set the megabytes to a positive value
     megabytes = std::max(1, megabytes);
 
-    // Use bit_floor to calculate the largest integral power of two that is not greater than 'megabytes'
-    // Cast the megabytes to unsigned integer because bit_floor does not accept integers
-    int actualMB = std::bit_floor((uint32_t)megabytes);
-
     // The new TT size is the total megabytes divided by the size of the transposition table entry
-    size_t newTTSize = actualMB * 1024ULL * 1024ULL / sizeof(TTEntry);
+    size_t newTTSize = megabytes * 1024ULL * 1024ULL / sizeof(TTEntry);
 
+    // Set the number of entries to the closest power of two for fast index calculations
+    newTTSize = std::bit_floor((uint32_t)newTTSize);
     TTSize = newTTSize;
 
     transpositionTable = new TTEntry[TTSize];
