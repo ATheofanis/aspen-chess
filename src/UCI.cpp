@@ -358,7 +358,7 @@ void LoopUCI()
             if (tokens.size() >= 2 && tokens[1] == "datagen")
             {
                 NumberOfGames = std::atoi(tokens[2].c_str());
-                std::string dataFile = tokens[2];
+                std::string dataFile = tokens[3];
 
                 TimePoint startingTime = now();
                 MAX_NODES = dataGenMaxNodes;
