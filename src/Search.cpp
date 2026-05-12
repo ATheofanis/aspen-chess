@@ -34,7 +34,7 @@ int quiescence(Position& pos, int alpha, int beta, Move ttBestMove, int ply, Sea
 {
 
     // first check if the maximum time limit has been exceeded
-    if (((nodes & 2047) == 0 && tm.maximumExpired()) || (nodes >= MAX_NODES))
+    if (tm.isTimeEnabled() && (((nodes & 2047) == 0 && tm.maximumExpired()) || (nodes >= MAX_NODES)))
     {
         // set the stop search flag of the timer manager to true so that we know not to trust the score and the bestMove found in this depth
         tm.stopSearch();
@@ -262,7 +262,7 @@ int quiescence(Position& pos, int alpha, int beta, Move ttBestMove, int ply, Sea
 template<NodeType nodeType>
 int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMove, int ply, int rootDepth, bool allowNullMove, SearchStack* ss)
 {
-    if (((nodes & 2047) == 0 && tm.maximumExpired()) || (nodes >= MAX_NODES))
+    if (tm.isTimeEnabled() && (((nodes & 2047) == 0 && tm.maximumExpired()) || (nodes >= MAX_NODES)))
     {
         tm.stopSearch();
         return 0;
@@ -664,7 +664,7 @@ Move findBestMove(Position pos, int& posEval)
 
         // If the time management flag is set to true, it means that the search was interrupted.
         // The results of an interrupted search are discarded since they are incomplete
-        if (tm.getShouldStopFlag()) break;
+        if (tm.isTimeEnabled() && tm.getShouldStopFlag()) break;
 
         // If the score found is outside of the alpha and beta bounds then we expand the search window and search again
         if ((score <= alpha || score >= beta))
@@ -675,7 +675,7 @@ Move findBestMove(Position pos, int& posEval)
             score = negaMaxAlphaBeta<NodeType::Root>(pos, alpha, beta, depth, bmDummy, 0, depth, false, ss);
         }
 
-        if (tm.getShouldStopFlag()) break;
+        if (tm.isTimeEnabled() && tm.getShouldStopFlag()) break;
 
         posEval = score;
 
@@ -696,7 +696,7 @@ Move findBestMove(Position pos, int& posEval)
         // Print search statistics (Negamax nodes, QSearch nodes and current search depth)
         if (!DataGenFlag) printInfo(depth, score); // only print info if we are not generating self play data
 
-        if (tm.getShouldStopFlag()) break;
+        if (tm.isTimeEnabled() && tm.getShouldStopFlag()) break;
         posEval = score;
 
         // Set the new aspiration window based on the score we found at this depth
@@ -706,7 +706,7 @@ Move findBestMove(Position pos, int& posEval)
 
 
         // If the optimum time limit that the time manager set has expired
-        if (tm.optimumExpired())
+        if (tm.isTimeEnabled() && tm.optimumExpired())
         {
             // If we found a different best move at this depth or the score suddenly dropped then we need to give the engine more time to keep searching to resolve the instability
             if ((previousMove != NO_MOVE && previousMove != bestMove) || (previousScore != VALUE_NONE && ((previousScore - 50) > score)) && !tm.maximumExpired())
@@ -721,7 +721,7 @@ Move findBestMove(Position pos, int& posEval)
         // To prevent that, we only continue to a deeper search if the time that has elapsed is less than 3 times the optimum time limit
         // For example if we are at depth 16 then a depth 17 search will likely need 3x more time to be fully searched.
         // Therefore we attempt to predict if we have enough time left to finish that search, if not then we stop the search here
-        if (tm.elapsedTime() * 3 > tm.optimum()) break;
+        if (tm.isTimeEnabled() && (tm.elapsedTime() * 3 > tm.optimum())) break;
 
     }
 

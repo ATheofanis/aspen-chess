@@ -29,7 +29,7 @@
 
 class Position;
 
-int globalMTG = 90;
+int globalMTG = 85;
 
 // print the Unicode character
 inline void printUnicode(UnicodePiece uP) {
@@ -404,7 +404,7 @@ void LoopUCI()
         else if (tokens[0] == "go")
         {
             MAX_NODES = std::numeric_limits<uint64_t>::max();
-            TimePoint wtime = 50000, btime = 50000, winc = 0, binc = 0;
+            TimePoint wtime = 0, btime = 0, winc = 0, binc = 0;
             int movestogo = globalMTG;
 
             for (int i = 1; i < tokens.size(); i++) {
@@ -430,6 +430,7 @@ void LoopUCI()
                 }
                 else if (tokens[i] == "depth") // change the maximum depth if the depth command is passed
                 {
+                    tm.disableTimeControl();
                     MAX_DEPTH = std::atoi(tokens[i+1].c_str());
                 }
                 else if (tokens[i] == "nodes") // set the maximum amount of nodes that can be searched
@@ -439,7 +440,7 @@ void LoopUCI()
             }
 
             // start the time manager if wtime or btime were given
-            if (wtime || btime) {
+            if ((wtime || btime) && tm.isTimeEnabled()) {
                 TimePoint myTime = (pos.isWhiteToMove()) ? wtime : btime;
                 TimePoint myInc = (pos.isWhiteToMove()) ? winc : binc;
                 tm.start(myTime, myInc, movestogo); // initialize the time manager for the side to move
