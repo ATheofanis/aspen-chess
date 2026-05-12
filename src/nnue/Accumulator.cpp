@@ -33,10 +33,28 @@ void Accumulator::initializeAccumulator(const Position& pos)
             int oppositeFeatureIndex = oppositePieceIndex * 64 + oppositeSq;
 
             // Add the weights of this piece on this specific square - opposite for black
-            for (int i = 0; i < HiddenSize; i++)
+            // Increment by 16 because we are adding 16 values with each iteration using SIMD instructions
+            for (int i = 0; i < HiddenSize; i+=16)
             {
-                white[i] += NNUE.featureWeights[featureIndex][i];
-                black[i] += NNUE.featureWeights[oppositeFeatureIndex][i];
+                // Store the weights into pointers so that they can be loaded
+                int16_t* weights = &NNUE.featureWeights[featureIndex][i];
+                int16_t* oppositeWeights = &NNUE.featureWeights[oppositeFeatureIndex][i];
+
+                // Load the weights into 256 bit registers
+                __m256i whiteRegister = _mm256_load_si256((__m256i*)weights);
+                __m256i blackRegister = _mm256_load_si256((__m256i*)oppositeWeights);
+
+                // Load the accumulator values into registers
+                __m256i whiteAcc = _mm256_load_si256((__m256i*)&white[i]);
+                __m256i blackAcc = _mm256_load_si256((__m256i*)&black[i]);
+
+                // Add the weights to the accumulator white and black values
+                __m256i updatedWhiteAcc = _mm256_add_epi16(whiteAcc, whiteRegister);
+                __m256i updatedBlackAcc = _mm256_add_epi16(blackAcc, blackRegister);
+
+                // Store the new updated values into the white and black accumulator arrays
+                _mm256_store_si256((__m256i*)&white[i], updatedWhiteAcc);
+                _mm256_store_si256((__m256i*)&black[i], updatedBlackAcc);
             }
         }
     }
@@ -62,64 +80,38 @@ void Accumulator::movePiece(int fromSq, int toSq, int pieceIndex)
 
 
         // Add the to square weights and remove the from square weights
-        for (int i = 0; i < HiddenSize; i++)
+        for (int i = 0; i < HiddenSize; i+=16)
         {
-            white[i] -= NNUE.featureWeights[featureIndexFrom][i];
-            white[i] += NNUE.featureWeights[featureIndexTo][i];
+            // Store the weights into pointers so that they can be loaded
+            int16_t* weightsFrom = &NNUE.featureWeights[featureIndexFrom][i];
+            int16_t* oppositeWeightsFrom = &NNUE.featureWeights[oppositeFeatureIndexFrom][i];
+            int16_t* weightsTo = &NNUE.featureWeights[featureIndexTo][i];
+            int16_t* oppositeWeightsTo = &NNUE.featureWeights[oppositeFeatureIndexTo][i];
 
-            black[i] -= NNUE.featureWeights[oppositeFeatureIndexFrom][i];
-            black[i] += NNUE.featureWeights[oppositeFeatureIndexTo][i];
+            // Load the weights into 256 bit registers
+            __m256i whiteRegisterFrom = _mm256_load_si256((__m256i*)weightsFrom);
+            __m256i blackRegisterFrom = _mm256_load_si256((__m256i*)oppositeWeightsFrom);
+            __m256i whiteRegisterTo = _mm256_load_si256((__m256i*)weightsTo);
+            __m256i blackRegisterTo = _mm256_load_si256((__m256i*)oppositeWeightsTo);
+
+            // Load the accumulator values into registers
+            __m256i whiteAcc = _mm256_load_si256((__m256i*)&white[i]);
+            __m256i blackAcc = _mm256_load_si256((__m256i*)&black[i]);
+
+            // Add the weights to the accumulator white and black values
+            __m256i updatedWhiteAcc = _mm256_sub_epi16(whiteAcc, whiteRegisterFrom);
+            updatedWhiteAcc = _mm256_add_epi16(updatedWhiteAcc, whiteRegisterTo);
+
+            __m256i updatedBlackAcc = _mm256_sub_epi16(blackAcc, blackRegisterFrom);
+            updatedBlackAcc = _mm256_add_epi16(updatedBlackAcc, blackRegisterTo);
+
+            // Store the new updated values into the white and black accumulator arrays
+            _mm256_store_si256((__m256i*)&white[i], updatedWhiteAcc);
+            _mm256_store_si256((__m256i*)&black[i], updatedBlackAcc);
         }
     }
 }
 
-
-void Accumulator::removePiece(int fromSq, int pieceIndex)
-{
-    if (pieceIndex != 12)
-    {
-        int oppositeFromSq = fromSq ^ 56;
-
-        // Swap the piece color
-        int oppositePieceIndex = pieceIndex > 5 ? pieceIndex - 6 : pieceIndex + 6;
-
-        // Get the index of the piece based on its index and square
-        int featureIndexFrom = pieceIndex * 64 + fromSq;
-
-        int oppositeFeatureIndexFrom = oppositePieceIndex * 64 + oppositeFromSq;
-
-        // Subtract the feature weights of the piece on that specific square to remove the piece from the accumulator
-        for (int i = 0; i < HiddenSize; i++)
-        {
-            white[i] -= NNUE.featureWeights[featureIndexFrom][i];
-            black[i] -= NNUE.featureWeights[oppositeFeatureIndexFrom][i];
-        }
-    }
-}
-
-
-void Accumulator::addPiece(int toSq, int pieceIndex)
-{
-    if (pieceIndex != 12)
-    {
-        int oppositeToSq = toSq ^ 56;
-
-        // Swap the piece color
-        int oppositePieceIndex = pieceIndex > 5 ? pieceIndex - 6 : pieceIndex + 6;
-
-        // Get the index of the piece based on its index and square
-        int featureIndexTo = pieceIndex * 64 + toSq;
-
-        int oppositeFeatureIndexTo = oppositePieceIndex * 64 + oppositeToSq;
-
-        // Add the feature weights of the piece that is added to the board
-        for (int i = 0; i < HiddenSize; i++)
-        {
-            white[i] += NNUE.featureWeights[featureIndexTo][i];
-            black[i] += NNUE.featureWeights[oppositeFeatureIndexTo][i];
-        }
-    }
-}
 
 // This function handles all capture moves, updating the accumulator accordingly
 template<bool promoCaptureFlag>
@@ -143,7 +135,7 @@ void Accumulator::makeCapture(int fromSq, int toSq, int movingPieceIndex, int ca
     int oppositeFeatureIndexFrom = oppositePieceIndex * 64 + oppositeFromSq;
     int oppositeFeatureIndexCap = oppositeCapPieceIndex * 64 + oppositeCapSq;
 
-
+    // If capture is also a promotion
     if constexpr (isPromotion)
     {
         int oppositePromotionPieceIndex = promotionPieceIndex > 5 ? promotionPieceIndex - 6 : promotionPieceIndex + 6;
@@ -156,43 +148,88 @@ void Accumulator::makeCapture(int fromSq, int toSq, int movingPieceIndex, int ca
         int oppositeFeatureIndexPromo = oppositePromotionPieceIndex * 64 + oppositeToSq;
 
 
-        for (int i = 0; i < HiddenSize; i++)
+        for (int i = 0; i < HiddenSize; i+=16)
         {
-            // Remove moving piece from 'fromSq'
-            white[i] -= NNUE.featureWeights[featureIndexFrom][i];
-            black[i] -= NNUE.featureWeights[oppositeFeatureIndexFrom][i];
+            // Store the weights into pointers so that they can be loaded
+            int16_t* weightsFrom = &NNUE.featureWeights[featureIndexFrom][i];
+            int16_t* oppositeWeightsFrom = &NNUE.featureWeights[oppositeFeatureIndexFrom][i];
+            int16_t* weightsPromo = &NNUE.featureWeights[featureIndexPromo][i];
+            int16_t* oppositeWeightsPromo = &NNUE.featureWeights[oppositeFeatureIndexPromo][i];
+            int16_t* weightsCap = &NNUE.featureWeights[featureIndexCap][i];
+            int16_t* oppositeWeightsCap = &NNUE.featureWeights[oppositeFeatureIndexCap][i];
 
-            // Add promoted piece to 'toSq'
-            white[i] += NNUE.featureWeights[featureIndexPromo][i];
-            black[i] += NNUE.featureWeights[oppositeFeatureIndexPromo][i];
+            // Load the weights into 256 bit registers
+            __m256i whiteRegisterFrom = _mm256_load_si256((__m256i*)weightsFrom);
+            __m256i blackRegisterFrom = _mm256_load_si256((__m256i*)oppositeWeightsFrom);
+            __m256i whiteRegisterPromo = _mm256_load_si256((__m256i*)weightsPromo);
+            __m256i blackRegisterPromo = _mm256_load_si256((__m256i*)oppositeWeightsPromo);
+            __m256i whiteRegisterCap = _mm256_load_si256((__m256i*)weightsCap);
+            __m256i blackRegisterCap = _mm256_load_si256((__m256i*)oppositeWeightsCap);
 
-            // Remove captured piece from 'capSq'
-            white[i] -= NNUE.featureWeights[featureIndexCap][i];
-            black[i] -= NNUE.featureWeights[oppositeFeatureIndexCap][i];
+
+            // Load the accumulator values into registers
+            __m256i whiteAcc = _mm256_load_si256((__m256i*)&white[i]);
+            __m256i blackAcc = _mm256_load_si256((__m256i*)&black[i]);
+
+            // Add the weights to the accumulator white and black values
+            __m256i updatedWhiteAcc = _mm256_sub_epi16(whiteAcc, whiteRegisterFrom);
+            updatedWhiteAcc = _mm256_add_epi16(updatedWhiteAcc, whiteRegisterPromo);
+            updatedWhiteAcc = _mm256_sub_epi16(updatedWhiteAcc, whiteRegisterCap);
+
+            __m256i updatedBlackAcc = _mm256_sub_epi16(blackAcc, blackRegisterFrom);
+            updatedBlackAcc = _mm256_add_epi16(updatedBlackAcc, blackRegisterPromo);
+            updatedBlackAcc = _mm256_sub_epi16(updatedBlackAcc, blackRegisterCap);
+
+            // Store the new updated values into the white and black accumulator arrays
+            _mm256_store_si256((__m256i*)&white[i], updatedWhiteAcc);
+            _mm256_store_si256((__m256i*)&black[i], updatedBlackAcc);
         }
     }
-    else
+    else // Non-promotion capture
     {
         // Feature index of moving piece to square 'toSq'
         int featureIndexTo = movingPieceIndex * 64 + toSq;
 
-        // Opposite feature index of promoted piece feature index
+        // Opposite feature index of moving piece feature index
         int oppositeFeatureIndexTo = oppositePieceIndex * 64 + oppositeToSq;
 
 
-        for (int i = 0; i < HiddenSize; i++)
+        for (int i = 0; i < HiddenSize; i+=16)
         {
-            // Remove moving piece from 'fromSq'
-            white[i] -= NNUE.featureWeights[featureIndexFrom][i];
-            black[i] -= NNUE.featureWeights[oppositeFeatureIndexFrom][i];
 
-            // Add moving piece to 'toSq'
-            white[i] += NNUE.featureWeights[featureIndexTo][i];
-            black[i] += NNUE.featureWeights[oppositeFeatureIndexTo][i];
+            // Store the weights into pointers so that they can be loaded
+            int16_t* weightsFrom = &NNUE.featureWeights[featureIndexFrom][i];
+            int16_t* oppositeWeightsFrom = &NNUE.featureWeights[oppositeFeatureIndexFrom][i];
+            int16_t* weightsTo = &NNUE.featureWeights[featureIndexTo][i];
+            int16_t* oppositeWeightsTo = &NNUE.featureWeights[oppositeFeatureIndexTo][i];
+            int16_t* weightsCap = &NNUE.featureWeights[featureIndexCap][i];
+            int16_t* oppositeWeightsCap = &NNUE.featureWeights[oppositeFeatureIndexCap][i];
 
-            // Remove captured piece from 'capSq'
-            white[i] -= NNUE.featureWeights[featureIndexCap][i];
-            black[i] -= NNUE.featureWeights[oppositeFeatureIndexCap][i];
+            // Load the weights into 256 bit registers
+            __m256i whiteRegisterFrom = _mm256_load_si256((__m256i*)weightsFrom);
+            __m256i blackRegisterFrom = _mm256_load_si256((__m256i*)oppositeWeightsFrom);
+            __m256i whiteRegisterTo = _mm256_load_si256((__m256i*)weightsTo);
+            __m256i blackRegisterTo = _mm256_load_si256((__m256i*)oppositeWeightsTo);
+            __m256i whiteRegisterCap = _mm256_load_si256((__m256i*)weightsCap);
+            __m256i blackRegisterCap = _mm256_load_si256((__m256i*)oppositeWeightsCap);
+
+
+            // Load the accumulator values into registers
+            __m256i whiteAcc = _mm256_load_si256((__m256i*)&white[i]);
+            __m256i blackAcc = _mm256_load_si256((__m256i*)&black[i]);
+
+            // Add the weights to the accumulator white and black values
+            __m256i updatedWhiteAcc = _mm256_sub_epi16(whiteAcc, whiteRegisterFrom);
+            updatedWhiteAcc = _mm256_add_epi16(updatedWhiteAcc, whiteRegisterTo);
+            updatedWhiteAcc = _mm256_sub_epi16(updatedWhiteAcc, whiteRegisterCap);
+
+            __m256i updatedBlackAcc = _mm256_sub_epi16(blackAcc, blackRegisterFrom);
+            updatedBlackAcc = _mm256_add_epi16(updatedBlackAcc, blackRegisterTo);
+            updatedBlackAcc = _mm256_sub_epi16(updatedBlackAcc, blackRegisterCap);
+
+            // Store the new updated values into the white and black accumulator arrays
+            _mm256_store_si256((__m256i*)&white[i], updatedWhiteAcc);
+            _mm256_store_si256((__m256i*)&black[i], updatedBlackAcc);
         }
     }
 }
@@ -217,15 +254,35 @@ void Accumulator::makePromotion(int fromSq, int toSq, int movingPieceIndex, int 
     int oppositeFeatureIndexPromo = oppositePromotionPieceIndex * 64 + oppositeToSq;
 
 
-    for (int i = 0; i < HiddenSize; i++)
+    for (int i = 0; i < HiddenSize; i+=16)
     {
-        // Remove moving piece from 'fromSq'
-        white[i] -= NNUE.featureWeights[featureIndexFrom][i];
-        black[i] -= NNUE.featureWeights[oppositeFeatureIndexFrom][i];
+        // Store the weights into pointers so that they can be loaded
+        int16_t* weightsFrom = &NNUE.featureWeights[featureIndexFrom][i];
+        int16_t* oppositeWeightsFrom = &NNUE.featureWeights[oppositeFeatureIndexFrom][i];
+        int16_t* weightsPromo = &NNUE.featureWeights[featureIndexPromo][i];
+        int16_t* oppositeWeightsPromo = &NNUE.featureWeights[oppositeFeatureIndexPromo][i];
 
-        // Add promoted piece to 'toSq'
-        white[i] += NNUE.featureWeights[featureIndexPromo][i];
-        black[i] += NNUE.featureWeights[oppositeFeatureIndexPromo][i];
+        // Load the weights into 256 bit registers
+        __m256i whiteRegisterFrom = _mm256_load_si256((__m256i*)weightsFrom);
+        __m256i blackRegisterFrom = _mm256_load_si256((__m256i*)oppositeWeightsFrom);
+        __m256i whiteRegisterPromo = _mm256_load_si256((__m256i*)weightsPromo);
+        __m256i blackRegisterPromo = _mm256_load_si256((__m256i*)oppositeWeightsPromo);
+
+
+        // Load the accumulator values into registers
+        __m256i whiteAcc = _mm256_load_si256((__m256i*)&white[i]);
+        __m256i blackAcc = _mm256_load_si256((__m256i*)&black[i]);
+
+        // Add the weights to the accumulator white and black values
+        __m256i updatedWhiteAcc = _mm256_sub_epi16(whiteAcc, whiteRegisterFrom);
+        updatedWhiteAcc = _mm256_add_epi16(updatedWhiteAcc, whiteRegisterPromo);
+
+        __m256i updatedBlackAcc = _mm256_sub_epi16(blackAcc, blackRegisterFrom);
+        updatedBlackAcc = _mm256_add_epi16(updatedBlackAcc, blackRegisterPromo);
+
+        // Store the new updated values into the white and black accumulator arrays
+        _mm256_store_si256((__m256i*)&white[i], updatedWhiteAcc);
+        _mm256_store_si256((__m256i*)&black[i], updatedBlackAcc);
     }
 }
 
@@ -255,21 +312,53 @@ void Accumulator::makeCastle(int kingFromSq, int kingToSq, int kingPieceIndex, i
 
 
     // Update the position of the king and the rook by removing the weights of their previous squares and adding the weights of their respective destination squares
-    for (int i = 0; i < HiddenSize; i++)
+    for (int i = 0; i < HiddenSize; i+=16)
     {
-        // King
-        white[i] -= NNUE.featureWeights[featureKingIndexFrom][i];
-        white[i] += NNUE.featureWeights[featureKingIndexTo][i];
+        // Store the weights into pointers so that they can be loaded
+        // King weights
+        int16_t* KingWeightsFrom = &NNUE.featureWeights[featureKingIndexFrom][i];
+        int16_t* KingOppositeWeightsFrom = &NNUE.featureWeights[oppositeFeatureKingIndexFrom][i];
+        int16_t* KingWeightsTo = &NNUE.featureWeights[featureKingIndexTo][i];
+        int16_t* KingOppositeWeightsTo = &NNUE.featureWeights[oppositeFeatureKingIndexTo][i];
 
-        black[i] -= NNUE.featureWeights[oppositeFeatureKingIndexFrom][i];
-        black[i] += NNUE.featureWeights[oppositeFeatureKingIndexTo][i];
+        // Rook weights
+        int16_t* RookWeightsFrom = &NNUE.featureWeights[featureRookIndexFrom][i];
+        int16_t* RookOppositeWeightsFrom = &NNUE.featureWeights[oppositeFeatureRookIndexFrom][i];
+        int16_t* RookWeightsTo = &NNUE.featureWeights[featureRookIndexTo][i];
+        int16_t* RookOppositeWeightsTo = &NNUE.featureWeights[oppositeFeatureRookIndexTo][i];
 
-        // Rook
-        white[i] -= NNUE.featureWeights[featureRookIndexFrom][i];
-        white[i] += NNUE.featureWeights[featureRookIndexTo][i];
+        // Load the weights into 256 bit registers
+        // Load king weights into registers
+        __m256i KingWhiteRegisterFrom = _mm256_load_si256((__m256i*)KingWeightsFrom);
+        __m256i KingBlackRegisterFrom = _mm256_load_si256((__m256i*)KingOppositeWeightsFrom);
+        __m256i KingWhiteRegisterTo = _mm256_load_si256((__m256i*)KingWeightsTo);
+        __m256i KingBlackRegisterTo = _mm256_load_si256((__m256i*)KingOppositeWeightsTo);
 
-        black[i] -= NNUE.featureWeights[oppositeFeatureRookIndexFrom][i];
-        black[i] += NNUE.featureWeights[oppositeFeatureRookIndexTo][i];
+        // Load rook weights into registers
+        __m256i RookWhiteRegisterFrom = _mm256_load_si256((__m256i*)RookWeightsFrom);
+        __m256i RookBlackRegisterFrom = _mm256_load_si256((__m256i*)RookOppositeWeightsFrom);
+        __m256i RookWhiteRegisterTo = _mm256_load_si256((__m256i*)RookWeightsTo);
+        __m256i RookBlackRegisterTo = _mm256_load_si256((__m256i*)RookOppositeWeightsTo);
+
+
+        // Load the accumulator values into registers
+        __m256i whiteAcc = _mm256_load_si256((__m256i*)&white[i]);
+        __m256i blackAcc = _mm256_load_si256((__m256i*)&black[i]);
+
+        // Add the weights to the accumulator white and black values
+        __m256i updatedWhiteAcc = _mm256_sub_epi16(whiteAcc, KingWhiteRegisterFrom);
+        updatedWhiteAcc = _mm256_add_epi16(updatedWhiteAcc, KingWhiteRegisterTo);
+        updatedWhiteAcc = _mm256_sub_epi16(updatedWhiteAcc, RookWhiteRegisterFrom);
+        updatedWhiteAcc = _mm256_add_epi16(updatedWhiteAcc, RookWhiteRegisterTo);
+
+        __m256i updatedBlackAcc = _mm256_sub_epi16(blackAcc, KingBlackRegisterFrom);
+        updatedBlackAcc = _mm256_add_epi16(updatedBlackAcc, KingBlackRegisterTo);
+        updatedBlackAcc = _mm256_sub_epi16(updatedBlackAcc, RookBlackRegisterFrom);
+        updatedBlackAcc = _mm256_add_epi16(updatedBlackAcc, RookBlackRegisterTo);
+
+        // Store the new updated values into the white and black accumulator arrays
+        _mm256_store_si256((__m256i*)&white[i], updatedWhiteAcc);
+        _mm256_store_si256((__m256i*)&black[i], updatedBlackAcc);
     }
 }
 

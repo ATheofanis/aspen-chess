@@ -1,12 +1,12 @@
 cmake_minimum_required(VERSION 4.1)
-project(AChess)
+project(AspenChess)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include_directories(.)
 
-add_executable(AChess src/main.cpp
+add_executable(AspenChess src/main.cpp
         src/Types.h
         src/Bitboard.cpp
         src/Bitboard.h
@@ -40,3 +40,5 @@ add_executable(AChess src/main.cpp
         src/nnue/accumulator.h
         src/nnue/Architecture.h
 )
+
+target_compile_options(AspenChess PRIVATE -mavx2)
