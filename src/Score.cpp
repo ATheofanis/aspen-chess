@@ -224,26 +224,6 @@ int scoreBoard(const Position& pos)
     int score = 0;
     score += pos.getTotalPSTAndMaterialScore();
 
-
-    // pawn score using pawn hash table:
-    int pawnEval = probePawnHash(pos.getPawnZobristHash());
-    // first probe to see if the hash table has stored this position before
-    if ( pawnEval != NO_HASH_ENTRY )
-    {
-        pawnHashHIT++;
-        // we found the same position in the hash table with a precomputed pawn structure score, so add that to our current
-        score += pawnEval;
-    }
-    else
-    {
-        pawnHashMISS++;
-        // a new pawn position has been encountered, manual compute the score and store it in the pawn hash table
-        int pawnScore = pawnStructureScore(pos);
-        score += pawnScore;
-        savePawnHash(pos.getPawnZobristHash(), pawnScore);
-    }
-
-
     score += rookOpenFileScore(pos);
 
     score += getBishopPairScore(pos);

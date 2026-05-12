@@ -19,7 +19,6 @@ struct positionInfo
     Bitboard whitePiecesBitboard{};
 
     ZobristHash zobrist{};
-    ZobristHash pawnZobrist{};
 
     int enPassantSquare{};
     int mgScore;
@@ -47,7 +46,6 @@ private:
     Bitboard occupiedSquaresBitboard{};
 
     ZobristHash zobristHash{};
-    ZobristHash pawnZobristHash{};
     ZobristHash previousPositions[1024]{}; // store all previous positions' zobrist
 
     Piece Board[64]{};
@@ -135,11 +133,6 @@ public:
         return zobristHash;
     }
 
-    [[nodiscard]] constexpr ZobristHash getPawnZobristHash() const
-    {
-        return pawnZobristHash;
-    }
-
     [[nodiscard]] constexpr int getNumOfMoves() const
     {
         return numOfPositions;
@@ -178,9 +171,6 @@ public:
 
     // manual computation of zobrist hash for loading fen and for debugging incremental zobrist
     ZobristHash computeZobristHash();
-
-    // manual computation of pawns zobrist hash for pawn hash table
-    ZobristHash computePawnZobristHash();
 
 
     // check if current position has been repeated twice before (3-fold repetition rule)

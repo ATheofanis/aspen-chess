@@ -318,7 +318,6 @@ std::vector<std::string> tokenize(const std::string& command)
 inline void initializations()
 {
     initLMR();
-    clearPawnTranspositionTable();
     seedingForXoshiro256aa();
     initPSTtables();
     initPawnAttacks();
@@ -482,7 +481,6 @@ void LoopUCI()
         {
             globalMTG = 100;
             clearTranspositionTable();
-            clearPawnTranspositionTable();
         }
         // Resize TT size option
         else if (tokens[0] == "setoption" && tokens.size() >= 5)

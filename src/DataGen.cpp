@@ -29,7 +29,6 @@ void init()
 {
     initLMR();
     clearTranspositionTable();
-    clearPawnTranspositionTable();
     seedingForXoshiro256aa();
     initPSTtables();
     initPawnAttacks();
@@ -71,7 +70,6 @@ void generateData(std::string dataTxtFile)
         OPENING:
 
         clearTranspositionTable();
-        clearPawnTranspositionTable();
         Position pos;
 
 
