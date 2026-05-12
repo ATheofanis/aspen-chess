@@ -5,7 +5,7 @@
 #pragma once
 #include <string>
 
-constexpr int dataGenMaxNodes = 5000;
+constexpr int dataGenMaxNodes = 25000;
 inline int NumberOfGames = 20; // 1500000
 constexpr int maxNumberOfMoves = 256;
 constexpr int NumOfRandomOpeningMoves = 8;
@@ -31,4 +31,4 @@ struct DataGenEntry
     }
 };
 
-void generateData();
+void generateData(std::string dataFile);

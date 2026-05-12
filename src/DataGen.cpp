@@ -42,7 +42,7 @@ void init()
     initializePawnStructureMasks();
 }
 
-void generateData()
+void generateData(std::string dataTxtFile)
 {
     init();
 
@@ -56,7 +56,7 @@ void generateData()
     TimePoint binc = 5000;
     int movestogo = 1;
 
-    data.open("data0.txt", std::ios::app);
+    data.open(dataTxtFile, std::ios::app);
 
     if (!data.is_open())
     {
