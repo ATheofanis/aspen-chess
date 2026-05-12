@@ -12,6 +12,14 @@
 // clears everything regarding a position
 void Position::clearPosition()
 {
+    zobristHash = 0ULL;
+    pawnZobristHash = 0ULL;
+    mgPstAndMaterialScore = 0;
+    egPstAndMaterialScore = 0;
+    gamePhase = 0;
+    positionLogTop = 0;
+    numOfPositions = 0;
+    irreversiblePositionTop = 0;
     for (auto & sq : Board)
     {
         sq = NO_PIECE;
@@ -26,8 +34,6 @@ void Position::clearPosition()
     whiteToMoveFlag = true;
     enPassantSquare = NO_SQUARE;
     castleRights = 0;
-
-
 }
 
 
@@ -346,7 +352,7 @@ void Position::makeMove(Move move)
             irreversiblePositionTop = numOfPositions;
 
             Piece capPiece = Board[toSquare];
-            if (capPiece % 6 == 0)
+            if (capPiece == 0 || capPiece == 6)
             {
                 pawnZobristHash ^= zobristPieces[toSquare][capPiece];
 
@@ -610,6 +616,10 @@ void Position::makeMove(Move move)
 
     previousPositions[numOfPositions++] = zobristHash;
 
+    // ASSERT
+    assert(pawnZobristHash == computePawnZobristHash());
+    assert(zobristHash == computeZobristHash());
+
 }
 
 // MAKE CAPTURE -----------------==============================
@@ -655,7 +665,7 @@ void Position::makeCapture(Move move)
 
     // update board-piece zobrist value
     zobristHash ^= zobristPieces[fromSquare][pieceMoved];
-    bool pieceMovedIsPawn = (pieceMoved % 6 == 0) && (pieceMoved < 12);
+    bool pieceMovedIsPawn = (pieceMoved == 6 || pieceMoved == 0);
     if (pieceMovedIsPawn)
     {
         pawnZobristHash ^= zobristPieces[fromSquare][pieceMoved];
@@ -733,7 +743,7 @@ void Position::makeCapture(Move move)
     {
 
         Piece capPiece = Board[toSquare];
-        if ((capPiece % 6) == 0)
+        if (capPiece == 6 || capPiece == 0)
         {
             pawnZobristHash ^= zobristPieces[toSquare][capPiece];
         }
@@ -900,6 +910,10 @@ void Position::makeCapture(Move move)
 
     previousPositions[numOfPositions++] = zobristHash;
 
+    // ASSERT
+    assert(pawnZobristHash == computePawnZobristHash());
+    assert(zobristHash == computeZobristHash());
+
 }
 // MAKE CAPTURE -----------------==============================
 
@@ -1059,10 +1073,9 @@ void Position::unmakeMove()
 
     }
 
-    //zobristHash ^= zobristBlackToMove;
-
     // ASSERT
     assert(pawnZobristHash == computePawnZobristHash());
+    assert(zobristHash == computeZobristHash());
 
 }
 
@@ -1206,6 +1219,9 @@ void Position::unmakeCapture()
 
         }
     }
+    // ASSERT
+    assert(pawnZobristHash == computePawnZobristHash());
+    assert(zobristHash == computeZobristHash());
 
 }
 // UNMAKE CAPTURE -----------------------------------====================================
@@ -1241,7 +1257,7 @@ void Position::calculatePstAndMaterialScore()
 // for now return zobrist hash for easier debugging might change later to set the hash directly
 ZobristHash Position::computeZobristHash()
 {
-    ZobristHash hash = 0;
+    ZobristHash hash = 0ULL;
 
     // get hash from board pieces
     for (int sq = 0; sq < 64; sq++)
@@ -1283,7 +1299,7 @@ ZobristHash Position::computeZobristHash()
 
 ZobristHash Position::computePawnZobristHash()
 {
-    ZobristHash hash = 0;
+    ZobristHash hash = 0ULL;
 
     // get hash from board pieces
     for (int sq = 0; sq < 64; sq++)

@@ -48,6 +48,7 @@ std::tuple<bool, TTData> probe(ZobristHash zobristHash)
 }
 
 
+// Resizes the transposition table and clears it
 void resizeTranspositionTable(int megabytes)
 {
     if (transpositionTable != nullptr)

@@ -290,6 +290,15 @@ Position parsePosition(std::vector<std::string> tokens, int startingIndex)
 }
 
 
+void parseFenPosition(std::vector<std::string> tokens, int startingIndex, Position& pos)
+{
+    for (int i = startingIndex; i < tokens.size(); i++)
+    {
+        pos.makeMove(parseMove(tokens[i], pos));
+    }
+}
+
+
 // returns a vector of tokens from a given command string , using istringstream and >> loop method (https://www.tutorialspoint.com/article/how-to-process-strings-using-std-istringstream)
 std::vector<std::string> tokenize(const std::string& command)
 {
@@ -364,15 +373,11 @@ void LoopUCI()
             // non fen string ---------
             if (tokens.size() >= 2 && tokens[1] == "startpos")
             {
-                pos.loadFen(startPos);
-
                 if (tokens[2] == "moves")
                 {
                     pos = parsePosition(tokens, 3);
                 }
-
-                // non fen string --------
-            }
+            }// non fen string --------
 
             // fen string --------------
             else if (tokens[1] == "fen")
@@ -384,7 +389,7 @@ void LoopUCI()
                 {
                     if (tokens[i] == "moves")
                     {
-                        movesTokenIndex = i;
+                        movesTokenIndex = i+1;
                         movesFlag = true;
                         break;
                     }
@@ -395,7 +400,7 @@ void LoopUCI()
                 pos.loadFen(fenString);
                 if (movesFlag)
                 {
-                    parsePosition(tokens, movesTokenIndex);
+                    parseFenPosition(tokens, movesTokenIndex, pos);
                 }
 
                 // fen string --------------
@@ -465,7 +470,8 @@ void LoopUCI()
         else if (tokens[0] == "isready")
         {
             std::cout << "readyok\n" << std::endl;
-        } else if (tokens[0] == "uci")
+        }
+        else if (tokens[0] == "uci")
         {
             std::cout << "id name Aspen 0.1.0\n";
             std::cout << "id author ATheo\n";
