@@ -41,7 +41,7 @@ inline void printMove(const Move move)
 {
     int fromSquare = move & 0x3F;
     int toSquare = (move >> 6) & 0x3F;
-    int flag = (move >> 12) & 0x3F;
+    int flag = (move >> 12) & 0xF;
     std::cout << "\nMove: Starting Square : " << squareName(static_cast<Square>(fromSquare)) << "\nEnding square: " << squareName(static_cast<Square>(toSquare)) << "Flag: " << flag << "\n";
 }
 

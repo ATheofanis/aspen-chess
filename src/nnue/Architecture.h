@@ -9,13 +9,13 @@ constexpr int InputSize = 768;
 constexpr int HiddenSize = 256;
 
 // Scale of quantization between input and the hidden layer
-constexpr int Quantization0 = 255;
+constexpr int QuantizationA = 255;
 
 // Scale of quantization between the hidden layer and the output node
-constexpr int Quantization1 = 64;
+constexpr int QuantizationB = 64;
 
 // The combined scale of quantization
 // Used for de-quantization inside the NNUE evaluation function
-constexpr int TotalQ = Quantization0 * Quantization1;
+constexpr int TotalQ = QuantizationA * QuantizationB;
 
 constexpr int Scale = 400;
