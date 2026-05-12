@@ -39,6 +39,8 @@ add_executable(AspenChess src/main.cpp
         src/nnue/accumulator.cpp
         src/nnue/accumulator.h
         src/nnue/Architecture.h
+        src/UCI.cpp
+        src/UCI.h
 )
 
 target_compile_options(AspenChess PRIVATE -mavx2)
