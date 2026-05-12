@@ -210,12 +210,10 @@ int getBishopPairScore(const Position& pos)
 
 
 // NNUE evaluation of the position
-int scoreBoardNNUE(const Position& pos)
+int scoreBoardNNUE(const Position& pos, Accumulator accumulator)
 {
-    Accumulator acc(pos);
-
     // Call the NNUE evaluation function
-    int NNUEscore = evaluateNNUE(acc, pos.isWhiteToMove() ? White : Black);
+    int NNUEscore = evaluateNNUE(accumulator, pos.isWhiteToMove() ? White : Black);
 
     return NNUEscore;
 }
@@ -278,7 +276,7 @@ int scoreQuiescenceMove(const Move& move, Position& pos, const Move& hashMove)
 
     int fromSquare = move & 0x3F;
     int toSquare = (move >> 6) & 0x3F;
-    int flag = (move >> 12) & 0x3F;
+    int flag = (move >> 12) & 0xF;
 
     // MVV-LVA for quiescence
 
@@ -311,7 +309,7 @@ int scoreMove(const Move& move, const Position& pos, const Move& hashMove, const
 
 
 
-    int flag = (move >> 12) & 0x3F;
+    int flag = (move >> 12) & 0xF;
 
     // MVV-LVA for capture moves
     if (flag & 4)

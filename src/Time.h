@@ -23,6 +23,7 @@ private:
     TimePoint optimumTimeLimit{}; // this is the soft time limit cap, the search can exceed this limit
     TimePoint maximumTimeLimit{}; // this is the time limit hard cap meaning we can never exceed it in the search
     bool shouldStop{};
+    bool timeEnabled = true;
 public:
     // called once at the start of every search to set the values of startingTime, optimum limit and maximum limit (and also reset the shouldStop flag)
     void start(TimePoint myTime, TimePoint myInc, int movesToGo = 25);
@@ -30,8 +31,13 @@ public:
     // sets should stop flag to true
     void stopSearch() { shouldStop = true; }
 
+    void disableTimeControl() { timeEnabled = false; }
+
+    bool isTimeEnabled() { return timeEnabled; }
+
     // returns the bool value of should stop flag
     bool getShouldStopFlag() { return shouldStop; }
+
 
     // returns the time that has passed from the moment the search started
     TimePoint elapsedTime() const { return now() - startingTime; }

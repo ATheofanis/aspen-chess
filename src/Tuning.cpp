@@ -3,7 +3,7 @@
 //
 
 #include "Tuning.h"
-
+#include <cmath>
 
 
 double calculateError(int bonus, double K)

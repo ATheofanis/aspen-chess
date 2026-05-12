@@ -25,12 +25,5 @@ extern NetworkStruct NNUE;
 // Function to load the quantisised binary into the NNUE struct
 void loadQuantised(const std::string& filePath);
 
-
+// NNUE evaluation function (Lizard SCReLU)
 int evaluateNNUE(const Accumulator& acc, Color sideToMove);
-
-// SCReLU - (Squared Clipped ReLU) Activation Function
-inline int SCReLU(int value)
-{
-    int CReLU = std::max(0, std::min(value, Quantization0));
-    return (CReLU * CReLU) / Quantization0;
-}

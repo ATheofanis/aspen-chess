@@ -106,7 +106,7 @@ void generateData()
             int64_t randomMoveIndex = next() % numOfMoves;
             Move randomMove = moves[randomMoveIndex];
 
-            int randomMoveFlag = randomMove >> 12 & 0x3F;
+            int randomMoveFlag = randomMove >> 12 & 0xF;
 
             pos.makeMove(randomMove);
 
@@ -169,7 +169,7 @@ void generateData()
 
             Move bestMove = findBestMove(pos, newEntryEval);
             newEntryEval = pos.isWhiteToMove() ? newEntryEval : -newEntryEval;
-            int bestMoveFlag = bestMove >> 12 & 0x3F;
+            int bestMoveFlag = bestMove >> 12 & 0xF;
 
             // White is winning
             if (newEntryEval >= evalThreshold)

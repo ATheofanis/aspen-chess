@@ -6,13 +6,24 @@
 #include "Position.h"
 #include <math.h>
 
+#include "nnue/Accumulator.h"
+
 class Position;
+class Accumulator;
 
 inline int MAX_DEPTH = 64;
 
 inline uint64_t MAX_NODES = std::numeric_limits<uint64_t>::max();
 
 inline bool DataGenFlag = false;
+
+
+// Search Stack to pass search-related information - work in progress
+struct SearchStack
+{
+    Accumulator accumulator;
+};
+
 
 // Move picker class - to be continued
 class MovePicker

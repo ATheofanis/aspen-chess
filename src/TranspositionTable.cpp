@@ -3,13 +3,14 @@
 //
 
 #include "TranspositionTable.h"
+#include <bit>
 
 
 // function to save current position to the transposition table (using depth and generation (age) replacement scheme)
 void save(ZobristHash zobristHash, Move bestMove, int evaluation, int staticEval, int depth, Bound bound, int entryGeneration, int ply)
 {
     // get the index based on the zobrist hash
-    int index = zobristHash & TTSizeMinusOne;
+    int index = zobristHash & (TTSize - 1);
 
 
     TTEntry entry = transpositionTable[index];
@@ -31,7 +32,7 @@ void save(ZobristHash zobristHash, Move bestMove, int evaluation, int staticEval
 // searches for an entry inside the transposition table
 std::tuple<bool, TTData> probe(ZobristHash zobristHash)
 {
-    int index = zobristHash & TTSizeMinusOne;
+    int index = zobristHash & (TTSize - 1);
 
     TTEntry entry = transpositionTable[index];
 
@@ -44,6 +45,32 @@ std::tuple<bool, TTData> probe(ZobristHash zobristHash)
 
     // no entry was found
     return {false, TTData(VALUE_NONE, VALUE_NONE, VALUE_NONE, NO_MOVE, Bound::BOUND_NONE)};
+}
+
+
+// Resizes the transposition table and clears it
+void resizeTranspositionTable(int megabytes)
+{
+    if (transpositionTable != nullptr)
+    {
+        delete[] transpositionTable;
+    }
+
+    // Set the megabytes to a positive value
+    megabytes = std::max(1, megabytes);
+
+    // Use bit_floor to calculate the largest integral power of two that is not greater than 'megabytes'
+    // Cast the megabytes to unsigned integer because bit_floor does not accept integers
+    int actualMB = std::bit_floor((uint32_t)megabytes);
+
+    // The new TT size is the total megabytes divided by the size of the transposition table entry
+    size_t newTTSize = actualMB * 1024ULL * 1024ULL / sizeof(TTEntry);
+
+    TTSize = newTTSize;
+
+    transpositionTable = new TTEntry[TTSize];
+
+    clearTranspositionTable();
 }
 
 
