@@ -304,7 +304,6 @@ std::vector<std::string> tokenize(const std::string& command)
 inline void initializations()
 {
     initLMR();
-    clearTranspositionTable();
     clearPawnTranspositionTable();
     seedingForXoshiro256aa();
     initPSTtables();
@@ -332,6 +331,7 @@ int main(int argc, char* argv[])
 {
     initializations();
 
+    resizeTranspositionTable(16);
 
     // Start the UCI loop if UCI is enabled
     if (UCI_ENABLED)
@@ -471,12 +471,22 @@ int main(int argc, char* argv[])
             {
                 std::cout << "id name Aspen 0.1.0\n";
                 std::cout << "id author ATheo\n";
+                std::cout << "option name Hash type spin default 16 min 1 max 32768\n";
                 std::cout << "uciok\n";
             } else if (tokens[0] == "ucinewgame")
             {
                 globalMTG = 100;
                 clearTranspositionTable();
                 clearPawnTranspositionTable();
+            }
+            // Resize TT size option
+            else if (tokens[0] == "setoption" && tokens.size() >= 5)
+            {
+                if (tokens[1] == "name" && (tokens[2] == "Hash" || tokens[2] == "hash") && tokens[3] == "value")
+                {
+                    int TTSizeMB = std::atoi(tokens[4].c_str());
+                    resizeTranspositionTable(TTSizeMB);
+                }
             }
             // quit command
             else if (tokens[0] == "quit")

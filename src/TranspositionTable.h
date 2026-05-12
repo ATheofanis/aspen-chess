@@ -70,16 +70,12 @@ struct TTEntry
 
 
 
-// the size of the transposition table
-constexpr int TTSize = 1 << 21;
-
-// the TTSize is a power of 2. therefore in order to calculate the index of an entry which is zobrist % TTSize we can use bitwise AND like so:
-// index = zobrist & (TTSize-1)
-constexpr int TTSizeMinusOne = TTSize - 1;
-
+// The size of the transposition table
+// Default size is set at 16 MB
+inline size_t TTSize = (16 * 1024 * 1024) / sizeof(TTEntry);
 
 // global transposition table
-inline TTEntry transpositionTable[TTSize];
+inline TTEntry* transpositionTable = nullptr;
 
 // save a position to the tt, or overwrite an existing hash entry
 void save(ZobristHash zobristHash, Move bestMove, int evaluation, int staticEval, int depth, Bound bound, int generation, int ply);
@@ -93,6 +89,9 @@ inline void clearTranspositionTable()
 {
     memset(transpositionTable, 0, sizeof(TTEntry) * TTSize);
 }
+
+
+void resizeTranspositionTable(int megabytes);
 
 
 
