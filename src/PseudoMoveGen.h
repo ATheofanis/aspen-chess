@@ -1,0 +1,8 @@
+//
+// Created by theoa on 13/05/2026.
+//
+
+#ifndef ASPENCHESS_PSEUDOMOVEGEN_H
+#define ASPENCHESS_PSEUDOMOVEGEN_H
+
+#endif //ASPENCHESS_PSEUDOMOVEGEN_H

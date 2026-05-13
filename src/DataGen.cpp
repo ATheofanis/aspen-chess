@@ -13,7 +13,7 @@
 #include "Bitboard.h"
 #include "Tuning.h"
 
-#include "MoveGen.h"
+#include "LegalMoveGen.h"
 #include "Position.h"
 #include "PRNG.h"
 #include "Search.h"

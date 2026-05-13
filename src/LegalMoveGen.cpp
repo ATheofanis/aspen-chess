@@ -2,7 +2,7 @@
 // Created by theoa on 07/03/2026.
 //
 
-#include "MoveGen.h"
+#include "LegalMoveGen.h"
 
 #include "Attacks.h"
 

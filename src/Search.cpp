@@ -7,7 +7,7 @@
 #include <cmath>
 #include <cstring>
 
-#include "MoveGen.h"
+#include "LegalMoveGen.h"
 #include "Score.h"
 #include "TranspositionTable.h"
 #include "Time.h"

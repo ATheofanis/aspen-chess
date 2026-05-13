@@ -16,8 +16,8 @@ add_executable(AspenChess src/main.cpp
         src/MagicNumbers.h
         src/Position.cpp
         src/Position.h
-        src/MoveGen.cpp
-        src/MoveGen.h
+        src/LegalMoveGen.cpp
+        src/LegalMoveGen.h
         src/Score.cpp
         src/Score.h
         src/Search.cpp
@@ -41,6 +41,8 @@ add_executable(AspenChess src/main.cpp
         src/nnue/Architecture.h
         src/UCI.cpp
         src/UCI.h
+        src/PseudoMoveGen.cpp
+        src/PseudoMoveGen.h
 )
 
 target_compile_options(AspenChess PRIVATE -mavx2)

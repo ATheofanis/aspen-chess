@@ -6,7 +6,7 @@
 
 #include <cassert>
 
-#include "MoveGen.h"
+#include "LegalMoveGen.h"
 #include "Zobrist.h"
 
 // clears everything regarding a position
