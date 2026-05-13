@@ -23,7 +23,7 @@ extern NetworkStruct NNUE;
 
 
 // Function to load the quantisised binary into the NNUE struct
-void loadQuantised(const std::string& filePath);
+void loadQuantised();
 
 // NNUE evaluation function (Lizard SCReLU)
 int evaluateNNUE(const Accumulator& acc, Color sideToMove);

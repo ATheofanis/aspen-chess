@@ -11,16 +11,9 @@ INCBIN(NetworkWeights, "NetworkFiles/aspen-net.bin");
 
 NetworkStruct NNUE;
 
-void loadQuantised(const std::string& filePath)
+void loadQuantised()
 {
-    std::ifstream file{filePath, std::ios::binary};
-
-    if (!file.is_open()) {
-        std::cerr << "ERROR! Provided file path is wrong: " << filePath << std::endl;
-        return;
-    }
-
-    file.read(reinterpret_cast<char *>(&NNUE), sizeof(NetworkStruct));
+    std::memcpy(&NNUE, gNetworkWeightsData, sizeof(NetworkStruct));
 }
 
 // NNUE evaluation using Lizard SCReLU for faster calculations
