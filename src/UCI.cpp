@@ -33,8 +33,8 @@ int globalMTG = 85;
 
 // print the Unicode character
 inline void printUnicode(UnicodePiece uP) {
-    std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t> conv;
-    std::cout << conv.to_bytes(static_cast<char32_t>(uP));
+    //std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t> conv;
+    //std::cout << conv.to_bytes(static_cast<char32_t>(uP));
     std::cout << " ";
 }
 
