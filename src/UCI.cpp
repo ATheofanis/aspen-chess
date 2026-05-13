@@ -328,7 +328,7 @@ inline void initializations()
     initLineBetween();
     initZobrist();
     initializePawnStructureMasks();
-    loadQuantised("src/aspen-net.bin");
+    loadQuantised("src/nnue/NetworkFiles/aspen-net.bin");
 }
 
 

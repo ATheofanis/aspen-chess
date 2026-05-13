@@ -5,6 +5,9 @@
 #include "Nnue.h"
 #include <fstream>
 #include <iostream>
+#include "../../3rdparty/incbin.h"
+
+INCBIN(NetworkWeights, "NetworkFiles/aspen-net.bin");
 
 NetworkStruct NNUE;
 
