@@ -38,13 +38,13 @@ private:
 
 
 
-extern int precomputedLMR[64][256];
+extern int precomputedLMR[128][256];
 
 
 // the LMR formula is computed once at the beginning of the program to avoid calling std::log millions of times in the search
 inline void initLMR() {
-    // for every depth up to 64
-    for (int d = 0; d < 64; d++) {
+    // for every depth up to 128
+    for (int d = 0; d < 128; d++) {
         // for every move up to 256
         for (int i = 0; i < 256; i++) {
             precomputedLMR[d][i] = 1 + std::log(d) * std::log(i) / 2.0;

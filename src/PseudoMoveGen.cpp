@@ -473,7 +473,7 @@ void generateQueenPseudoMoves(Bitboard queenPos, Bitboard allyPieces, Bitboard e
 
 
 // Generate every pseudo-legal king move excluding castling
-void generateKingMoves(Bitboard kingPos, Bitboard allyPieces, Bitboard enemyPieces, const Position& pos, Move moves[], int& numOfMoves)
+void generateKingPseudoMoves(Bitboard kingPos, Bitboard allyPieces, Bitboard enemyPieces, const Position& pos, Move moves[], int& numOfMoves)
 {
     int startSquare = popLsbAndReturnIndex(kingPos);
 
@@ -511,7 +511,7 @@ void generateWhiteKingPseudoMoves(const Position& pos, Move moves[], int& numOfM
     Bitboard occupied = pos.getOccupiedBitboard();
 
     // Generate every non-castling move
-    generateKingMoves(whiteKingBB, whitePiecesBB, blackPiecesBB, pos, moves, numOfMoves);
+    generateKingPseudoMoves(whiteKingBB, whitePiecesBB, blackPiecesBB, pos, moves, numOfMoves);
 
     // CASTLING MOVES SECTION :
     CastlingRights castleRights = pos.getCastlingRights();
@@ -567,7 +567,7 @@ void generateBlackKingPseudoMoves(const Position& pos, Move moves[], int& numOfM
     Bitboard occupied = pos.getOccupiedBitboard();
 
     // Generate every non-castling move
-    generateKingMoves(blackKingBB, blackPiecesBB, whitePiecesBB, pos, moves, numOfMoves);
+    generateKingPseudoMoves(blackKingBB, blackPiecesBB, whitePiecesBB, pos, moves, numOfMoves);
 
     // CASTLING MOVES SECTION :
     CastlingRights castleRights = pos.getCastlingRights();

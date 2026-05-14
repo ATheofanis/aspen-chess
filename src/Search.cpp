@@ -18,6 +18,9 @@ int transpositionCutoffs = 0;
 int quieNodes = 0;
 int deltaPrunes = 0;
 
+Move pvTable[MAX_PLY][MAX_PLY];
+
+
 // prints current depth and number of nodes searched for negamax and qsearch for the position
 void printInfo(int depth, int score)
 {
@@ -25,7 +28,7 @@ void printInfo(int depth, int score)
 }
 
 
-int precomputedLMR[64][256];
+int precomputedLMR[128][256];
 
 
 // QSearch with TT probing (non-PV nodes only). This qsearch implementation only searches for captures

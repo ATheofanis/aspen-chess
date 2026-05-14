@@ -202,6 +202,24 @@ public:
 
     int SEE( int toSquare, int targetPiece, int fromSquare, int attackerPiece);
 
+    // Checks if the side to move can capture the enemy king
+    bool illegalBoardPosition()
+    {
+        int kingSquare;
+        Color attackingSideColor;
+        if (!whiteToMoveFlag)
+        {
+            kingSquare = lsbIndex(pieceBitboard[wK]);
+            attackingSideColor = Black;
+        } else
+        {
+            kingSquare = lsbIndex(pieceBitboard[bK]);
+            attackingSideColor = White;
+        }
+
+        return squareUnderAttack(kingSquare, attackingSideColor, *this, occupiedSquaresBitboard);
+    }
+
 
     bool sideToMoveIsInCheck()
     {
