@@ -17,9 +17,17 @@ int precomputedLMR[128][256];
 
 
 // prints current depth and number of nodes searched for negamax and qsearch for the position
-void MoveSearcher::printInfo(int depth, int score, int ply)
+void MoveSearcher::printInfo(int depth, int score)
 {
-    std::cout << "info depth " << depth << " score cp " << score << " nodes " << nodes << std::endl;
+    std::cout << "info depth " << depth << " score cp " << score << " nodes " << nodes << " pv ";
+
+    for (int count = 0; count < pvLength[0]; count++)
+    {
+        // Print PV move
+        printMove(pvTable[0][count]);
+        std::cout << " ";
+    }
+    std::cout << std::endl;
 }
 
 
@@ -256,16 +264,19 @@ int MoveSearcher::quiescence(Position& pos, int alpha, int beta, Move ttBestMove
 template<NodeType nodeType>
 int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMove, int ply, int rootDepth, bool allowNullMove, SearchStack* ss)
 {
+    nodes++;
+
     if (tm.isTimeEnabled() && (((nodes & 2047) == 0 && tm.maximumExpired()) || (nodes >= MAX_NODES)))
     {
         tm.stopSearch();
         return 0;
     }
 
+    pvLength[ply] = ply;
+
     constexpr bool isPv = (nodeType != NodeType::NonPV);
     constexpr bool rootNode = (nodeType == NodeType::Root);
 
-    nodes++;
     if (ply > 0 && pos.checkRepetition(pos.getZobristHash())) return 0;
 
     bool isInCheck = pos.sideToMoveIsInCheck();
@@ -282,7 +293,6 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
             //save(posZobrist, depth, qVal, Bound::BOUND_EXACT, NO_MOVE, ply);
             return qVal;
         }
-
     }
 
     ZobristHash posZobrist = pos.getZobristHash();
@@ -467,6 +477,19 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
 
         ttBestMove = firstMove;
 
+        // Store PV move
+        pvTable[ply][ply] = firstMove;
+
+        // Copy move from deeper plies into current ply's line
+        for (int nextPly = ply + 1; nextPly < pvLength[ply + 1]; nextPly++)
+        {
+            pvTable[ply][nextPly] = pvTable[ply + 1][nextPly];
+        }
+
+        // Adjust PV length
+        pvLength[ply] = pvLength[ply + 1];
+
+
         if (ply == 0)
         {
             bestMove = firstMove;
@@ -486,10 +509,8 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
                 killerMoves[ply][0] = firstMove;
             }
 
-
             return beta; // hard beta cutoff
         }
-
     }
     else
     {
@@ -579,8 +600,19 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
             hashFlag = Bound::BOUND_EXACT;
             alpha = score;
 
-
             ttBestMove = move;
+
+            // Store PV move
+            pvTable[ply][ply] = move;
+
+            // Copy move from deeper plies into current ply's line
+            for (int nextPly = ply + 1; nextPly < pvLength[ply + 1]; nextPly++)
+            {
+                pvTable[ply][nextPly] = pvTable[ply + 1][nextPly];
+            }
+
+            // Adjust PV length
+            pvLength[ply] = pvLength[ply + 1];
 
             if (ply == 0)
             {
@@ -686,7 +718,7 @@ Move MoveSearcher::findBestMove(Position pos, int& posEval)
         previousMove = bestMove;
 
         // Print search statistics (Negamax nodes, QSearch nodes and current search depth)
-        if (!DataGenFlag) printInfo(depth, score, 0); // only print info if we are not generating self play data
+        if (!DataGenFlag) printInfo(depth, score); // only print info if we are not generating self play data
 
         if (tm.isTimeEnabled() && tm.getShouldStopFlag()) break;
         posEval = score;

@@ -37,12 +37,19 @@ void generateQuietMoves(const legalityInformation& info, Position& pos, Move mov
 
 
 // converts a move variable to readable format (chess board squares and flag display)
-inline void printMove(const Move move)
+inline void printMoveInfo(const Move move)
 {
     int fromSquare = move & 0x3F;
     int toSquare = (move >> 6) & 0x3F;
     int flag = (move >> 12) & 0xF;
     std::cout << "\nMove: Starting Square : " << squareName(static_cast<Square>(fromSquare)) << "\nEnding square: " << squareName(static_cast<Square>(toSquare)) << "Flag: " << flag << "\n";
+}
+
+inline void printMove(const Move move)
+{
+    int fromSquare = move & 0x3F;
+    int toSquare = (move >> 6) & 0x3F;
+    std::cout << squareName(static_cast<Square>(fromSquare)) << squareName(static_cast<Square>(toSquare));
 }
 
 
