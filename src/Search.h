@@ -28,14 +28,47 @@ struct SearchStack
 // Move picker class - to be continued
 class MovePicker
 {
-public:
-    Move nextMove();
-    MovePicker() = default;
 private:
     Move moves[256];
     Move ttMove;
+public:
+    Move nextMove();
+    MovePicker() = default;
 };
 
+
+class MoveSearcher
+{
+private:
+    int nodes = 0;
+    int quieNodes = 0;
+
+    Move pvTable[MAX_PLY][MAX_PLY]{};
+    int pvLength[MAX_PLY]{};
+
+    int generation = 0;
+
+    // Prints search-related information such as the current depth, the evaluation and the PV table of the position
+    void printInfo(int depth, int score, int ply);
+
+    // Quiescence search for horizon effect
+    template<NodeType nodeType>
+    int quiescence(Position& pos, int alpha, int beta, Move ttBestMove, int ply, SearchStack* ss);
+
+    // Negamax with alpha beta pruning
+    template<NodeType nodeType>
+    int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMove, int ply, int rootDepth, bool allowNullMove, SearchStack* ss);
+
+public:
+    int historyMoves[64][64]{};
+    Move killerMoves[MAX_PLY][2]{};
+
+    Move findBestMove(Position pos, int& posEval);
+
+    int scoreQuiescenceMove(const Move& move, Position& pos, const Move& bestMove);
+
+    int scoreMove(const Move& move, const Position& pos, const Move& hashMove, const int& ply);
+};
 
 
 extern int precomputedLMR[128][256];
@@ -51,6 +84,3 @@ inline void initLMR() {
         }
     }
 }
-
-
-Move findBestMove(Position pos, int& posEval);

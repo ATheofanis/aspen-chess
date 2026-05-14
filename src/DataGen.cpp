@@ -65,6 +65,7 @@ void generateData(std::string dataTxtFile)
 
     for (int i = 0; i < NumberOfGames; i++)
     {
+        MoveSearcher searcher;
 
         // In the opening phase play 8 random moves in order to ensure there is enough position variety
         OPENING:
@@ -113,7 +114,7 @@ void generateData(std::string dataTxtFile)
             tm.start(500000, 500000, 1);
 
             int newEntryEval = -999999;
-            findBestMove(pos, newEntryEval);
+            searcher.findBestMove(pos, newEntryEval);
             newEntryEval = pos.isWhiteToMove() ? newEntryEval : -newEntryEval;
 
             // Only accept openings that do not heavily favor one side
@@ -165,7 +166,7 @@ void generateData(std::string dataTxtFile)
 
             int newEntryEval = -999999;
 
-            Move bestMove = findBestMove(pos, newEntryEval);
+            Move bestMove = searcher.findBestMove(pos, newEntryEval);
             newEntryEval = pos.isWhiteToMove() ? newEntryEval : -newEntryEval;
             int bestMoveFlag = bestMove >> 12 & 0xF;
 

@@ -13,27 +13,20 @@
 #include "Time.h"
 
 
-int nodes = 0;
-int transpositionCutoffs = 0;
-int quieNodes = 0;
-int deltaPrunes = 0;
-
-Move pvTable[MAX_PLY][MAX_PLY];
+int precomputedLMR[128][256];
 
 
 // prints current depth and number of nodes searched for negamax and qsearch for the position
-void printInfo(int depth, int score)
+void MoveSearcher::printInfo(int depth, int score, int ply)
 {
     std::cout << "info depth " << depth << " score cp " << score << " nodes " << nodes << std::endl;
 }
 
 
-int precomputedLMR[128][256];
-
 
 // QSearch with TT probing (non-PV nodes only). This qsearch implementation only searches for captures
 template<NodeType nodeType>
-int quiescence(Position& pos, int alpha, int beta, Move ttBestMove, int ply, SearchStack* ss)
+int MoveSearcher::quiescence(Position& pos, int alpha, int beta, Move ttBestMove, int ply, SearchStack* ss)
 {
 
     // first check if the maximum time limit has been exceeded
@@ -99,7 +92,6 @@ int quiescence(Position& pos, int alpha, int beta, Move ttBestMove, int ply, Sea
         // Delta pruning for the whole branch. if capturing a queen fails to raise alpha then cut the whole branch
         if (bestValue < alpha - 980)
         {
-            deltaPrunes++;
             return bestValue;
         }
 
@@ -189,7 +181,6 @@ int quiescence(Position& pos, int alpha, int beta, Move ttBestMove, int ply, Sea
         // delta pruning for each move, skip the move if it cant raise alpha
         if (bestValue + capturedPieceScore + 200 < alpha)
         {
-            deltaPrunes++;
             continue;
         }
 
@@ -263,7 +254,7 @@ int quiescence(Position& pos, int alpha, int beta, Move ttBestMove, int ply, Sea
  *      - Static Exchange Evaluation (SEE)
  */
 template<NodeType nodeType>
-int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMove, int ply, int rootDepth, bool allowNullMove, SearchStack* ss)
+int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMove, int ply, int rootDepth, bool allowNullMove, SearchStack* ss)
 {
     if (tm.isTimeEnabled() && (((nodes & 2047) == 0 && tm.maximumExpired()) || (nodes >= MAX_NODES)))
     {
@@ -630,7 +621,7 @@ int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMo
 
 
 // This function initiates the search using iterative deepening and aspiration windows
-Move findBestMove(Position pos, int& posEval)
+Move MoveSearcher::findBestMove(Position pos, int& posEval)
 {
     // Increment generation for transposition table aging replacement scheme
     generation++;
@@ -657,8 +648,6 @@ Move findBestMove(Position pos, int& posEval)
         // Reset search statistics from earlier depths
         nodes = 0;
         quieNodes = 0;
-        transpositionCutoffs = 0;
-        deltaPrunes = 0;
 
         Move bmDummy = bestMove;
 
@@ -697,7 +686,7 @@ Move findBestMove(Position pos, int& posEval)
         previousMove = bestMove;
 
         // Print search statistics (Negamax nodes, QSearch nodes and current search depth)
-        if (!DataGenFlag) printInfo(depth, score); // only print info if we are not generating self play data
+        if (!DataGenFlag) printInfo(depth, score, 0); // only print info if we are not generating self play data
 
         if (tm.isTimeEnabled() && tm.getShouldStopFlag()) break;
         posEval = score;
@@ -725,10 +714,88 @@ Move findBestMove(Position pos, int& posEval)
         // For example if we are at depth 16 then a depth 17 search will likely need 3x more time to be fully searched.
         // Therefore we attempt to predict if we have enough time left to finish that search, if not then we stop the search here
         if (tm.isTimeEnabled() && (tm.elapsedTime() * 3 > tm.optimum())) break;
-
     }
 
 
     return bestMove;
 
+}
+
+
+// Function used for move ordering, specifically for quiescent search
+int MoveSearcher::scoreQuiescenceMove(const Move& move, Position& pos, const Move& hashMove)
+{
+    int score = 0;
+    if (move == hashMove)
+    {
+        return 64000;
+    }
+
+    int fromSquare = move & 0x3F;
+    int toSquare = (move >> 6) & 0x3F;
+    int flag = (move >> 12) & 0xF;
+
+    // MVV-LVA for quiescence
+
+    Piece victim = wp;
+    if (flag == 5)
+    {
+        victim = wp;
+    }
+    else
+    {
+        victim = pos.getPieceFromBoard(toSquare);
+    }
+    Piece attacker = pos.getPieceFromBoard(fromSquare);
+
+    score = 10 * averagePieceScore[(int)(victim) % 6] - averagePieceScore[(int)(attacker) % 6];
+
+    return score;
+
+
+}
+
+
+// Function used to order moves from best to worst
+int MoveSearcher::scoreMove(const Move& move, const Position& pos, const Move& hashMove, const int& ply)
+{
+    if (move == hashMove)
+    {
+        return 10000;
+    }
+
+
+
+    int flag = (move >> 12) & 0xF;
+
+    // MVV-LVA for capture moves
+    if (flag & 4)
+    {
+        int fromSquare = move & 0x3F;
+        int toSquare = (move >> 6) & 0x3F;
+
+        Piece victim = wp;
+        if (flag == 5)
+        {
+            victim = wp;
+        } else
+        {
+            victim = pos.getPieceFromBoard(toSquare);
+        }
+        Piece attacker = pos.getPieceFromBoard(fromSquare);
+
+        return 1500 + 10 * averagePieceScore[(int)(victim) % 6] - averagePieceScore[(int)(attacker) % 6];
+    }
+
+    // killer moves (only non captures here)
+    if (move == killerMoves[ply][0])
+        return 900;
+    if (move == killerMoves[ply][1])
+        return 850;
+
+
+    int fromSquare = move & 0x3F;
+    int toSquare = (move >> 6) & 0x3F;
+
+    return historyMoves[fromSquare][toSquare];
 }

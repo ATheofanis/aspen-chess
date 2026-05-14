@@ -3,11 +3,8 @@
 //
 
 #include "Score.h"
-
 #include "TranspositionTable.h"
 
-Move killerMoves[MAX_PLY][2];
-int historyMoves[64][64];
 //Move counterMoves[64][64]; // [fromSquare][toSquare]
 
 int pawnHashHIT = 0;
@@ -243,82 +240,4 @@ int scoreBoard(const Position& pos)
     score += whiteAttackScore - blackAttackScore;
 
     return pos.isWhiteToMove() ? score : -score;
-}
-
-// Function used for move ordering, specifically inside quiescent search
-int scoreQuiescenceMove(const Move& move, Position& pos, const Move& hashMove)
-{
-    int score = 0;
-    if (move == hashMove)
-    {
-        return 64000;
-    }
-
-    int fromSquare = move & 0x3F;
-    int toSquare = (move >> 6) & 0x3F;
-    int flag = (move >> 12) & 0xF;
-
-    // MVV-LVA for quiescence
-
-    Piece victim = wp;
-    if (flag == 5)
-    {
-        victim = wp;
-    }
-    else
-    {
-        victim = pos.getPieceFromBoard(toSquare);
-    }
-    Piece attacker = pos.getPieceFromBoard(fromSquare);
-
-    score = 10 * averagePieceScore[(int)(victim) % 6] - averagePieceScore[(int)(attacker) % 6];
-
-    return score;
-
-
-}
-
-
-// Function used to order moves from best to worst
-int scoreMove(const Move& move, const Position& pos, const Move& hashMove, const int& ply)
-{
-    if (move == hashMove)
-    {
-        return 10000;
-    }
-
-
-
-    int flag = (move >> 12) & 0xF;
-
-    // MVV-LVA for capture moves
-    if (flag & 4)
-    {
-        int fromSquare = move & 0x3F;
-        int toSquare = (move >> 6) & 0x3F;
-
-        Piece victim = wp;
-        if (flag == 5)
-        {
-            victim = wp;
-        } else
-        {
-            victim = pos.getPieceFromBoard(toSquare);
-        }
-        Piece attacker = pos.getPieceFromBoard(fromSquare);
-
-        return 1500 + 10 * averagePieceScore[(int)(victim) % 6] - averagePieceScore[(int)(attacker) % 6];
-    }
-
-    // killer moves (only non captures here)
-    if (move == killerMoves[ply][0])
-        return 900;
-    if (move == killerMoves[ply][1])
-        return 850;
-
-
-    int fromSquare = move & 0x3F;
-    int toSquare = (move >> 6) & 0x3F;
-
-    return historyMoves[fromSquare][toSquare];
 }

@@ -181,18 +181,20 @@ void dividePerft(Position& pos, int depth)
 }
 
 
+/*
 void findBestMoveTime(Position pos)
 {
     auto startTime = std::chrono::high_resolution_clock::now();
     int evalDummy;
-    Move bestMove = (findBestMove(pos, evalDummy));
+    MoveSearcher searcher;
+    Move bestMove = (searcher.findBestMove(pos, evalDummy));
     printMove(bestMove);
     std::cout << "RAW BEST MOVE:" << bestMove << std::endl;
     auto endTime = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
     std::cout << duration.count() << " ms" << std::endl;
 }
-
+*/
 
 
 
@@ -344,6 +346,7 @@ void LoopUCI()
     std::string command;
     Position pos;
 
+    MoveSearcher searcher;
 
     while (getline(std::cin, command))
     {
@@ -451,14 +454,15 @@ void LoopUCI()
                 tm.start(myTime, myInc, movestogo); // initialize the time manager for the side to move
             }
 
-            // PRINT BEST MOVE ------------------======================================================
+            // Find best Move
             int evalDummy;
-            Move bestMove = findBestMove(pos, evalDummy);
+            Move bestMove = searcher.findBestMove(pos, evalDummy);
 
+            // Print best move
             std::cout << "bestmove ";
             printMoveNoMessages(bestMove);
             std::cout << std::endl;
-            // PRINT BEST MOVE ------------------======================================================
+
 
             globalMTG--;
             if (globalMTG <= 0)
