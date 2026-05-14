@@ -674,13 +674,13 @@ Move MoveSearcher::findBestMove(Position pos, int& posEval)
     SearchStack ss[MAX_PLY];
     ss[0].accumulator.initializeAccumulator(pos);
 
+    // Set nodes counter to zero before the loop
+    nodes = 0;
+    quieNodes = 0;
+
     // Iterative deepening loop
     for (int depth = 1; depth <= MAX_DEPTH; depth++)
     {
-        // Reset search statistics from earlier depths
-        nodes = 0;
-        quieNodes = 0;
-
         Move bmDummy = bestMove;
 
         int score = negaMaxAlphaBeta<NodeType::Root>(pos, alpha, beta, depth, bmDummy, 0, depth, false, ss);
