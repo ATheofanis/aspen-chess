@@ -68,6 +68,13 @@ public:
     int scoreQuiescenceMove(const Move& move, Position& pos, const Move& bestMove);
 
     int scoreMove(const Move& move, const Position& pos, const Move& hashMove, const int& ply);
+
+    void newGame()
+    {
+        memset(historyMoves, 0, sizeof(historyMoves));
+        memset(killerMoves, 0, sizeof(killerMoves));
+        generation = 0;
+    }
 };
 
 

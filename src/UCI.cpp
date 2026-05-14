@@ -485,6 +485,7 @@ void LoopUCI()
         {
             globalMTG = 100;
             clearTranspositionTable();
+            searcher.newGame();
         }
         // Resize TT size option
         else if (tokens[0] == "setoption" && tokens.size() >= 5)
