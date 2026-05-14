@@ -1,7 +1,7 @@
 <p align="center">
-  <img src="https://img.shields.io/github/v/release/ATheofanis/AChess?style=flat-square&color=success" alt="Release">
-  <img src="https://img.shields.io/badge/license-GPLv3-success?style=flat-square" alt="License: GPL v3">
-  <img src="https://img.shields.io/badge/C++-20-00599C?style=flat-square&logo=c%2B%2B" alt="C++">
+  <img src="https://img.shields.io/github/v/release/ATheofanis/AChess?style=flat-square&color=green" alt="Release">
+  <img src="https://img.shields.io/badge/license-GPLv3-success?style=flat-square&color=blue" alt="License: GPL v3">
+  <img src="https://img.shields.io/badge/C++-20-00599C?style=flat-square&logo=c%2B%2B&color=orange" alt="C++">
 </p>
 
 # Aspen Chess Engine
