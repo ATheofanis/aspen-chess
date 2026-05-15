@@ -241,6 +241,19 @@ public:
 
     std::string boardToFen() const;
 
+    bool isAttackedByPawn(int square, Color enemyColor) const
+    {
+        Piece enemyPawn = enemyColor == White ? wp : bp;
+        Color allyColor = enemyColor == White ? Black : White;
+
+        // Use pawn attacks precomputed table to quickly find the two diagonal squares behind the piece and check if they are occupied by a friendly pawn
+        if (pawnAttacks[allyColor][square] & pieceBitboard[enemyPawn])
+        {
+            return true;
+        }
+        return false;
+    }
+
 };
 
 

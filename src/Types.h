@@ -103,6 +103,9 @@ enum { rook, bishop };
 // last 4 : move encoding flag
 using Move = uint16_t;
 
+inline int getFromSquare(Move mv) { return mv & 0x3F; }
+inline int getToSquare(Move mv) { return mv >> 6 & 0x3F; }
+inline int getMoveFlag(Move mv) { return mv >> 12 & 0xF; }
 
 
 using CastlingRights = uint8_t; // castling rights can be stored in a nibble (4 bits)
