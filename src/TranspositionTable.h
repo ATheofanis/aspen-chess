@@ -71,8 +71,8 @@ struct TTEntry
 
 
 // The size of the transposition table
-// Default size is set at 16 MB
-inline size_t TTSize = (16 * 1024 * 1024) / sizeof(TTEntry);
+// Default size is set at 64 MB
+inline size_t TTSize = (64 * 1024 * 1024) / sizeof(TTEntry);
 
 // global transposition table
 inline TTEntry* transpositionTable = nullptr;

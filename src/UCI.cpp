@@ -341,7 +341,7 @@ void LoopUCI()
 {
     initializations();
 
-    resizeTranspositionTable(16);
+    resizeTranspositionTable(64);
 
     std::string command;
     Position pos;
@@ -479,7 +479,7 @@ void LoopUCI()
         {
             std::cout << "id name Aspen 0.1.0\n";
             std::cout << "id author ATheo\n";
-            std::cout << "option name Hash type spin default 16 min 1 max 32768\n";
+            std::cout << "option name Hash type spin default 64 min 1 max 32768\n";
             std::cout << "uciok\n";
         } else if (tokens[0] == "ucinewgame")
         {
