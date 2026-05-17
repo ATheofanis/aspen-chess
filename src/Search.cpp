@@ -264,6 +264,7 @@ int MoveSearcher::quiescence(Position& pos, int alpha, int beta, Move ttBestMove
 template<NodeType nodeType>
 int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMove, int ply, int rootDepth, bool allowNullMove, SearchStack* ss)
 {
+    //
     nodes++;
 
     if (tm.isTimeEnabled() && (((nodes & 2047) == 0 && tm.maximumExpired()) || (nodes >= MAX_NODES)))
@@ -789,7 +790,7 @@ int MoveSearcher::scoreQuiescenceMove(const Move& move, Position& pos, const Mov
 
 
 // Function used to order moves from best to worst
-int MoveSearcher::scoreMove(const Move& move, const Position& pos, const Move& hashMove, const int& ply)
+int scoreMove(const Move& move, const Position& pos, const Move& hashMove, const int& ply)
 {
     if (move == hashMove)
     {

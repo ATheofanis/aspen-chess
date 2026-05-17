@@ -4,16 +4,7 @@
 
 #pragma once
 #include "Position.h"
-
-struct legalityInformation
-{
-    Bitboard pinners{};
-    Bitboard pinned{};
-    Bitboard checkers{};
-    Bitboard legalSquaresMask{};
-    Bitboard pinnedPieceLegalSquares[64] = {};
-    int numOfChecks{};
-};
+#include "Types.h"
 
 legalityInformation getLegalityInfo(int kingSquare, Color allyColor, const Position& pos);
 

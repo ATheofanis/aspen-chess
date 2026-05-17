@@ -10,6 +10,7 @@
 #include "Bitboard.h"
 #include "Score.h"
 #include "Zobrist.h"
+#include "LegalMoveGen.h"
 
 
 struct positionInfo
@@ -193,14 +194,14 @@ public:
         return false;
     }
 
-    Bitboard getAllAttackersToSquare(int targetSquare);
+    Bitboard getAllAttackersToSquare(int targetSquare) const;
 
-    Bitboard getLeastValuablePiece(Bitboard pieces, int bySide, int &piece); // bySide is 0 for white 6 for black
+    Bitboard getLeastValuablePiece(Bitboard pieces, int bySide, int &piece) const; // bySide is 0 for white 6 for black
 
     Bitboard xRayAttackersToSquare(int targetSquare, Bitboard occupancy) const;
 
 
-    int SEE( int toSquare, int targetPiece, int fromSquare, int attackerPiece);
+    int SEE( int toSquare, int targetPiece, int fromSquare, int attackerPiece) const;
 
     // Checks if the side to move can capture the enemy king
     bool illegalBoardPosition()
@@ -254,6 +255,133 @@ public:
         return false;
     }
 
+    bool moveIsLegal(const legalityInformation& info, Move move) const
+    {
+        int fromSquare = getFromSquare(move);
+        int toSquare = getToSquare(move);
+        int moveFlag = getMoveFlag(move);
+        Piece piece = Board[fromSquare];
+
+        // If the moving piece is the white king
+        if (piece == wK)
+        {
+
+            // Check the legality of white kingside castles
+            if (moveFlag == 2)
+            {
+                // If any of the squares that the king passes through are under attack then the move is illegal
+                // The squares for white kingside castles are : e1, f1, g1
+                if (squareUnderAttack(e1, Black, *this, occupiedSquaresBitboard) ||
+                    squareUnderAttack(f1, Black, *this, occupiedSquaresBitboard) ||
+                    squareUnderAttack(g1, Black, *this, occupiedSquaresBitboard))
+                {
+                    return false;
+                }
+                return true;
+            }
+            // Check the legality of white queenside castles
+            if (moveFlag == 3)
+            {
+                //If any of the squares that the king passes through are under attack then the move is illegal
+                //The squares for white queenside castles are : e1, d1, c1
+                if (squareUnderAttack(e1, Black, *this, occupiedSquaresBitboard) ||
+                    squareUnderAttack(d1, Black, *this, occupiedSquaresBitboard) ||
+                    squareUnderAttack(c1, Black, *this, occupiedSquaresBitboard))
+                {
+                    return false;
+                }
+                return true;
+            }
+
+            // For normal king moves we just need to check that the destination square is not under attack
+            // We also need to pass a different occupancy than the current so that the old king's position is not taken into account,
+            // which prevents edge cases where the old king's position counts as a blockade for the new position of the king
+            return !(squareUnderAttack(toSquare, Black, *this, occupiedSquaresBitboard & ~(1ULL << fromSquare)));
+
+        }
+
+        // If the moving piece is the black king
+        if (piece == bK)
+        {
+            // Check the legality of black kingside castles
+            if (moveFlag == 2)
+            {
+                // If any of the squares that the king passes through are under attack then the move is illegal
+                // The squares for black kingside castles are : e8, f8, g8
+                if (squareUnderAttack(e8, White, *this, occupiedSquaresBitboard) ||
+                    squareUnderAttack(f8, White, *this, occupiedSquaresBitboard) ||
+                    squareUnderAttack(g8, White, *this, occupiedSquaresBitboard))
+                {
+                    return false;
+                }
+                return true;
+            }
+            // Check the legality of black queenside castles
+            if (moveFlag == 3)
+            {
+                //If any of the squares that the king passes through are under attack then the move is illegal
+                //The squares for black queenside castles are : e8, d8, c8
+                if (squareUnderAttack(e8, White, *this, occupiedSquaresBitboard) ||
+                    squareUnderAttack(d8, White, *this, occupiedSquaresBitboard) ||
+                    squareUnderAttack(c8, White, *this, occupiedSquaresBitboard))
+                {
+                    return false;
+                }
+                return true;
+            }
+            // For normal king moves we just need to check that the destination square is not under attack
+            // We also need to pass a different occupancy than the current so that the old king's position is not taken into account,
+            // which prevents edge cases where the old king's position counts as a blockade for the new position of the king
+            return !(squareUnderAttack(toSquare, White, *this, occupiedSquaresBitboard & ~(1ULL << fromSquare)));
+        }
+
+        if (info.numOfChecks >= 2) return false;
+
+        // If the move is en-passant
+        if (moveFlag == 5)
+        {
+            int epCapSq, kingSquare;
+            Color enemyColor;
+            if (piece == wp)
+            {
+                epCapSq = toSquare - 8;
+                kingSquare = lsbIndex(pieceBitboard[wK]);
+                enemyColor = Black;
+            } else
+            {
+                epCapSq = toSquare + 8;
+                kingSquare = lsbIndex(pieceBitboard[bK]);
+                enemyColor = White;
+            }
+
+            Bitboard occupancyAfterEnpassant = occupiedSquaresBitboard & ~((1ULL << fromSquare) | (1ULL << epCapSq)) | (1ULL << toSquare);
+
+            return !squareUnderAttack(kingSquare, enemyColor, *this, occupancyAfterEnpassant);
+
+        }
+
+        Bitboard toSquareMask = 1ULL << toSquare;
+        Bitboard fromSquareMask = 1ULL << fromSquare;
+
+        // Single check case
+        if (info.numOfChecks == 1)
+        {
+            // If king in check then no pinned pieces can move otherwise they would expose the king
+            if (fromSquareMask & info.pinned) return false;
+
+            return ((toSquareMask & info.legalSquaresMask) != 0);
+        }
+
+        // If the piece to move is pinned
+        if (info.pinned & fromSquareMask)
+        {
+            // If the destination square is a legal square for this specific pinned piece then the move is legal
+            return ((info.pinnedPieceLegalSquares[fromSquare] & toSquareMask) != 0);
+        }
+
+        // If non of the above are true then the move is legal
+        return true;
+    }
 };
 
 

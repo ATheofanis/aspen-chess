@@ -167,3 +167,15 @@ enum class Bound : uint8_t {
     BOUND_EXACT, BOUND_ALPHA, BOUND_BETA, BOUND_NONE
 
 };
+
+struct legalityInformation
+{
+    Bitboard pinners{};
+    Bitboard pinned{};
+    Bitboard checkers{};
+    Bitboard legalSquaresMask{};
+    Bitboard pinnedPieceLegalSquares[64] = {};
+    int numOfChecks{};
+};
+
+using history = int[64][64];

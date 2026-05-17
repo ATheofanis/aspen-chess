@@ -5,18 +5,21 @@
 #include "PseudoMoveGen.h"
 #include "Position.h"
 
-// Store every pseudo-legal single square pawn advancing moves for white pawns
-void pseudoPawnAdvances(Bitboard oneSqAdvanceQuiet, Bitboard oneSqAdvancePromotion, Color pawnColor, Move moves[], int &numOfMoves)
+//    |======================================|
+//    |  Pseudo-Legal Quiet Moves Generator  |
+//    |======================================|
+
+
+// Store every pseudo-legal quiet pawn move
+void pseudoPawnAdvances(Bitboard oneSqAdvance, Bitboard twoSqAdvance, Color pawnColor, Move moves[], int &numOfMoves)
 {
-    int colorMultiplier = pawnColor == White ? 1 : -1;
-
-    // Store every quiet one square advance
-    while (oneSqAdvanceQuiet)
+    // Store every quiet one-square advance
+    while (oneSqAdvance)
     {
-        Move endSquare = static_cast<Move>(popLsbAndReturnIndex(oneSqAdvanceQuiet));
+        Move endSquare = static_cast<Move>(popLsbAndReturnIndex(oneSqAdvance));
 
-        // Use the color multiplier to determine the starting square of the pawn
-        Move startSquare  = endSquare - (8 * colorMultiplier);
+        // Get the start square based on the pawn's color
+        Move startSquare  = endSquare - (pawnColor == White ? 8 : -8);
 
         // Store the move with flag set to 0
         Move move = startSquare | (endSquare << 6);
@@ -24,12 +27,283 @@ void pseudoPawnAdvances(Bitboard oneSqAdvanceQuiet, Bitboard oneSqAdvancePromoti
         moves[numOfMoves++] = move;
     }
 
-    // Store every one square advance move that leads to a promotion
-    while (oneSqAdvancePromotion)
+    // Store every quiet two-square advance
+    while (twoSqAdvance)
     {
-        // Calculate the end square and the starting square like we did with the quiet one square advance
-        Move endSquare = static_cast<Move>(popLsbAndReturnIndex(oneSqAdvancePromotion));
-        Move startSquare  = endSquare - (8 * colorMultiplier);
+        Move endSquare = static_cast<Move>(popLsbAndReturnIndex(twoSqAdvance));
+
+        // Get the start square based on the pawn's color
+        Move startSquare  = endSquare - (pawnColor == White ? 16 : -16);
+
+        // The flag for double square push is 1
+        Move move = startSquare | (endSquare << 6) | (1 << 12);
+        moves[numOfMoves++] = move;
+    }
+}
+
+
+// Calculates and stores every pseudo-legal white pawn move
+void generateWhitePawnPseudoQuietMoves(const Position& pos, Move moves[], int &numOfMoves)
+{
+    Bitboard whitePawns = pos.getPieceBitboard(wp);
+    Bitboard occupied = pos.getOccupiedBitboard();
+    Bitboard empty = ~occupied;
+
+
+    // Bitboard to map all the single square white pawn advances
+    Bitboard oneSqAdvance = ((whitePawns << 8) & empty);
+
+    // Bitboard to map all the double square white pawn advances
+    Bitboard twoSqAdvance = ((oneSqAdvance & rank3) << 8) & empty;
+
+    // Keep only the quiet moves - those that do not lead to promotions
+    Bitboard oneSqAdvanceQuiet = oneSqAdvance & ~rank8;
+
+    // Store the moves we have found so far with the appropriate 16 bit move encoding
+    pseudoPawnAdvances(oneSqAdvanceQuiet, twoSqAdvance, White, moves, numOfMoves);
+}
+
+// Calculates and stores every pseudo-legal black pawn move
+void generateBlackPawnPseudoQuietMoves(const Position& pos, Move moves[], int &numOfMoves)
+{
+    Bitboard blackPawns = pos.getPieceBitboard(bp);
+    Bitboard occupied = pos.getOccupiedBitboard();
+    Bitboard empty = ~occupied;
+
+    // Bitboard to map all the single square black pawn advances
+    Bitboard oneSqAdvance = (blackPawns >> 8) & empty;
+
+    // Bitboard to map all the double square black pawn advances
+    Bitboard twoSqAdvance = ((oneSqAdvance & rank6) >> 8) & empty;
+
+    // Keep only the quiet moves - those that do not lead to promotions
+    Bitboard oneSqAdvanceQuiet = oneSqAdvance & ~rank1;
+
+    // Bitboard to map all the double square white pawn advances
+    pseudoPawnAdvances(oneSqAdvanceQuiet, twoSqAdvance, Black, moves, numOfMoves);
+}
+
+
+
+// Generate all pseudo-legal quiet knight moves for a given side
+void generateKnightPseudoQuietMoves(Bitboard knightPos, Bitboard occupied, Move moves[], int& numOfMoves)
+{
+    // Loop for every knight in the board
+    while (knightPos)
+    {
+        // Extract the number of the square the current knight is on
+        int startSquare = popLsbAndReturnIndex(knightPos);
+
+        // Use the precomputed knight attacks table to quickly get every pseudo-legal knight move
+        // Keep only quiet moves, those with empty destination squares
+        Bitboard quietKnightMoves = knightAttacks[startSquare] & ~occupied;
+
+        // Store every quiet knight move with flag set to 0
+        while (quietKnightMoves)
+        {
+            int endSquare = popLsbAndReturnIndex(quietKnightMoves);
+            Move move = (startSquare) | (endSquare << 6);
+            moves[numOfMoves++] = move;
+        }
+    }
+}
+
+
+// Generate all pseudo-legal quiet bishop moves for a given side
+void generateBishopPseudoQuietMoves(Bitboard bishopPos, Bitboard occupied, Move moves[], int& numOfMoves)
+{
+    // Loop through every bishop in the board
+    while (bishopPos)
+    {
+        int startSquare = popLsbAndReturnIndex(bishopPos);
+
+        // Use magic bitboards to quickly get all the pseudo-legal bishop moves
+        // Exclude every square that is occupied by a friendly or an enemy piece
+        Bitboard quietBishopMoves = getBishopAttacks(startSquare, occupied) & ~occupied;
+
+        // Store quiet moves
+        while (quietBishopMoves)
+        {
+            int endSquare = popLsbAndReturnIndex(quietBishopMoves);
+            Move move = (startSquare) | (endSquare << 6);
+
+            moves[numOfMoves++] = move;
+        }
+    }
+}
+
+// Generate all pseudo-legal quiet rook moves for a given side
+void generateRookPseudoQuietMoves(Bitboard rookPos, Bitboard occupied, Move moves[], int& numOfMoves)
+{
+    // Loop through every rook in the board
+    while (rookPos)
+    {
+        int startSquare = popLsbAndReturnIndex(rookPos);
+
+        // Use magic bitboards to quickly get all the pseudo-legal rook moves
+        // Exclude every square that is occupied by either a friendly or an enemy piece
+        Bitboard quietRookMoves = getRookAttacks(startSquare, occupied) & ~occupied;
+
+        // Store quiet moves
+        while (quietRookMoves)
+        {
+            int endSquare = popLsbAndReturnIndex(quietRookMoves);
+            Move move = (startSquare) | (endSquare << 6);
+
+            moves[numOfMoves++] = move;
+        }
+    }
+}
+
+// Generate all pseudo-legal queen moves for a given side
+void generateQueenPseudoQuietMoves(Bitboard queenPos, Bitboard occupied, Move moves[], int& numOfMoves)
+{
+    generateRookPseudoQuietMoves(queenPos, occupied, moves, numOfMoves);
+    generateBishopPseudoQuietMoves(queenPos, occupied, moves, numOfMoves);
+}
+
+
+// Generate every pseudo-legal quiet king move excluding castling
+void generateKingPseudoQuietMoves(Bitboard kingPos, Bitboard occupied, Move moves[], int& numOfMoves)
+{
+    int startSquare = popLsbAndReturnIndex(kingPos);
+
+    // Use the precomputed king attacks table to quickly generate quiet king moves
+    Bitboard quietKingMoves = kingAttacks[startSquare] & ~occupied;
+
+    // Store every quiet king move
+    while (quietKingMoves)
+    {
+        int endSquare = popLsbAndReturnIndex(quietKingMoves);
+        Move move = (startSquare) | (endSquare << 6);
+        moves[numOfMoves++] = move;
+    }
+}
+
+
+// Generates every quiet pseudo-legal black king move apart from castling
+void generateWhiteKingPseudoQuietMoves(const Position& pos, Move moves[], int& numOfMoves)
+{
+    Bitboard whiteKingBB = pos.getPieceBitboard(wK);
+    Bitboard occupied = pos.getOccupiedBitboard();
+
+    // Generate every quiet non-castling move
+    generateKingPseudoQuietMoves(whiteKingBB, occupied, moves, numOfMoves);
+
+    // CASTLING MOVES SECTION - Legality will be checked afterwards:
+    CastlingRights castleRights = pos.getCastlingRights();
+
+    // Store white kingside castles
+    if (castleRights & WK) // If white kingside castling is allowed
+    {
+        if ((occupied & 96) == 0) // 96 is the king side castling squares mask, the squares that need to be empty, between king and rook
+        {
+            Move move = 4 | (6 << 6) | (2 << 12);
+            moves[numOfMoves++] = move;
+        }
+    }
+
+    // Store white queenside castles
+    if (castleRights & WQ) // if white queenside castling is allowed
+    {
+        if ((occupied & 14) == 0) // 14 is the queen side castling squares mask
+        {
+            Move move = 4 | (2 << 6) | (3 << 12);
+            moves[numOfMoves++] = move;
+        }
+    }
+}
+
+
+
+// Generates every pseudo-legal white king move apart from castling
+// Only stored castling moves that pass the legality check
+void generateBlackKingPseudoQuietMoves(const Position& pos, Move moves[], int& numOfMoves)
+{
+    Bitboard blackKingBB = pos.getPieceBitboard(bK);
+    Bitboard occupied = pos.getOccupiedBitboard();
+
+    // Generate every quiet non-castling move
+    generateKingPseudoQuietMoves(blackKingBB, occupied, moves, numOfMoves);
+
+    // CASTLING MOVES SECTION :
+    CastlingRights castleRights = pos.getCastlingRights();
+
+    // Store black kingside castles
+    if (castleRights & BK) // If black kingside castling is allowed
+    {
+        if ((occupied & 0x6000000000000000) == 0) // 0x6000000000000000 is the black king side castling mask of inbetween squares
+        {
+            Move move = 60 | (62 << 6) | (2 << 12);
+            moves[numOfMoves++] = move;
+        }
+    }
+
+    // Store black queenside castles
+    if (castleRights & BQ) // If black queenside castling is allowed
+    {
+        if ((occupied & 0x0E00000000000000) == 0) // 0x0E00000000000000 is the queen side castling squares mask
+        {
+            Move move = 60 | (58 << 6) | (3 << 12);
+            moves[numOfMoves++] = move;
+        }
+    }
+}
+
+
+
+// Generates every single pseudo-legal quiet move
+void generatePseudoLegalQuietMoves(const Position& pos, Move moves[], int &numOfMoves)
+{
+    Bitboard occupied = pos.getOccupiedBitboard();
+
+    if (pos.isWhiteToMove())
+    {
+        generateWhitePawnPseudoQuietMoves(pos, moves, numOfMoves);
+
+        generateKnightPseudoQuietMoves(pos.getPieceBitboard(wN), occupied, moves, numOfMoves);
+
+        generateBishopPseudoQuietMoves(pos.getPieceBitboard(wB), occupied, moves, numOfMoves);
+
+        generateRookPseudoQuietMoves(pos.getPieceBitboard(wR), occupied, moves, numOfMoves);
+
+        generateQueenPseudoQuietMoves(pos.getPieceBitboard(wQ), occupied, moves, numOfMoves);
+
+        generateWhiteKingPseudoQuietMoves(pos, moves, numOfMoves);
+    }
+    else
+    {
+        generateBlackPawnPseudoQuietMoves(pos, moves, numOfMoves);
+
+        generateKnightPseudoQuietMoves(pos.getPieceBitboard(bN), occupied, moves, numOfMoves);
+
+        generateBishopPseudoQuietMoves(pos.getPieceBitboard(bB), occupied, moves, numOfMoves);
+
+        generateRookPseudoQuietMoves(pos.getPieceBitboard(bR), occupied, moves, numOfMoves);
+
+        generateQueenPseudoQuietMoves(pos.getPieceBitboard(bQ), occupied, moves, numOfMoves);
+
+        generateBlackKingPseudoQuietMoves(pos, moves, numOfMoves);
+    }
+}
+
+
+
+
+//    |==================================================|
+//    |  Pseudo-Legal Captures And Promotions Generator  |
+//    |==================================================|
+
+
+// Store every single pseudo-legal promotion move
+void pseudoPawnPromotions(Bitboard promotions, Color pawnColor, Move moves[], int &numOfMoves)
+{
+    // Loop through all the available promotion squares
+    while (promotions)
+    {
+        // Get the end square and the starting square
+        Move endSquare = static_cast<Move>(popLsbAndReturnIndex(promotions));
+        Move startSquare  = endSquare - (pawnColor == White ? 8 : -8);
 
         /* Store all 4 types of pawn promotion
          Flag = 8  : Knight
@@ -47,8 +321,8 @@ void pseudoPawnAdvances(Bitboard oneSqAdvanceQuiet, Bitboard oneSqAdvancePromoti
 }
 
 
-// Calculates and stores every pseudo-legal white pawn move
-void generateWhitePawnPseudoMoves(const Position& pos, Move moves[], int &numOfMoves)
+// Calculates and stores every pseudo-legal white pawn capture and promotion move
+void generateWhitePawnPseudoCapturesAndPromo(const Position& pos, Move moves[], int &numOfMoves)
 {
     Bitboard whitePawns = pos.getPieceBitboard(wp);
     Bitboard blackPieces = pos.getBlackBitboard();
@@ -59,26 +333,12 @@ void generateWhitePawnPseudoMoves(const Position& pos, Move moves[], int &numOfM
     // Bitboard to map all the single square white pawn advances
     Bitboard oneSqAdvance = ((whitePawns << 8) & empty);
 
-    // Bitboard to map all the double square white pawn advances
-    Bitboard twoSqAdvance = ((oneSqAdvance & rank3) << 8) & empty;
-
-    // Differentiate between quiet single square advances and promotion advances based on the rank of the destination square
-    Bitboard oneSqAdvanceQuiet = oneSqAdvance & ~rank8;
+    // Only keep the one square advances that lead to promotion
     Bitboard oneSqAdvancePromotion = oneSqAdvance & rank8;
 
-    // Store the moves we have found so far with the appropriate 16 bit move encoding
-    pseudoPawnAdvances(oneSqAdvanceQuiet, oneSqAdvancePromotion, White, moves, numOfMoves);
+    // Store all non-capture promotions
+    pseudoPawnPromotions(oneSqAdvancePromotion, White, moves, numOfMoves);
 
-    // Store double square advances
-    while (twoSqAdvance)
-    {
-        Move endSquare = static_cast<Move>(popLsbAndReturnIndex(twoSqAdvance));
-        Move startSquare  = endSquare - 16;
-
-        // The flag for double square push is 1
-        Move move = startSquare | (endSquare << 6) | (1 << 12);
-        moves[numOfMoves++] = move;
-    }
 
     // WHITE PAWN CAPTURES:
 
@@ -202,8 +462,8 @@ void generateWhitePawnPseudoMoves(const Position& pos, Move moves[], int &numOfM
     }
 }
 
-// Calculates and stores every pseudo-legal black pawn move
-void generateBlackPawnPseudoMoves(const Position& pos, Move moves[], int &numOfMoves)
+// Calculates and stores every pseudo-legal black pawn promotion and capture move
+void generateBlackPawnPseudoCapturesAndPromo(const Position& pos, Move moves[], int &numOfMoves)
 {
     Bitboard blackPawns = pos.getPieceBitboard(bp);
     Bitboard whitePieces = pos.getWhiteBitboard();
@@ -213,26 +473,11 @@ void generateBlackPawnPseudoMoves(const Position& pos, Move moves[], int &numOfM
     // Bitboard to map all the single square black pawn advances
     Bitboard oneSqAdvance = (blackPawns >> 8) & empty;
 
-    // Bitboard to map all the double square black pawn advances
-    Bitboard twoSqAdvance = ((oneSqAdvance & rank6) >> 8) & empty;
-
-    // Bitboard to map all the double square black pawn advances
-    Bitboard oneSqAdvanceQuiet = oneSqAdvance & ~rank1;
+    // Only keep promotions
     Bitboard oneSqAdvancePromotion = oneSqAdvance & rank1;
 
-    // Bitboard to map all the double square white pawn advances
-    pseudoPawnAdvances(oneSqAdvanceQuiet, oneSqAdvancePromotion, Black, moves, numOfMoves);
-
-    // Store double square advances
-    while (twoSqAdvance)
-    {
-        Move endSquare = static_cast<Move>(popLsbAndReturnIndex(twoSqAdvance));
-        Move startSquare  = endSquare + 16;
-
-        // The flag for double square push is 1
-        Move move = startSquare | (endSquare << 6) | (1 << 12);
-        moves[numOfMoves++] = move;
-    }
+    // Store every non-capture promotion
+    pseudoPawnPromotions(oneSqAdvancePromotion, Black, moves, numOfMoves);
 
     // BLACK PAWN CAPTURES:
 
@@ -357,8 +602,8 @@ void generateBlackPawnPseudoMoves(const Position& pos, Move moves[], int &numOfM
 
 
 
-// Generate all pseudo-legal knight moves for a given side
-void generateKnightPseudoMoves(Bitboard knightPos, Bitboard allyPieces, Bitboard enemyPieces, Move moves[], int& numOfMoves)
+// Generate all pseudo-legal knight captures for a given side
+void generateKnightPseudoCaptures(Bitboard knightPos, Bitboard enemyPieces, Move moves[], int& numOfMoves)
 {
     // Loop for every knight in the board
     while (knightPos)
@@ -367,12 +612,9 @@ void generateKnightPseudoMoves(Bitboard knightPos, Bitboard allyPieces, Bitboard
         int startSquare = popLsbAndReturnIndex(knightPos);
 
         // Use the precomputed knight attacks table to quickly get every pseudo-legal knight move
-        // Keep only the moves where the destination square is not occupied by a friendly piece
-        Bitboard knightMoves = knightAttacks[startSquare] & ~allyPieces;
+        // Keep only the moves where the destination square is occupied by an enemy piece
+        Bitboard knightCaptures = knightAttacks[startSquare] & enemyPieces;
 
-        // Now store every move by splitting them into quiet and capture moves
-        Bitboard knightCaptures = knightMoves & enemyPieces;
-        Bitboard knightQuietMoves = knightMoves & ~enemyPieces;
 
         // Store every knight capture move with the flag set to 4
         while (knightCaptures)
@@ -381,20 +623,12 @@ void generateKnightPseudoMoves(Bitboard knightPos, Bitboard allyPieces, Bitboard
             Move move = (startSquare) | (endSquare << 6) | (4 << 12);
             moves[numOfMoves++] = move;
         }
-
-        // Store every quiet knight move with flag set to 0
-        while (knightQuietMoves)
-        {
-            int endSquare = popLsbAndReturnIndex(knightQuietMoves);
-            Move move = (startSquare) | (endSquare << 6);
-            moves[numOfMoves++] = move;
-        }
     }
 }
 
 
-// Generate all pseudo-legal bishop moves for a given side
-void generateBishopPseudoMoves(Bitboard bishopPos, Bitboard allyPieces, Bitboard enemyPieces, Bitboard occupied, Move moves[], int& numOfMoves)
+// Generate all pseudo-legal bishop captures for a given side
+void generateBishopPseudoCaptures(Bitboard bishopPos, Bitboard enemyPieces, Bitboard occupied, Move moves[], int& numOfMoves)
 {
     // Loop through every bishop in the board
     while (bishopPos)
@@ -402,12 +636,8 @@ void generateBishopPseudoMoves(Bitboard bishopPos, Bitboard allyPieces, Bitboard
         int startSquare = popLsbAndReturnIndex(bishopPos);
 
         // Use magic bitboards to quickly get all the pseudo-legal bishop moves
-        // Exclude every square that is occupied by a friendly piece
-        Bitboard bishopMoves = getBishopAttacks(startSquare, occupied) & ~allyPieces;
-
-        // Store every capture and quiet bishop move seperately
-        Bitboard bishopCaptures = bishopMoves & enemyPieces;
-        Bitboard bishopQuietMoves = bishopMoves & ~enemyPieces;
+        // Exclude every square that is not occupied by an enemy piece
+        Bitboard bishopCaptures = getBishopAttacks(startSquare, occupied) & enemyPieces;
 
         // Store captures
         while (bishopCaptures)
@@ -418,19 +648,11 @@ void generateBishopPseudoMoves(Bitboard bishopPos, Bitboard allyPieces, Bitboard
             moves[numOfMoves++] = move;
         }
 
-        // Store quiet moves
-        while (bishopQuietMoves)
-        {
-            int endSquare = popLsbAndReturnIndex(bishopQuietMoves);
-            Move move = (startSquare) | (endSquare << 6);
-
-            moves[numOfMoves++] = move;
-        }
     }
 }
 
-// Generate all pseudo-legal rook moves for a given side
-void generateRookPseudoMoves(Bitboard rookPos, Bitboard allyPieces, Bitboard enemyPieces, Bitboard occupied, Move moves[], int& numOfMoves)
+// Generate all pseudo-legal rook captures for a given side
+void generateRookPseudoCaptures(Bitboard rookPos, Bitboard enemyPieces, Bitboard occupied, Move moves[], int& numOfMoves)
 {
     // Loop through every rook in the board
     while (rookPos)
@@ -438,11 +660,8 @@ void generateRookPseudoMoves(Bitboard rookPos, Bitboard allyPieces, Bitboard ene
         int startSquare = popLsbAndReturnIndex(rookPos);
 
         // Use magic bitboards to quickly get all the pseudo-legal rook moves
-        // Exclude every square that is occupied by a friendly piece
-        Bitboard rookMoves = getRookAttacks(startSquare, occupied) & ~allyPieces;
-
-        Bitboard rookCaptures = rookMoves & enemyPieces;
-        Bitboard rookQuietMoves = rookMoves & ~enemyPieces;
+        // Exclude every square that is not occupied by an enemy piece
+        Bitboard rookCaptures = getRookAttacks(startSquare, occupied) & enemyPieces;
 
         // Store captures
         while (rookCaptures)
@@ -452,36 +671,24 @@ void generateRookPseudoMoves(Bitboard rookPos, Bitboard allyPieces, Bitboard ene
 
             moves[numOfMoves++] = move;
         }
-
-        // Store quiet moves
-        while (rookQuietMoves)
-        {
-            int endSquare = popLsbAndReturnIndex(rookQuietMoves);
-            Move move = (startSquare) | (endSquare << 6);
-
-            moves[numOfMoves++] = move;
-        }
     }
 }
 
-// Generate all pseudo-legal queen moves for a given side
-void generateQueenPseudoMoves(Bitboard queenPos, Bitboard allyPieces, Bitboard enemyPieces, Bitboard occupied, Move moves[], int& numOfMoves)
+// Generate all pseudo-legal queen captures for a given side
+void generateQueenPseudoCaptures(Bitboard queenPos, Bitboard enemyPieces, Bitboard occupied, Move moves[], int& numOfMoves)
 {
-    generateRookPseudoMoves(queenPos, allyPieces, enemyPieces, occupied, moves, numOfMoves);
-    generateBishopPseudoMoves(queenPos, allyPieces, enemyPieces, occupied, moves, numOfMoves);
+    generateRookPseudoCaptures(queenPos, enemyPieces, occupied, moves, numOfMoves);
+    generateBishopPseudoCaptures(queenPos, enemyPieces, occupied, moves, numOfMoves);
 }
 
 
-// Generate every pseudo-legal king move excluding castling
-void generateKingPseudoMoves(Bitboard kingPos, Bitboard allyPieces, Bitboard enemyPieces, const Position& pos, Move moves[], int& numOfMoves)
+// Generate every pseudo-legal king capture move
+void generateKingPseudoCaptures(Bitboard kingPos, Bitboard enemyPieces, Move moves[], int& numOfMoves)
 {
     int startSquare = popLsbAndReturnIndex(kingPos);
 
-    // Use the precomputed king attacks table to quickly generate king moves
-    Bitboard kingMoves = kingAttacks[startSquare] & ~allyPieces;
-    Bitboard kingCaptures = kingMoves & enemyPieces;
-    Bitboard kingQuietMoves = kingMoves & ~enemyPieces;
-
+    // Use the precomputed king attacks table to quickly generate king captures
+    Bitboard kingCaptures = kingAttacks[startSquare] & enemyPieces;
 
     // Store every king capture move
     while (kingCaptures)
@@ -490,167 +697,80 @@ void generateKingPseudoMoves(Bitboard kingPos, Bitboard allyPieces, Bitboard ene
         Move move = (startSquare) | (endSquare << 6) | (4 << 12);
         moves[numOfMoves++] = move;
     }
-
-    // Store every quiet king move
-    while (kingQuietMoves)
-    {
-        int endSquare = popLsbAndReturnIndex(kingQuietMoves);
-        Move move = (startSquare) | (endSquare << 6);
-        moves[numOfMoves++] = move;
-    }
 }
 
 
-// Generates every pseudo-legal black king move apart from castling
-// Only stored castling moves that pass the legality check
-void generateWhiteKingPseudoMoves(const Position& pos, Move moves[], int& numOfMoves)
+// Generate every speudo legal capture move for the white king
+void generateWhiteKingPseudoCaptures(const Position& pos, Move moves[], int& numOfMoves)
 {
     Bitboard whiteKingBB = pos.getPieceBitboard(wK);
-    Bitboard whitePiecesBB = pos.getWhiteBitboard();
     Bitboard blackPiecesBB = pos.getBlackBitboard();
-    Bitboard occupied = pos.getOccupiedBitboard();
 
     // Generate every non-castling move
-    generateKingPseudoMoves(whiteKingBB, whitePiecesBB, blackPiecesBB, pos, moves, numOfMoves);
-
-    // CASTLING MOVES SECTION :
-    CastlingRights castleRights = pos.getCastlingRights();
-
-    // Store white kingside castles if the squares that the king passes are not under attack by an enemy piece
-    if (castleRights & WK) // If white kingside castling is allowed
-    {
-        if ((occupied & 96) == 0) // 96 is the king side castling squares mask, the squares that need to be empty, between king and rook
-        {
-            if (!squareUnderAttack(e1, Black, pos, occupied))
-            {
-                if (!squareUnderAttack(f1, Black, pos, occupied))
-                {
-                    if (!squareUnderAttack(g1, Black, pos, occupied))
-                    {
-                        Move move = 4 | (6 << 6) | (2 << 12);
-                        moves[numOfMoves++] = move;
-                    }
-                }
-            }
-        }
-    }
-
-    // Store white queenside castles if the squares that the king passes are not under attack by an enemy piece
-    if (castleRights & WQ) // if white queenside castling is allowed
-    {
-        if ((occupied & 14) == 0) // 14 is the queen side castling squares mask
-        {
-            if (!squareUnderAttack(e1, Black, pos, occupied))
-            {
-                if (!squareUnderAttack(d1, Black, pos, occupied))
-                {
-                    if (!squareUnderAttack(c1, Black, pos, occupied))
-                    {
-                        Move move = 4 | (2 << 6) | (3 << 12);
-                        moves[numOfMoves++] = move;
-                    }
-                }
-            }
-        }
-    }
+    generateKingPseudoCaptures(whiteKingBB, blackPiecesBB, moves, numOfMoves);
 }
 
 
 
-// Generates every pseudo-legal white king move apart from castling
-// Only stored castling moves that pass the legality check
-void generateBlackKingPseudoMoves(const Position& pos, Move moves[], int& numOfMoves)
+// Generate every speudo legal capture move for the black king
+void generateBlackKingPseudoCaptures(const Position& pos, Move moves[], int& numOfMoves)
 {
     Bitboard blackKingBB = pos.getPieceBitboard(bK);
     Bitboard whitePiecesBB = pos.getWhiteBitboard();
-    Bitboard blackPiecesBB = pos.getBlackBitboard();
-    Bitboard occupied = pos.getOccupiedBitboard();
 
     // Generate every non-castling move
-    generateKingPseudoMoves(blackKingBB, blackPiecesBB, whitePiecesBB, pos, moves, numOfMoves);
-
-    // CASTLING MOVES SECTION :
-    CastlingRights castleRights = pos.getCastlingRights();
-
-    // Store black kingside castles if the squares that the king passes are not under attack by an enemy piece
-    if (castleRights & BK) // If black kingside castling is allowed
-    {
-        if ((occupied & 0x6000000000000000) == 0) // 0x6000000000000000 is the black king side castling mask of inbetween squares
-        {
-            if (!squareUnderAttack(e8, White, pos, occupied))
-            {
-                if (!squareUnderAttack(f8, White, pos, occupied))
-                {
-                    if (!squareUnderAttack(g8, White, pos, occupied))
-                    {
-                        Move move = 60 | (62 << 6) | (2 << 12);
-                        moves[numOfMoves++] = move;
-                    }
-                }
-            }
-        }
-    }
-
-    // Store black queenside castles if the squares that the king passes are not under attack by an enemy piece
-    if (castleRights & BQ) // If black queenside castling is allowed
-    {
-        if ((occupied & 0x0E00000000000000) == 0) // 0x0E00000000000000 is the queen side castling squares mask
-        {
-            if (!squareUnderAttack(e8, White, pos, occupied))
-            {
-                if (!squareUnderAttack(d8, White, pos, occupied))
-                {
-                    if (!squareUnderAttack(c8, White, pos, occupied))
-                    {
-                        Move move = 60 | (58 << 6) | (3 << 12);
-                        moves[numOfMoves++] = move;
-                    }
-                }
-            }
-        }
-    }
+    generateKingPseudoCaptures(blackKingBB, whitePiecesBB, moves, numOfMoves);
 }
 
-
-
-// generates ONLY LEGAL moves, must receive a legalityInformation struct and a position argument
-void generatePseudoLegalMoves(Position& pos, Move moves[], int &numOfMoves)
+// Generates every pseudo-legal capture and/or promotion
+void generatePseudoLegalCapAndPromoMoves(const Position& pos, Move moves[], int &numOfMoves)
 {
     Bitboard occupied = pos.getOccupiedBitboard();
 
     if (pos.isWhiteToMove())
     {
-        Bitboard allyPieces = pos.getWhiteBitboard();
         Bitboard enemyPieces = pos.getBlackBitboard();
 
-        generateWhitePawnPseudoMoves(pos, moves, numOfMoves);
+        // White pawns
+        generateWhitePawnPseudoCapturesAndPromo(pos, moves, numOfMoves);
 
-        generateKnightPseudoMoves(pos.getPieceBitboard(wN), allyPieces, enemyPieces, moves, numOfMoves);
+        // White knights
+        generateKnightPseudoCaptures(pos.getPieceBitboard(wN), enemyPieces, moves, numOfMoves);
 
-        generateBishopPseudoMoves(pos.getPieceBitboard(wB), allyPieces, enemyPieces, occupied, moves, numOfMoves);
+        // White bishops
+        generateBishopPseudoCaptures(pos.getPieceBitboard(wB), enemyPieces, occupied, moves, numOfMoves);
 
-        generateRookPseudoMoves(pos.getPieceBitboard(wR), allyPieces, enemyPieces, occupied, moves, numOfMoves);
+        // White rooks
+        generateRookPseudoCaptures(pos.getPieceBitboard(wR), enemyPieces, occupied, moves, numOfMoves);
 
-        generateQueenPseudoMoves(pos.getPieceBitboard(wQ), allyPieces, enemyPieces, occupied, moves, numOfMoves);
+        // White queens
+        generateQueenPseudoCaptures(pos.getPieceBitboard(wQ), enemyPieces, occupied, moves, numOfMoves);
 
-        generateWhiteKingPseudoMoves(pos, moves, numOfMoves);
+        // White king
+        generateWhiteKingPseudoCaptures(pos, moves, numOfMoves);
     }
     else
     {
-        Bitboard allyPieces = pos.getBlackBitboard();
         Bitboard enemyPieces = pos.getWhiteBitboard();
 
-        generateBlackPawnPseudoMoves(pos, moves, numOfMoves);
+        // Black pawns
+        generateBlackPawnPseudoCapturesAndPromo(pos, moves, numOfMoves);
 
-        generateKnightPseudoMoves(pos.getPieceBitboard(bN), allyPieces, enemyPieces, moves, numOfMoves);
+        // Black knights
+        generateKnightPseudoCaptures(pos.getPieceBitboard(bN), enemyPieces, moves, numOfMoves);
 
-        generateBishopPseudoMoves(pos.getPieceBitboard(bB), allyPieces, enemyPieces, occupied, moves, numOfMoves);
+        // Black bishops
+        generateBishopPseudoCaptures(pos.getPieceBitboard(bB), enemyPieces, occupied, moves, numOfMoves);
 
-        generateRookPseudoMoves(pos.getPieceBitboard(bR), allyPieces, enemyPieces, occupied, moves, numOfMoves);
+        // Black rooks
+        generateRookPseudoCaptures(pos.getPieceBitboard(bR), enemyPieces, occupied, moves, numOfMoves);
 
-        generateQueenPseudoMoves(pos.getPieceBitboard(bQ), allyPieces, enemyPieces, occupied, moves, numOfMoves);
+        // Black queens
+        generateQueenPseudoCaptures(pos.getPieceBitboard(bQ), enemyPieces, occupied, moves, numOfMoves);
 
-        generateBlackKingPseudoMoves(pos, moves, numOfMoves);
+        // Black king
+        generateBlackKingPseudoCaptures(pos, moves, numOfMoves);
     }
-
 }
+
+

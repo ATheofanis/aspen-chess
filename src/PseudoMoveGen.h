@@ -6,4 +6,5 @@
 
 #include "Position.h"
 
-void generatePseudoLegalMoves(Position& pos, Move moves[], int &numOfMoves);
+void generatePseudoLegalCapAndPromoMoves(const Position& pos, Move moves[], int &numOfMoves);
+void generatePseudoLegalQuietMoves(const Position& pos, Move moves[], int &numOfMoves);

@@ -1265,7 +1265,7 @@ ZobristHash Position::computeZobristHash()
 
 
 // SEE :
-Bitboard Position::getAllAttackersToSquare(int targetSquare)
+Bitboard Position::getAllAttackersToSquare(int targetSquare) const
 {
 
 
@@ -1283,7 +1283,7 @@ Bitboard Position::getAllAttackersToSquare(int targetSquare)
 }
 
 
-Bitboard Position::getLeastValuablePiece(Bitboard pieces, int colorDelta, int &piece) // colorDelta is 0 for white 6 for black
+Bitboard Position::getLeastValuablePiece(Bitboard pieces, int colorDelta, int &piece) const // colorDelta is 0 for white 6 for black
 {
 
     int kingPieceIndex = 5 + colorDelta;
@@ -1332,7 +1332,7 @@ Bitboard Position::xRayAttackersToSquare(int targetSquare, Bitboard occupancy) c
     14. While each side has potential captures go to Step 4.
 */
 
-int Position::SEE( int toSquare, int targetPiece, int fromSquare, int attackerPiece)
+int Position::SEE( int toSquare, int targetPiece, int fromSquare, int attackerPiece) const
 {
     int gain[32];
     int depth = 0;

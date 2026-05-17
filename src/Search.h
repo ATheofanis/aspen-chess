@@ -25,18 +25,6 @@ struct SearchStack
 };
 
 
-// Move picker class - to be continued
-class MovePicker
-{
-private:
-    Move moves[256];
-    Move ttMove;
-public:
-    Move nextMove();
-    MovePicker() = default;
-};
-
-
 class MoveSearcher
 {
 private:
@@ -65,10 +53,6 @@ public:
 
     Move findBestMove(Position pos, int& posEval);
 
-    int scoreQuiescenceMove(const Move& move, Position& pos, const Move& bestMove);
-
-    int scoreMove(const Move& move, const Position& pos, const Move& hashMove, const int& ply);
-
     void newGame()
     {
         memset(historyMoves, 0, sizeof(historyMoves));
@@ -91,3 +75,8 @@ inline void initLMR() {
         }
     }
 }
+
+
+int scoreQuiescenceMove(const Move& move, Position& pos, const Move& bestMove);
+
+int scoreMove(const Move& move, const Position& pos, const Move& hashMove, const int& ply);
