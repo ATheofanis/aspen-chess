@@ -10,7 +10,6 @@
 #include "Bitboard.h"
 #include "Score.h"
 #include "Zobrist.h"
-#include "LegalMoveGen.h"
 
 
 struct positionInfo
@@ -80,6 +79,8 @@ public:
 
     // make move functions
     void makeMove(Move move); // any legal move
+    void makeCapture(Move capture); // any legal capture
+
     void makeNullMove(int epSq) // null move for null move pruning
     {
         whiteToMoveFlag = !whiteToMoveFlag;
@@ -93,6 +94,7 @@ public:
 
     // unmake move functions
     void unmakeMove();
+    void unmakeCapture();
     void unmakeNullMove(int epSq) // undo null move for null move pruning
     {
         whiteToMoveFlag = !whiteToMoveFlag;
@@ -460,8 +462,8 @@ public:
             return (toSquare == fromSquare - 8) && !(toMask & occupiedSquaresBitboard);
         }
 
-        // 5. Ensure non-pawns don't have pawn flags
-        if (moveFlag == 1 || moveFlag == 5 || moveFlag >= 8) return false;
+        // Ensure non-pawns do not have pawn flags (double-push, en-passant & promotions)
+        if (moveFlag == 1 || moveFlag == 5 || moveFlag & 8) return false;
 
         // Non-pawn piece
         if (movingPiece == wN || movingPiece == bN) return (knightAttacks[fromSquare] & toMask);
@@ -476,5 +478,3 @@ public:
 
 
 };
-
-

@@ -6,6 +6,7 @@
 
 #include "PseudoMoveGen.h"
 
+
 Move MovePicker::nextMove()
 {
     while (phase != MovePickerPhase::End)
