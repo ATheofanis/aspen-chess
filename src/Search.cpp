@@ -533,6 +533,8 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
         return 0;
     }
 
+    // Keep track of quiet moves searched for late move pruning (LMP)
+    int quietMovesCount = 0;
 
     // sort moves
     int moveScores[numOfMoves];
@@ -659,12 +661,38 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
         int toSquare = (move >> 6) & 0x3F;
         int moveFlag = move >> 12 & 0xF;
 
+        // Check if the move is a capture or/and promotion
+        bool moveIsCapture = isCapture(move);
+        bool moveIsPromotion = isPromotion(move);
 
-        // futility and extended futility prune
-        if (canFutilityPrune || canExtendedFutilityPrune)
+        // If it is neither, the move is quiet
+        bool moveIsQuiet = !(moveIsCapture || moveIsPromotion);
+
+
+        // |===================================================================================================|
+        // |    Futility Pruning: If we are at depth 1 and the static evaluation is far below alpha, then      |
+        // |  searching quiet moves is likely futile since they are unlikely to raise the score above alpha.   |
+        // |     In this case, we flag the node to skip quiet moves later, saving significant search time.     |
+        // |===================================================================================================|
+        // |  Extended Futility Pruning: Same concept as normal futility pruning but applied at higher depths  |
+        // |    depths. Aspen uses a larger margin here to safely account for the additional search depth.     |
+        // |===================================================================================================|
+        if (moveIsQuiet && (move != ttBestMove) && (canFutilityPrune || canExtendedFutilityPrune)) // Do not prune the move it is the hash move
         {
-            if (!(moveFlag & 4 || moveFlag & 8)) continue;
+            continue;
         }
+
+        // |===========================================================================|
+        // | Late Move Pruning: At shallow depths, skip quiet moves if a threshold     |
+        // |            number of quiet moves have already been searched.              |
+        // |===========================================================================|
+        if (!isPv && !isInCheck && moveIsQuiet && depth <= 4 && quietMovesCount >= lateMovePruningThreshold[depth])
+        {
+            continue;
+        }
+
+        // Increment the quiet moves count
+        quietMovesCount++;
 
 
         (ss+1)->accumulator = ss->accumulator;
