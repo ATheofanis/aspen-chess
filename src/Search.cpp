@@ -574,10 +574,16 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
     int score = -negaMaxAlphaBeta<nodeType>(pos, -beta, -alpha, depth - 1, bestMove, ply+1, rootDepth, true, ss+1);
     pos.unmakeMove();
 
+    int firstMoveFromSquare = getFromSquare(firstMove);
+    int firstMoveToSquare = getToSquare(firstMove);
+    int firstMoveFlag = getMoveFlag(firstMove);
 
-    int firstMovefromSquare = firstMove & 0x3F;
-    int firstMovetoSquare = (firstMove >> 6) & 0x3F;
-    int firstMoveFlag = firstMove >> 12 & 0xF;
+    // Check if the move is a capture or/and promotion
+    bool moveIsCapture = isCapture(firstMove);
+    bool moveIsPromotion = isPromotion(firstMove);
+
+    // If it is neither, the move is quiet
+    bool moveIsQuiet = !(moveIsCapture || moveIsPromotion);
 
     if (score > alpha)
     {
@@ -611,9 +617,9 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
             // TT:
             save(posZobrist, ttBestMove, score, staticValue, depth, Bound::BOUND_BETA, generation, ply);
             // store killer move
-            if (!(firstMoveFlag & 4))
+            if (moveIsQuiet);
             {
-                historyMoves[firstMovefromSquare][firstMovetoSquare] = std::min(historyMoves[firstMovefromSquare][firstMovetoSquare] + depth * depth, 800);
+                historyMoves[firstMoveFromSquare][firstMoveToSquare] = std::min(historyMoves[firstMoveFromSquare][firstMoveToSquare] + depth * depth, 800);
 
                 killerMoves[ply][1] = killerMoves[ply][0];
                 killerMoves[ply][0] = firstMove;
@@ -624,10 +630,10 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
     }
     else
     {
-        if (!(firstMoveFlag & 4))
+        if (moveIsQuiet)
         {
-            // store history move
-            historyMoves[firstMovefromSquare][firstMovetoSquare] -= depth * depth / 2.0;
+            // History penalty - to be changed very soon
+            historyMoves[firstMoveFromSquare][firstMoveToSquare] -= depth * depth / 2.0;
         }
     }
     // End of PVS
@@ -657,16 +663,16 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
 
         Move move = moves[i];
 
-        int fromSquare = move & 0x3F;
-        int toSquare = (move >> 6) & 0x3F;
-        int moveFlag = move >> 12 & 0xF;
+        int fromSquare = getFromSquare(move);
+        int toSquare = getToSquare(move);
+        int moveFlag = getMoveFlag(move);
 
         // Check if the move is a capture or/and promotion
-        bool moveIsCapture = isCapture(move);
-        bool moveIsPromotion = isPromotion(move);
+        moveIsCapture = isCapture(move);
+        moveIsPromotion = isPromotion(move);
 
         // If it is neither, the move is quiet
-        bool moveIsQuiet = !(moveIsCapture || moveIsPromotion);
+        moveIsQuiet = !(moveIsCapture || moveIsPromotion);
 
 
         // |===================================================================================================|
@@ -690,10 +696,6 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
         {
             continue;
         }
-
-        // Increment the quiet moves count
-        quietMovesCount++;
-
 
         (ss+1)->accumulator = ss->accumulator;
         (ss+1)->accumulator.makeMove(moves[i], pos);
