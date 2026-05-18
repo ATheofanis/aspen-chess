@@ -80,8 +80,6 @@ public:
 
     // make move functions
     void makeMove(Move move); // any legal move
-    void makeCapture(Move capture); // any legal capture
-
     void makeNullMove(int epSq) // null move for null move pruning
     {
         whiteToMoveFlag = !whiteToMoveFlag;
@@ -95,7 +93,6 @@ public:
 
     // unmake move functions
     void unmakeMove();
-    void unmakeCapture();
     void unmakeNullMove(int epSq) // undo null move for null move pruning
     {
         whiteToMoveFlag = !whiteToMoveFlag;
@@ -255,6 +252,7 @@ public:
         return false;
     }
 
+    // Checks if a pseudo-legal move is legal
     bool moveIsLegal(const legalityInformation& info, Move move) const
     {
         int fromSquare = getFromSquare(move);
@@ -382,6 +380,101 @@ public:
         // If non of the above are true then the move is legal
         return true;
     }
+
+    // Checks if a given move is physically possible for the current position
+    bool moveIsValid(Move move) const
+    {
+        int fromSquare = getFromSquare(move);
+        int toSquare = getToSquare(move);
+        int moveFlag = getMoveFlag(move);
+
+        Bitboard toMask = 1ULL << toSquare;
+        Bitboard fromMask = 1ULL << fromSquare;
+
+        Piece movingPiece = Board[fromSquare];
+
+        // If the starting square is empty or if the piece moving is not the same color as the side to move then the move is invalid
+        if (movingPiece == 12) return false;
+        if ((movingPiece < 6 && !whiteToMoveFlag) || (movingPiece >= 6 && whiteToMoveFlag)) return false;
+
+        // Castling
+        if (moveFlag == 2 || moveFlag == 3)
+        {
+            // Only kings can castle
+            if (movingPiece != wK && movingPiece != bK)
+            {
+                return false;
+            }
+
+            // White king castling
+            if (movingPiece == wK)
+            {
+                // King side
+                if (moveFlag == 2) return (fromSquare == 4 && toSquare == 6) && (castleRights & WK) && ((occupiedSquaresBitboard & 96) == 0);
+
+                // Queen side
+                return (fromSquare == 4 && toSquare == 2) && (castleRights & WQ) && ((occupiedSquaresBitboard & 14) == 0);
+            }
+            else
+            {
+                // Black king side
+                if (moveFlag == 2) return (fromSquare == 60 && toSquare == 62) && (castleRights & BK) && ((occupiedSquaresBitboard & 0x6000000000000000) == 0);
+
+                // Black queen side
+                return (fromSquare == 60 && toSquare == 58) && (castleRights & BQ) && ((occupiedSquaresBitboard & 0x0E00000000000000) == 0);
+            }
+            return false;
+        }
+
+
+        bool isCap = isCapture(moveFlag);
+        bool enemyOccupied = toMask & (whiteToMoveFlag ? blackPiecesBitboard : whitePiecesBitboard);
+
+        // Invalid capture
+        if (isCap && !enemyOccupied && moveFlag != 5) return false;
+
+        // Invalid quiet move if destination square is occupied
+        if (!isCap && enemyOccupied) return false;
+
+        Bitboard allyPieces = movingPiece < 6 ? whitePiecesBitboard : blackPiecesBitboard;
+
+        // The destination square must be completely empty
+        if (toMask & allyPieces) return false;
+
+        // White pawn move
+        if (movingPiece == wp)
+        {
+            // Promotions only on 7th rank
+            if (moveFlag & 8 && fromSquare / 8 != 6) return false;
+            if (moveFlag == 5) return (toSquare == enPassantSquare) && (toSquare == fromSquare + 7 || toSquare == fromSquare + 9);
+            if (isCap) return (toMask & blackPiecesBitboard) && (toSquare == fromSquare + 7 || toSquare == fromSquare + 9);
+            if (moveFlag == 1) return (toSquare == fromSquare + 16) && !(toMask & occupiedSquaresBitboard) && !((1ULL << (fromSquare + 8)) & occupiedSquaresBitboard) && (fromSquare / 8 == 1);
+            return (toSquare == fromSquare + 8) && !(toMask & occupiedSquaresBitboard);
+        }
+        else if (movingPiece == bp)
+        {
+            if (moveFlag & 8 && fromSquare / 8 != 1) return false;
+            if (moveFlag == 5) return (toSquare == enPassantSquare) && (toSquare == fromSquare - 7 || toSquare == fromSquare - 9);
+            if (isCap) return (toMask & whitePiecesBitboard) && (toSquare == fromSquare - 7 || toSquare == fromSquare - 9);
+            if (moveFlag == 1) return (toSquare == fromSquare - 16) && !(toMask & occupiedSquaresBitboard) && !((1ULL << (fromSquare - 8)) & occupiedSquaresBitboard) && (fromSquare / 8 == 6);
+            return (toSquare == fromSquare - 8) && !(toMask & occupiedSquaresBitboard);
+        }
+
+        // 5. Ensure non-pawns don't have pawn flags
+        if (moveFlag == 1 || moveFlag == 5 || moveFlag >= 8) return false;
+
+        // Non-pawn piece
+        if (movingPiece == wN || movingPiece == bN) return (knightAttacks[fromSquare] & toMask);
+        if (movingPiece == wB || movingPiece == bB) return (getBishopAttacks(fromSquare, occupiedSquaresBitboard) & toMask);
+        if (movingPiece == wR || movingPiece == bR) return (getRookAttacks(fromSquare, occupiedSquaresBitboard) & toMask);
+        if (movingPiece == wQ || movingPiece == bQ) return ((getBishopAttacks(fromSquare, occupiedSquaresBitboard) | getRookAttacks(fromSquare, occupiedSquaresBitboard)) & toMask);
+        // Normal king moves
+        if (movingPiece == wK || movingPiece == bK) return (kingAttacks[fromSquare] & toMask);
+
+        return false;
+    }
+
+
 };
 
 

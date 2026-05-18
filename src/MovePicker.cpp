@@ -21,7 +21,9 @@ Move MovePicker::nextMove()
                 // Move on to the next phase
                 phase = MovePickerPhase::GenAndScoreCapsAndPromos;
 
-                if (hashMove != NO_MOVE && position.moveIsLegal(legalityInfo, hashMove))
+                if ((skipQuietMoves) && isQuiet(getMoveFlag(hashMove))) break;
+
+                if (hashMove != NO_MOVE && position.moveIsValid(hashMove) && position.moveIsLegal(legalityInfo, hashMove))
                 {
                     return hashMove;
                 }
@@ -74,11 +76,8 @@ Move MovePicker::nextMove()
                     }
 
                     // If the best score found is below 0 it means we have run out of winning captures and promotions
-                    if (bestScore < 0)
+                    if (bestScore < -10000)
                     {
-                        losingCapAndPromoStartIndex = currentMoveIndex;
-                        // Move on to the next phase
-                        phase = MovePickerPhase::FirstKillerMove;
                         break;
                     }
 
@@ -97,8 +96,21 @@ Move MovePicker::nextMove()
                         return bestMove;
                     }
                 }
+                // Set the startin index for phase 8
+                losingCapAndPromoStartIndex = currentMoveIndex;
+
                 // Move on to the next phase
-                phase = MovePickerPhase::FirstKillerMove;
+                if (skipQuietMoves)
+                {
+                    // Set the current index to the starting index of losing captures and under-promotions
+                    // to begin phase 8
+                    currentMoveIndex = losingCapAndPromoStartIndex;
+                    // Skip directly to losing caps and promos if we are in qsearch
+                    phase = MovePickerPhase::LosingCapturesAndPromos;
+                } else
+                {
+                    phase = MovePickerPhase::FirstKillerMove;
+                }
                 break;
             }
             //    |=====================================================================================|
@@ -108,7 +120,7 @@ Move MovePicker::nextMove()
             case MovePickerPhase::FirstKillerMove:
             {
                 phase = MovePickerPhase::SecondKillerMove;
-                if (firstKillerMove != NO_MOVE && firstKillerMove != hashMove && position.moveIsLegal(legalityInfo, firstKillerMove))
+                if (firstKillerMove != NO_MOVE && firstKillerMove != hashMove && position.moveIsValid(firstKillerMove) && position.moveIsLegal(legalityInfo, firstKillerMove))
                 {
                     return firstKillerMove;
                 }
@@ -118,7 +130,7 @@ Move MovePicker::nextMove()
             case MovePickerPhase::SecondKillerMove:
             {
                 phase = MovePickerPhase::GenAndScoreQuietMoves;
-                if (secondKillerMove != NO_MOVE && secondKillerMove != hashMove && position.moveIsLegal(legalityInfo, secondKillerMove))
+                if (secondKillerMove != NO_MOVE && secondKillerMove != hashMove && position.moveIsValid(secondKillerMove) && position.moveIsLegal(legalityInfo, secondKillerMove))
                 {
                         return secondKillerMove;
                 }
@@ -185,6 +197,9 @@ Move MovePicker::nextMove()
                 }
                 // Move on to the next phase
                 phase = MovePickerPhase::LosingCapturesAndPromos;
+
+                // Set the current index to the one we found at phase 3 to begin searching losing captures/promotions
+                currentMoveIndex = losingCapAndPromoStartIndex;
                 break;
             }
             //    |========================================================================================================|
@@ -195,8 +210,6 @@ Move MovePicker::nextMove()
             //    |========================================================================================================|
             case MovePickerPhase::LosingCapturesAndPromos:
             {
-                // Set the current index to the one we found at phase 3 to begin searching losing captures/promotions
-                currentMoveIndex = losingCapAndPromoStartIndex;
 
                 // Loop through all the losing captures/promotions that we generated at phase 2.
                 while (currentMoveIndex < losingCapAndPromoEndIndex)
@@ -252,7 +265,8 @@ int MovePicker::scoreQuietMove(Move move) {
     int fromSquare = getFromSquare(move);
     int toSquare = getToSquare(move);
 
-    return historyMoves[fromSquare][toSquare];
+    //std::cout << "history: " << (*historyMoves)[fromSquare][toSquare] << std::endl;
+    return (*historyMoves)[fromSquare][toSquare];
 }
 
 
@@ -263,7 +277,7 @@ int MovePicker::scoreCaptureAndPromoMove(Move move) {
     int score = 0;
 
     // MVV-LVA for capture moves
-    /*
+
     if (flag & 4)
     {
         Piece victim = wp;
@@ -278,24 +292,24 @@ int MovePicker::scoreCaptureAndPromoMove(Move move) {
 
         score += 10 * averagePieceScore[victim] - averagePieceScore[attacker];
     }
-    */
+
 
     // Sorting with SEE - remains to be tested
 
-    if (flag & 4)
-    {
-        int attacker = position.getPieceFromBoard(fromSquare);
-
-        // Get the captured piece
-        // If the move is enpassant then the captured piece is a black pawn or a white pawn
-        // Otherwise it is just the piece located at 'toSquare'
-        Piece capturedPiece = flag == 5 ? attacker < 6 ? bp : wp : position.getPieceFromBoard(toSquare);
-
-        // Get the SEE score of the move
-        score += 100 * position.SEE(toSquare, capturedPiece, fromSquare, attacker);
-        // Weak MVV-LVA to reinforce the score and prevent two moves from having the same score too often
-        score += 10 * averagePieceScore[capturedPiece] - averagePieceScore[attacker];
-    }
+    //if (flag & 4)
+    //{
+    //    int attacker = position.getPieceFromBoard(fromSquare);
+//
+    //    // Get the captured piece
+    //    // If the move is enpassant then the captured piece is a black pawn or a white pawn
+    //    // Otherwise it is just the piece located at 'toSquare'
+    //    Piece capturedPiece = flag == 5 ? attacker < 6 ? bp : wp : position.getPieceFromBoard(toSquare);
+//
+    //    // Get the SEE score of the move
+    //    score += 100 * position.SEE(toSquare, capturedPiece, fromSquare, attacker);
+    //    // Weak MVV-LVA to reinforce the score and prevent two moves from having the same score too often
+    //    score += 10 * averagePieceScore[capturedPiece] - averagePieceScore[attacker];
+    //}
 
 
 

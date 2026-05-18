@@ -35,21 +35,23 @@ private:
     Move secondKillerMove;
 
     // History moves passed by the move searcher
-    const history& historyMoves;
+    const history* historyMoves;
 
     int moveScores[256]{};
     int numOfMoves{};
     int currentMoveIndex{};
     int losingCapAndPromoStartIndex{};
     int losingCapAndPromoEndIndex{};
-    int ply;
+
+    bool skipQuietMoves;
 
 public:
     Move nextMove();
 
-    MovePicker(const Position& pos, const legalityInformation& info, const history& history, Move ttMove, Move killer1, Move killer2, int pl) :
-        position(pos), legalityInfo(info), historyMoves(history), hashMove(ttMove), firstKillerMove(killer1), secondKillerMove(killer2),
-        phase(MovePickerPhase::HashMove), ply(pl) {}
+    // Position, Info, History, ttMove, QS Flag, Killer1, Killer2
+    MovePicker(const Position& pos, const legalityInformation& info, const history* history, Move ttMove, bool isQSearch, Move killer1 = NO_MOVE, Move killer2 = NO_MOVE) :
+        position(pos), legalityInfo(info), historyMoves(history), hashMove(ttMove), skipQuietMoves(isQSearch), firstKillerMove(killer1), secondKillerMove(killer2),
+        phase(MovePickerPhase::HashMove) {}
 
     int scoreQuietMove(Move move);
     int scoreCaptureAndPromoMove(Move move);

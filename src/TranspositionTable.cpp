@@ -19,11 +19,16 @@ void save(ZobristHash zobristHash, Move bestMove, int evaluation, int staticEval
     if (evaluation < -CHECKMATE + 500) evaluation -= ply;
     if (evaluation > CHECKMATE - 500) evaluation += ply;
 
+    // Preserve the best move if the node failed-low (bestMove is NO_MOVE)
+    if (bestMove == NO_MOVE && entry.entryZobristKey == zobristHash)
+    {
+        bestMove = entry.entryBestMove;
+    }
+
     // replace the old entry if its depth is lower than the depth of the current entry
     // also replace if the old entry's generation is not the same as the current generation meaning it is from a prior search
     if (entry.entryDepth < depth || entry.entryGen != generation)
     {
-        entries++;
         transpositionTable[index] = TTEntry(zobristHash, bestMove, evaluation, staticEval, depth, (uint8_t)bound, entryGeneration);
     }
 }

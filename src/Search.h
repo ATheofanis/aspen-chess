@@ -75,8 +75,3 @@ inline void initLMR() {
         }
     }
 }
-
-
-int scoreQuiescenceMove(const Move& move, Position& pos, const Move& bestMove);
-
-int scoreMove(const Move& move, const Position& pos, const Move& hashMove, const int& ply);

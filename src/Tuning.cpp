@@ -44,7 +44,7 @@ void parseLineForTuning(const std::string& line, Position& pos)
         result = 0.0;
     }
     newEntry.result = result;
-    newEntry.staticEval = scoreBoard(pos);
+    //newEntry.staticEval = scoreBoardNNUE(pos);
 
     newEntry.bishopPairsCount = getBishopPairDiff(pos);
 

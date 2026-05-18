@@ -30,7 +30,6 @@ void init()
     initLMR();
     clearTranspositionTable();
     seedingForXoshiro256aa();
-    initPSTtables();
     initPawnAttacks();
     initKnightAttacks();
     initKingAttacks();

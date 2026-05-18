@@ -107,6 +107,15 @@ inline int getFromSquare(Move mv) { return mv & 0x3F; }
 inline int getToSquare(Move mv) { return mv >> 6 & 0x3F; }
 inline int getMoveFlag(Move mv) { return mv >> 12 & 0xF; }
 
+inline bool isCapture(int flag) { return static_cast<bool>(flag & 4); }
+inline bool isPromotion(int flag) { return static_cast<bool>(flag & 8); }
+inline bool isEnpassant(int flag) { return (flag == 5); }
+inline bool isQuiet(int flag) { return !(isCapture(flag) || isPromotion(flag)); }
+
+
+
+inline bool moveIsCapture(Move move) { return static_cast<bool>(getMoveFlag(move) & 4); }
+
 
 using CastlingRights = uint8_t; // castling rights can be stored in a nibble (4 bits)
 // white kingside
@@ -179,3 +188,8 @@ struct legalityInformation
 };
 
 using history = int[64][64];
+
+// average piece score for SEE , MVVLVA and other stuff
+constexpr int averagePieceScore[12] = {88, 309, 331, 494, 980, 0, 88, 309, 331, 494, 980, 0};
+
+constexpr int lateMovePruningThreshold[5] = {999, 5, 9, 15, 20};

@@ -321,7 +321,6 @@ inline void initializations()
 {
     initLMR();
     seedingForXoshiro256aa();
-    initPSTtables();
     initPawnAttacks();
     initKnightAttacks();
     initKingAttacks();
