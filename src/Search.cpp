@@ -689,6 +689,11 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
         // null window to first check if the move is good enough to warrant a full window search which happens when the move's score is above alpha
         score = -negaMaxAlphaBeta<NodeType::NonPV>(pos, -alpha-1, -alpha, reducedDepth, bestMove, ply+1, rootDepth, true, ss+1);
 
+        if (score > alpha)
+        {
+            score = -negaMaxAlphaBeta<NodeType::NonPV>(pos, -alpha-1, -alpha, depth - 1, bestMove, ply+1, rootDepth, true, ss+1);
+        }
+
         // re-search if move score stayed within the null window
         if constexpr (isPv)
         {
@@ -784,62 +789,65 @@ Move MoveSearcher::findBestMove(Position pos, int& posEval)
     nodes = 0;
     quieNodes = 0;
 
+    int score;
+
     // Iterative deepening loop
     for (int depth = 1; depth <= MAX_DEPTH; depth++)
     {
         Move bmDummy = bestMove;
 
-        int score = negaMaxAlphaBeta<NodeType::Root>(pos, alpha, beta, depth, bmDummy, 0, depth, false, ss);
-        posEval = score;
-
-        // If the time management flag is set to true, it means that the search was interrupted.
-        // The results of an interrupted search are discarded since they are incomplete
-        if (tm.isTimeEnabled() && tm.getShouldStopFlag()) break;
-
-        // If the score found is outside of the alpha and beta bounds then we expand the search window and search again
-        if ((score <= alpha || score >= beta))
+        if (depth < 5)
         {
-            alpha -= 50;
-            beta += 50;
-
             score = negaMaxAlphaBeta<NodeType::Root>(pos, alpha, beta, depth, bmDummy, 0, depth, false, ss);
+        } else
+        {
+            int delta = 15 + previousScore * previousScore / 16384;
+            alpha = std::max(previousScore - delta, -CHECKMATE);
+            beta = std::min(previousScore + delta, CHECKMATE);
+
+            while (true)
+            {
+                score = negaMaxAlphaBeta<NodeType::Root>(pos, alpha, beta, depth, bmDummy, 0, depth, false, ss);
+
+                // If the time management flag is set to true, it means that the search was interrupted.
+                // The results of an interrupted search are discarded since they are incomplete
+                if (tm.isTimeEnabled() && tm.getShouldStopFlag()) break;
+
+                if (score <= alpha)
+                {
+                    beta = (alpha + beta)/2;
+                    alpha = std::max(alpha - delta, -CHECKMATE);
+                }
+                else if (score >= beta)
+                {
+                    beta = std::min(beta + delta, CHECKMATE);
+                }
+                else
+                {
+                    break;
+                }
+                delta += delta/2;
+            }
         }
 
         if (tm.isTimeEnabled() && tm.getShouldStopFlag()) break;
 
-        posEval = score;
-
-        // If re-searching with a wider window still results in an out of bounds score, then search again with a full window
-        if ((score <= alpha || score >= beta))
-        {
-            alpha = -CHECKMATE;
-            beta = CHECKMATE;
-
-            score = negaMaxAlphaBeta<NodeType::Root>(pos, alpha, beta, depth, bmDummy, 0, depth, false, ss);
-        }
+        bool scoreDroppedSuddenly = (previousScore != VALUE_NONE && score + 25 < previousScore);
+        bool bestMoveChanged = (previousMove != NO_MOVE && bmDummy != previousMove);
 
         bestMove = bmDummy;
-
         previousScore = score;
         previousMove = bestMove;
 
         // Print search statistics (Negamax nodes, QSearch nodes and current search depth)
         if (!DataGenFlag) printInfo(depth, score); // only print info if we are not generating self play data
 
-        if (tm.isTimeEnabled() && tm.getShouldStopFlag()) break;
-        posEval = score;
-
-        // Set the new aspiration window based on the score we found at this depth
-        // This way the window for the next depth will be narrow and will lead to more cutoffs than if it were a full search window
-        alpha = score - 50;
-        beta = score + 50;
-
 
         // If the optimum time limit that the time manager set has expired
         if (tm.isTimeEnabled() && tm.optimumExpired())
         {
             // If we found a different best move at this depth or the score suddenly dropped then we need to give the engine more time to keep searching to resolve the instability
-            if ((previousMove != NO_MOVE && previousMove != bestMove) || (previousScore != VALUE_NONE && ((previousScore - 50) > score)) && !tm.maximumExpired())
+            if ((bestMoveChanged || scoreDroppedSuddenly) && !tm.maximumExpired())
             {
                 continue;
             }
