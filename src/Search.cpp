@@ -19,7 +19,12 @@ int precomputedLMR[128][256];
 // prints current depth and number of nodes searched for negamax and qsearch for the position
 void MoveSearcher::printInfo(int depth, int score)
 {
-    std::cout << "info depth " << depth << " score cp " << score << " nodes " << nodes << " pv ";
+    std::cout << "info depth " << depth
+              << " score cp " << score
+              << " nodes "    << nodes
+              << " nps "      << (tm.elapsedTime() > 0 ? nodes * 1000LL / tm.elapsedTime() : 0)
+              << " time "     << tm.elapsedTime()
+              << " pv ";
 
     for (int count = 0; count < pvLength[0]; count++)
     {
@@ -42,6 +47,7 @@ void MoveSearcher::printInfo(int depth, int score)
 template<NodeType nodeType>
 int MoveSearcher::quiescence(Position& pos, int alpha, int beta, Move ttBestMove, int ply, SearchStack* ss)
 {
+    nodes++;
 
     //    |====================================================================|
     //    |  Time / Node Limit : Every 2048 nodes searched, check if we have   |
@@ -523,11 +529,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
     // if no moves were generated then check for CHECKMATE or STALEMATE
     if (numOfMoves == 0)
     {
-        if (isInCheck)
-        {
-            return ply - CHECKMATE;
-        }
-
+        if (isInCheck) { return ply - CHECKMATE; }
         return 0;
     }
 
@@ -857,9 +859,9 @@ Move MoveSearcher::findBestMove(Position pos, int& posEval)
         // Sometimes the engine goes into a deeper search only to be interrupted after a few seconds.
         // That means the engine will spend time to find a move that will be discarded anyways.
         // To prevent that, we only continue to a deeper search if the time that has elapsed is less than 3 times the optimum time limit
-        // For example if we are at depth 16 then a depth 17 search will likely need 3x more time to be fully searched.
+        // For example if we are at depth 16 then a depth 17 search will likely need 2-3x more time to be fully searched.
         // Therefore we attempt to predict if we have enough time left to finish that search, if not then we stop the search here
-        if (tm.isTimeEnabled() && (tm.elapsedTime() * 3 > tm.optimum())) break;
+        if (tm.isTimeEnabled() && (tm.elapsedTime() * 2 > tm.optimum())) break;
     }
 
 

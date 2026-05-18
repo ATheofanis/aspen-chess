@@ -2,14 +2,10 @@
 // Created by theoa on 01/05/2026.
 //
 
-// Like stockfish, i use a time manager class to keep track of time spent on the search
-// (https://github.com/official-stockfish/Stockfish/blob/master/src/timeman.h)
-
-
 #pragma once
 #include "Types.h"
 
-// returns current time - used to calculate elapsed time
+// Returns current time - used to calculate elapsed time
 inline TimePoint now() {
     return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
 }
@@ -20,12 +16,12 @@ class TimeManager
 {
 private:
     TimePoint startingTime{};
-    TimePoint optimumTimeLimit{}; // this is the soft time limit cap, the search can exceed this limit
-    TimePoint maximumTimeLimit{}; // this is the time limit hard cap meaning we can never exceed it in the search
+    TimePoint optimumTimeLimit{}; // This is the soft time limit cap, the search can exceed this limit
+    TimePoint maximumTimeLimit{}; // This is the time limit hard cap meaning we can never exceed it in the search
     bool shouldStop{};
-    bool timeEnabled = true;
+    bool timeEnabled = true;      // Time is disabled for certain UCI commands
 public:
-    // called once at the start of every search to set the values of startingTime, optimum limit and maximum limit (and also reset the shouldStop flag)
+    // Called once at the start of every search to set the values of startingTime, optimum limit and maximum limit (and also reset the shouldStop flag)
     void start(TimePoint myTime, TimePoint myInc, int movesToGo = 25);
 
     // sets should stop flag to true
@@ -47,8 +43,6 @@ public:
 
     bool optimumExpired() { return elapsedTime() >= optimumTimeLimit; }
     bool maximumExpired() { return elapsedTime() >= maximumTimeLimit; }
-
-
 
 };
 

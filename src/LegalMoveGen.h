@@ -41,6 +41,19 @@ inline void printMove(const Move move)
     int fromSquare = move & 0x3F;
     int toSquare = (move >> 6) & 0x3F;
     std::cout << squareName(static_cast<Square>(fromSquare)) << squareName(static_cast<Square>(toSquare));
+
+    // Thanks to Jim Amblett for this code snippet
+    int flag = getMoveFlag(move);
+    if (flag & 8)
+    {
+        switch (flag % 4)
+        {
+        case 0: std::cout << 'n'; break;
+        case 1: std::cout << 'b'; break;
+        case 2: std::cout << 'r'; break;
+        default: std::cout << 'q'; break;
+        }
+    }
 }
 
 
