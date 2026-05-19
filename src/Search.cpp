@@ -531,7 +531,6 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
 
     // Keep track of quiet moves searched for late move pruning (LMP)
     int quietMovesCount = 0;
-    Move searchedQuiets[256];
 
     int moveScores[numOfMoves];
 
@@ -782,6 +781,9 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
                 historyMoves[fromSquare][toSquare] -= depth * depth / 2.0;
             }
         }
+
+        // Increment the quiet move counter now for stable late move pruning
+        if (moveIsQuiet) quietMovesCount++;
 
 
     }
