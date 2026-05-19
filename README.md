@@ -27,6 +27,7 @@ Iterative deepening with aspiration windows over a negamax search with the follo
 - Pawn hash table
 - Null Move Pruning (NMP)
 - Futility Pruning, Extended Futility Pruning, Reverse Futility Pruning
+- Late Move Pruning (LMP)
 - Razoring
 - Late Move Reduction (LMR)
 - Move ordering: TT move, Killer moves, History heuristic, Static Exchange Evaluation (SEE)
