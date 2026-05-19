@@ -832,6 +832,7 @@ Move MoveSearcher::findBestMove(Position pos, int& posEval)
             score = negaMaxAlphaBeta<NodeType::Root>(pos, alpha, beta, depth, bmDummy, 0, depth, false, ss);
         } else
         {
+            // Aspiration window implementation from chess engine chal (https://github.com/namanthanki/chal)
             int delta = 15 + previousScore * previousScore / 16384;
             alpha = std::max(previousScore - delta, -CHECKMATE);
             beta = std::min(previousScore + delta, CHECKMATE);
@@ -893,7 +894,6 @@ Move MoveSearcher::findBestMove(Position pos, int& posEval)
         if (tm.isTimeEnabled() && (tm.elapsedTime() * 2 > tm.optimum())) break;
     }
 
-
     return bestMove;
 
 }
@@ -925,11 +925,9 @@ int MoveSearcher::scoreQuiescenceMove(const Move& move, Position& pos, const Mov
     }
     Piece attacker = pos.getPieceFromBoard(fromSquare);
 
-    score = 10 * averagePieceScore[(int)(victim) % 6] - averagePieceScore[(int)(attacker) % 6];
+    score = 10 * averagePieceScore[victim] - averagePieceScore[attacker];
 
     return score;
-
-
 }
 
 
@@ -945,15 +943,19 @@ int MoveSearcher::scoreMove(const Move& move, const Position& pos, const Move& h
 
     int flag = getMoveFlag(move);
 
-    if (flag == 11) return 15000;
-    if (flag == 15) score += 17000;
+    if (flag == 11) return 15000; // Reward queen promotion
+    if (flag == 15) score += 17000; // Reward capture that leads to queen promotion
+
+    // Punish under-promotions
+    if (flag & 8) return -10000;
+
+    // Source and destination squares for MVV-LVA for captures, or history for quiet moves
+    int fromSquare = getFromSquare(move);
+    int toSquare = getToSquare(move);
 
     // MVV-LVA for capture moves
     if (flag & 4)
     {
-        int fromSquare = move & 0x3F;
-        int toSquare = (move >> 6) & 0x3F;
-
         Piece victim = wp;
         if (flag == 5)
         {
@@ -972,10 +974,6 @@ int MoveSearcher::scoreMove(const Move& move, const Position& pos, const Move& h
         return 900;
     if (move == killerMoves[ply][1])
         return 850;
-
-
-    int fromSquare = move & 0x3F;
-    int toSquare = (move >> 6) & 0x3F;
 
     return historyMoves[fromSquare][toSquare];
 }
