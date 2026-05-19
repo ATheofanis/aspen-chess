@@ -52,3 +52,4 @@ Aspen communicates using the UCI Protocol and is therefore compatible with any C
 - [Stockfish Team](https://stockfishchess.org/) — their open source engine was an invaluable reference for advanced concepts
 - [Bullet](https://github.com/jw1912/bullet) - which I used to train Aspen's neural network
 - [Jim Ablett](https://github.com/jimablett) - for kindly improving upon the previous versions of Aspen's time control, making the engine much stronger
+- [Chal](https://github.com/namanthanki/chal) - a very well written chess engine that helped me improve the engine's search functions
