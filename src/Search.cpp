@@ -570,7 +570,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
     pos.makeMove(firstMove);
 
     // full window for first move
-    int score = -negaMaxAlphaBeta<NodeType::PV>(pos, -beta, -alpha, depth - 1, bestMove, ply+1, rootDepth, true, ss+1);
+    int score = -negaMaxAlphaBeta<nodeType>(pos, -beta, -alpha, depth - 1, bestMove, ply+1, rootDepth, true, ss+1);
     pos.unmakeMove();
 
     int firstMoveFromSquare = getFromSquare(firstMove);
@@ -767,7 +767,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
             {
                 save(posZobrist, ttBestMove, score, staticValue, depth, Bound::BOUND_BETA, generation, ply);
                 // store killer move
-                if (!(moveFlag & 4))
+                if (moveIsQuiet)
                 {
                     historyMoves[fromSquare][toSquare] = std::min(historyMoves[fromSquare][toSquare] + depth * depth, 800);
                     killerMoves[ply][1] = killerMoves[ply][0];
@@ -779,7 +779,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
         }
         else
         {
-            if (!(moveFlag & 4))
+            if (moveIsQuiet)
             {
                 // store history move
                 historyMoves[fromSquare][toSquare] -= depth * depth / 2.0;
