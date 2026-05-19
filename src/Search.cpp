@@ -214,8 +214,6 @@ int MoveSearcher::quiescence(Position& pos, int alpha, int beta, Move ttBestMove
         int toSquare = (capture >> 6) & 0x3F;
 
 
-        // delta pruning - considerable speed increase in many positions - slow in others
-
         Piece capturedPiece = pos.getPieceFromBoard(toSquare);
         int capturedPieceScore = averagePieceScore[0];
 
@@ -224,7 +222,12 @@ int MoveSearcher::quiescence(Position& pos, int alpha, int beta, Move ttBestMove
             capturedPieceScore = averagePieceScore[capturedPiece];
         }
 
-        // delta pruning for each move, skip the move if it cant raise alpha
+        // |==========================================================================================|
+        // | Delta Pruning (Inside the search loop) : If the best score found so far below alpha that |
+        // |    even after the capture is play               |
+        // |  this node is doomed to fail-low. We can safely prune the entire branch right now        |
+        // |           instead of generating and testing captures in the loop.                        |
+        // |==========================================================================================|
         if (bestValue + capturedPieceScore + 200 < alpha)
         {
             continue;
