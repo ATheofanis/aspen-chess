@@ -488,7 +488,7 @@ void LoopUCI()
         }
         else if (tokens[0] == "uci")
         {
-            std::cout << "id name Aspen 1.2.1\n";
+            std::cout << "id name Aspen 1.2.2\n";
             std::cout << "id author ATheo\n";
             std::cout << "option name Hash type spin default 64 min 1 max 32768\n";
             std::cout << "uciok\n";

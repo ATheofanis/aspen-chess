@@ -59,6 +59,11 @@ int MoveSearcher::quiescence(Position& pos, int alpha, int beta, Move ttBestMove
         return 0;
     }
 
+    if (tm.getShouldStopFlag())
+    {
+        return 0;
+    }
+
     constexpr bool isPv = nodeType == NodeType::PV;
 
     // Get the zobrist hash of the position in order to probe the Transposition Table for this position
@@ -319,6 +324,11 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
     {
         // Update the 'STOP' flag of the timer manager
         tm.stopSearch();
+        return 0;
+    }
+
+    if (tm.getShouldStopFlag())
+    {
         return 0;
     }
 
@@ -874,7 +884,7 @@ Move MoveSearcher::findBestMove(Position pos, int& posEval)
 
         if (tm.getShouldStopFlag()) break;
 
-        bool scoreDroppedSuddenly = (previousScore != VALUE_NONE && score + 25 < previousScore);
+        bool scoreDroppedSuddenly = (previousScore != VALUE_NONE && score + 50 < previousScore);
         bool bestMoveChanged = (previousMove != NO_MOVE && bmDummy != previousMove);
 
         bestMove = bmDummy;
