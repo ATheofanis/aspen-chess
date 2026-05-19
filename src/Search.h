@@ -11,9 +11,9 @@
 class Position;
 class Accumulator;
 
-constexpr int historyThreshold = 16000;
-constexpr int firstKillerScore = 18000;
-constexpr int secondKillerScore = 17000;
+constexpr int historyThreshold = 8000;
+constexpr int firstKillerScore = 9000;
+constexpr int secondKillerScore = 8500;
 constexpr int hashMoveScore = 320000;
 
 inline int MAX_DEPTH = 128;

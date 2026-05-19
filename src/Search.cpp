@@ -324,6 +324,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
     // Check if the current node is PV or Root based on the nodeType template argument
     constexpr bool isPv = (nodeType != NodeType::NonPV);
     constexpr bool rootNode = (nodeType == NodeType::Root);
+    constexpr auto nextNodeType = isPv ? NodeType::PV : NodeType::NonPV;
 
     // Return 0 for draw if 3-fold repetition is detected
     if (ply > 0 && pos.checkRepetition(pos.getZobristHash())) return 0;
@@ -396,6 +397,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
     // We calculate the static evaluation of the position for reverse futility pruning etc.
     int staticValue;
     bool ttMoveIsCapture = false;
+    bool ttMoveIsPromo = false;
 
     // If the probe was a hit, it means we already have the static value from the entry,
     // so we do not need to calculate it again
@@ -408,8 +410,12 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
         ttBestMove = ttData.bestMove;
 
         // Check if the hash move is a capture - useful for reverse futility and LMR
-        int ttMoveFlag = getMoveFlag(ttBestMove);
-        ttMoveIsCapture = isCapture(ttMoveFlag);
+        if (ttBestMove != NO_MOVE)
+        {
+            int ttMoveFlag = getMoveFlag(ttBestMove);
+            ttMoveIsCapture = isCapture(ttMoveFlag);
+            ttMoveIsPromo = isPromotion(ttMoveFlag);
+        }
 
     }
     // If the probe was not succesful we need to calculate the static evaluation of the position
@@ -574,8 +580,6 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
         // If it is neither a capture nor a promotion, then the move is quiet
         bool moveIsQuiet = !(moveIsCapture || moveIsPromotion);
 
-        if (moveIsQuiet) { searchedQuiets[quietMovesCount++] = move; }
-
         int score;
 
         // |=================================================================================================|
@@ -593,7 +597,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
             pos.makeMove(move);
 
             // Full window search for first move
-            score = -negaMaxAlphaBeta<nodeType>(pos, -beta, -alpha, depth - 1, bestMove, ply+1, rootDepth, true, ss+1);
+            score = -negaMaxAlphaBeta<nextNodeType>(pos, -beta, -alpha, depth - 1, bestMove, ply+1, rootDepth, true, ss+1);
 
             // Unmake the move
             pos.unmakeMove();
@@ -617,11 +621,12 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
             // | Late Move Pruning: At shallow depths, skip quiet moves if a threshold     |
             // |            number of quiet moves have already been searched.              |
             // |===========================================================================|
-            if (!isPv && !isInCheck && moveIsQuiet && depth <= 4 && quietMovesCount >= lateMovePruningThreshold[depth])
+            if (!isPv && !isInCheck && moveIsQuiet && depth <= 4 && quietMovesCount > lateMovePruningThreshold[depth])
             {
                 continue;
             }
 
+            if (moveIsQuiet) { searchedQuiets[quietMovesCount++] = move; }
 
             // Update the accumulator for the next ply
             (ss+1)->accumulator = ss->accumulator;
@@ -639,7 +644,22 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
             // - don't reduce captures/promotions, or when in check
             if (depth > 3 && i > 3 && !isInCheck && moveIsQuiet)
             {
+                // The base reduction for LMR moves is taken from a precomputed LMR formula
                 depthReduction = precomputedLMR[depth][i];
+
+                //if ((ttMoveIsCapture || ttMoveIsPromo) && depthReduction >= 2)
+                //{
+                //    depthReduction++;
+                //}
+
+                //int historyScore = historyMoves[fromSquare][toSquare];
+
+                //int historyModifier = historyScore / 8000;
+
+                //depthReduction -= historyModifier;
+
+                // Ensure the reduction is always >= 1
+                //depthReduction = std::max(1, depthReduction);
             }
 
             // Make sure the depth reduction does not lead to a depth less than zero
@@ -712,17 +732,18 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
                     historyMoves[fromSquare][toSquare] = std::min(historyMoves[fromSquare][toSquare] + depth * depth, historyThreshold);
                     killerMoves[ply][1] = killerMoves[ply][0];
                     killerMoves[ply][0] = move;
-
-                    // Penalize the rest of the moves - the ones that failed to cause a cutoff
-                    for (int j = 0; j < quietMovesCount - 1; j++)
-                    {
-                        int qFrom = getFromSquare(searchedQuiets[j]);
-                        int qTo = getToSquare(searchedQuiets[j]);
-                        historyMoves[qFrom][qTo] = std::max(historyMoves[qFrom][qTo] - depth * depth, -historyThreshold);
-                    }
                 }
 
                 return beta; // Hard beta cutoff
+            }
+        }
+        else
+        {
+            // If the move was quiet and failed to raise alpha, then penalize it
+            if (moveIsQuiet)
+            {
+                int penalty = (depth * depth) / 2;
+                historyMoves[fromSquare][toSquare] = std::max(historyMoves[fromSquare][toSquare] - penalty, -historyThreshold);
             }
         }
 
@@ -772,7 +793,7 @@ Move MoveSearcher::findBestMove(Position pos, int& posEval)
         } else
         {
             // Aspiration window implementation from chess engine chal (https://github.com/namanthanki/chal)
-            int delta = 15 + previousScore * previousScore / historyThreshold;
+            int delta = 15 + previousScore * previousScore / 16384;
             alpha = std::max(previousScore - delta, -CHECKMATE);
             beta = std::min(previousScore + delta, CHECKMATE);
 
@@ -830,7 +851,7 @@ Move MoveSearcher::findBestMove(Position pos, int& posEval)
         // To prevent that, we only continue to a deeper search if the time that has elapsed is less than 3 times the optimum time limit
         // For example if we are at depth 16 then a depth 17 search will likely need 2-3x more time to be fully searched.
         // Therefore we attempt to predict if we have enough time left to finish that search, if not then we stop the search here
-        if (tm.isTimeEnabled() && (tm.elapsedTime() * 2 > tm.optimum())) break;
+        if (tm.isTimeEnabled() && (tm.elapsedTime() * 3 > tm.optimum())) break;
     }
 
     return bestMove;
@@ -864,7 +885,7 @@ int MoveSearcher::scoreQuiescenceMove(const Move& move, Position& pos, const Mov
     }
     Piece attacker = pos.getPieceFromBoard(fromSquare);
 
-    score = 20000 * averagePieceScore[victim] - averagePieceScore[attacker];
+    score = 15000 * averagePieceScore[victim] - averagePieceScore[attacker];
 
     return score;
 }
@@ -905,7 +926,7 @@ int MoveSearcher::scoreMove(const Move& move, const Position& pos, const Move& h
         }
         Piece attacker = pos.getPieceFromBoard(fromSquare);
 
-        return score + 20000 + 10 * averagePieceScore[(int)(victim) % 6] - averagePieceScore[(int)(attacker) % 6];
+        return score + 15000 + 10 * averagePieceScore[victim] - averagePieceScore[attacker];
     }
 
     // killer moves (only non captures here)
