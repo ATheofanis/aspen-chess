@@ -191,7 +191,8 @@ int MoveSearcher::quiescence(Position& pos, int alpha, int beta, Move ttBestMove
     for (int i = 0; i < numOfCaps; i++)
     {
         int nextMoveIndex = i;
-        // insertion sort (huge speed increase), swap move and score if found a better move so that we make that move immediately
+
+        // Pick the next best capture
         for (int j = i + 1; j < numOfCaps; j++)
         {
             if (moveScores[j] > moveScores[nextMoveIndex])
