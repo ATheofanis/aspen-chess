@@ -830,6 +830,13 @@ Move MoveSearcher::findBestMove(Position pos, int& posEval)
     {
         Move bmDummy = bestMove;
 
+        // Stop if the elapsed time is larger than 90% of the maximum time limit
+        if (tm.isTimeEnabled() && tm.elapsedTime() > (tm.maximum() * 0.90))
+        {
+            tm.stopSearch();
+            break;
+        }
+
         if (depth < 5)
         {
             score = negaMaxAlphaBeta<NodeType::Root>(pos, alpha, beta, depth, bmDummy, 0, depth, false, ss);
@@ -894,7 +901,7 @@ Move MoveSearcher::findBestMove(Position pos, int& posEval)
         // To prevent that, we only continue to a deeper search if the time that has elapsed is less than 3 times the optimum time limit
         // For example if we are at depth 16 then a depth 17 search will likely need 2-3x more time to be fully searched.
         // Therefore we attempt to predict if we have enough time left to finish that search, if not then we stop the search here
-        if (tm.isTimeEnabled() && (tm.elapsedTime() * 2 > tm.optimum())) break;
+        if (tm.isTimeEnabled() && (tm.elapsedTime() * 3 > tm.optimum())) break;
     }
 
     return bestMove;
