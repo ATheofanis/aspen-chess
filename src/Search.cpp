@@ -410,12 +410,9 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
         ttBestMove = ttData.bestMove;
 
         // Check if the hash move is a capture - useful for reverse futility and LMR
-        if (ttBestMove != NO_MOVE)
-        {
-            int ttMoveFlag = getMoveFlag(ttBestMove);
-            ttMoveIsCapture = isCapture(ttMoveFlag);
-            ttMoveIsPromo = isPromotion(ttMoveFlag);
-        }
+        int ttMoveFlag = getMoveFlag(ttBestMove);
+        ttMoveIsCapture = isCapture(ttMoveFlag);
+        ttMoveIsPromo = isPromotion(ttMoveFlag);
 
     }
     // If the probe was not succesful we need to calculate the static evaluation of the position
@@ -534,7 +531,6 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
 
     // Keep track of quiet moves searched for late move pruning (LMP)
     int quietMovesCount = 0;
-    Move searchedQuiets[256];
 
     int moveScores[numOfMoves];
 
@@ -545,12 +541,106 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
     }
 
 
-    // Search every move one by one
+
+    // PVS: first search the first move at full window length, the rest will be searched at null window length
+
+    int maxScore = moveScores[0];
+    int firstMoveIndex = 0;
     for (int i = 0; i < numOfMoves; i++)
     {
-        int nextMoveIndex = i;
+        if (moveScores[i] > maxScore)
+        {
+            maxScore = moveScores[i];
+            firstMoveIndex = i;
+        }
+    }
 
-        // Select the next best move based on its score, which we calculated earlier
+    std::swap(moveScores[0], moveScores[firstMoveIndex]);
+    std::swap(moves[0], moves[firstMoveIndex]);
+
+    Move firstMove = moves[0];
+
+    // Update the accumulator for the next ply
+    (ss+1)->accumulator = ss->accumulator;
+    (ss+1)->accumulator.makeMove(firstMove, pos);
+    pos.makeMove(firstMove);
+
+    // full window for first move
+    int score = -negaMaxAlphaBeta<nodeType>(pos, -beta, -alpha, depth - 1, bestMove, ply+1, rootDepth, true, ss+1);
+    pos.unmakeMove();
+
+    int firstMoveFromSquare = getFromSquare(firstMove);
+    int firstMoveToSquare = getToSquare(firstMove);
+    int firstMoveFlag = getMoveFlag(firstMove);
+
+    // Check if the move is a capture or/and promotion
+    bool moveIsCapture = isCapture(firstMove);
+    bool moveIsPromotion = isPromotion(firstMove);
+
+    // If it is neither, the move is quiet
+    bool moveIsQuiet = !(moveIsCapture || moveIsPromotion);
+
+    if (score > alpha)
+    {
+        // TT:
+        hashFlag = Bound::BOUND_EXACT;
+        alpha = score;
+
+        ttBestMove = firstMove;
+
+        // Store PV move
+        pvTable[ply][ply] = firstMove;
+
+        // Copy move from deeper plies into current ply's line
+        for (int nextPly = ply + 1; nextPly < pvLength[ply + 1]; nextPly++)
+        {
+            pvTable[ply][nextPly] = pvTable[ply + 1][nextPly];
+        }
+
+        // Adjust PV length
+        pvLength[ply] = pvLength[ply + 1];
+
+
+        if (ply == 0)
+        {
+            bestMove = firstMove;
+        }
+
+        // beta cutoff
+        if (score >= beta)
+        {
+            // TT:
+            save(posZobrist, ttBestMove, score, staticValue, depth, Bound::BOUND_BETA, generation, ply);
+            // store killer move
+            if (moveIsQuiet)
+            {
+                historyMoves[firstMoveFromSquare][firstMoveToSquare] = std::min(historyMoves[firstMoveFromSquare][firstMoveToSquare] + depth * depth, 800);
+
+                killerMoves[ply][1] = killerMoves[ply][0];
+                killerMoves[ply][0] = firstMove;
+            }
+
+            return beta; // hard beta cutoff
+        }
+    }
+    else
+    {
+        if (moveIsQuiet)
+        {
+            // History penalty - to be changed very soon
+            historyMoves[firstMoveFromSquare][firstMoveToSquare] -= depth * depth / 2.0;
+        }
+    }
+    // End of PVS
+
+
+
+
+    // Start from the second move since we already searched the first
+    for (int i = 1; i < numOfMoves; i++)
+    {
+        int nextMoveIndex = i;
+        // Select the move with the highest score
         for (int j = i + 1; j < numOfMoves; j++)
         {
             if (moveScores[j] > moveScores[nextMoveIndex])
@@ -559,7 +649,6 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
             }
         }
 
-        // Push the best move to the beginning so we don't loop over it again
         if (nextMoveIndex != i)
         {
             std::swap(moveScores[i], moveScores[nextMoveIndex]);
@@ -574,130 +663,79 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
         int moveFlag = getMoveFlag(move);
 
         // Check if the move is a capture or/and promotion
-        bool moveIsCapture = isCapture(move);
-        bool moveIsPromotion = isPromotion(move);
+        moveIsCapture = isCapture(move);
+        moveIsPromotion = isPromotion(move);
 
-        // If it is neither a capture nor a promotion, then the move is quiet
-        bool moveIsQuiet = !(moveIsCapture || moveIsPromotion);
+        // If it is neither, the move is quiet
+        moveIsQuiet = !(moveIsCapture || moveIsPromotion);
 
-        int score;
 
-        // |=================================================================================================|
-        // |  Principal Variation Search : The first move is the most promising. For this reason, we search  |
-        // |   it with a full window, while the remaining moves are searched with a limited 'null window'.   |
-        // |        If the move stayed within the null window, it is re-searched with a normal one           |
-        // |=================================================================================================|
-        if (i == 0)
+        // |===================================================================================================|
+        // |    Futility Pruning: If we are at depth 1 and the static evaluation is far below alpha, then      |
+        // |  searching quiet moves is likely futile since they are unlikely to raise the score above alpha.   |
+        // |     In this case, we flag the node to skip quiet moves later, saving significant search time.     |
+        // |===================================================================================================|
+        // |  Extended Futility Pruning: Same concept as normal futility pruning but applied at higher depths  |
+        // |    depths. Aspen uses a larger margin here to safely account for the additional search depth.     |
+        // |===================================================================================================|
+        if (moveIsQuiet && (move != ttBestMove) && (canFutilityPrune || canExtendedFutilityPrune)) // Do not prune the move it is the hash move
         {
-            // Update the accumulator for the next ply
-            (ss+1)->accumulator = ss->accumulator;
-            (ss+1)->accumulator.makeMove(move, pos);
-
-            // Make the first move to search it
-            pos.makeMove(move);
-
-            // Full window search for first move
-            score = -negaMaxAlphaBeta<nextNodeType>(pos, -beta, -alpha, depth - 1, bestMove, ply+1, rootDepth, true, ss+1);
-
-            // Unmake the move
-            pos.unmakeMove();
-        }
-        else
-        {
-            // |===================================================================================================|
-            // |    Futility Pruning: If we are at depth 1 and the static evaluation is far below alpha, then      |
-            // |  searching quiet moves is likely futile since they are unlikely to raise the score above alpha.   |
-            // |     In this case, we flag the node to skip quiet moves later, saving significant search time.     |
-            // |===================================================================================================|
-            // |  Extended Futility Pruning: Same concept as normal futility pruning but applied at higher depths  |
-            // |    depths. Aspen uses a larger margin here to safely account for the additional search depth.     |
-            // |===================================================================================================|
-            if (moveIsQuiet && (move != ttBestMove) && (canFutilityPrune || canExtendedFutilityPrune)) // Do not prune the move it is the hash move
-            {
-                continue;
-            }
-
-            // |===========================================================================|
-            // | Late Move Pruning: At shallow depths, skip quiet moves if a threshold     |
-            // |            number of quiet moves have already been searched.              |
-            // |===========================================================================|
-            if (!isPv && !isInCheck && moveIsQuiet && depth <= 4 && quietMovesCount > lateMovePruningThreshold[depth])
-            {
-                continue;
-            }
-
-            if (moveIsQuiet) { searchedQuiets[quietMovesCount++] = move; }
-
-            // Update the accumulator for the next ply
-            (ss+1)->accumulator = ss->accumulator;
-            (ss+1)->accumulator.makeMove(moves[i], pos);
-
-            pos.makeMove(moves[i]);
-
-            // LMR: Reduce the search depth of a move based on current depth and move index
-            // Later moves are usually worse so reduce their depth for more
-            int depthReduction = 1;
-
-            // LMR Conditions:
-            // - reduce depth for moves at sufficient depth
-            // - don't reduce depth of the first 3 moves since they are ordered from best to worst
-            // - don't reduce captures/promotions, or when in check
-            if (depth > 3 && i > 3 && !isInCheck && moveIsQuiet)
-            {
-                // The base reduction for LMR moves is taken from a precomputed LMR formula
-                depthReduction = precomputedLMR[depth][i];
-
-                //if ((ttMoveIsCapture || ttMoveIsPromo) && depthReduction >= 2)
-                //{
-                //    depthReduction++;
-                //}
-
-                //int historyScore = historyMoves[fromSquare][toSquare];
-
-                //int historyModifier = historyScore / 8000;
-
-                //depthReduction -= historyModifier;
-
-                // Ensure the reduction is always >= 1
-                //depthReduction = std::max(1, depthReduction);
-            }
-
-            // Make sure the depth reduction does not lead to a depth less than zero
-            int reducedDepth = std::max(0, depth - depthReduction);
-
-
-            // LMR + PVS : Depth reduction combined with a null window for moves after the first.
-            // This way we spend less time searching moves that are not that promising
-            score = -negaMaxAlphaBeta<NodeType::NonPV>(pos, -alpha-1, -alpha, reducedDepth, bestMove, ply+1, rootDepth, true, ss+1);
-
-            // If the score found from the LMR + PVS search exceeds alpha, then the move proved to be worthy of further analysis.
-            // However first we need to confirm that LMR was applied for this move. If it was then we re-search it with LMR deactivated.
-            if (score > alpha && depthReduction > 1)
-            {
-                score = -negaMaxAlphaBeta<NodeType::NonPV>(pos, -alpha-1, -alpha, depth - 1, bestMove, ply+1, rootDepth, true, ss+1);
-            }
-
-            // If we are at a PV node
-            if constexpr (isPv)
-            {
-                // If the score returned by this move still exceeds alpha with LMR de-activated:
-                // do a full-window re-search if the score is inside the exact window (score < beta),
-                // or if we are at the root, because at the root we must play a move and for that we need to know its exact score
-                if ((score > alpha) && (rootNode || score < beta))
-                {
-                    // The moves that reach this point are proved worthy and the node type passed down the search is PV instead of NonPV like the rest
-                    score = -negaMaxAlphaBeta<NodeType::PV>(pos, -beta, -alpha, depth - 1, bestMove, ply+1, rootDepth, true, ss+1);
-                }
-            }
-            pos.unmakeMove();
+            continue;
         }
 
-        // If the move returned a score higher than alpha, then we need to update alpha's value to the score found
+        // |===========================================================================|
+        // | Late Move Pruning: At shallow depths, skip quiet moves if a threshold     |
+        // |            number of quiet moves have already been searched.              |
+        // |===========================================================================|
+        if (!isPv && !isInCheck && moveIsQuiet && depth <= 4 && quietMovesCount >= lateMovePruningThreshold[depth])
+        {
+            continue;
+        }
+
+        (ss+1)->accumulator = ss->accumulator;
+        (ss+1)->accumulator.makeMove(moves[i], pos);
+        pos.makeMove(moves[i]);
+
+        // LMR: Reduce the search depth of a move based on current depth and move index
+        // Later moves are usually worse so reduce their depth for more
+        int depthReduction = 1;
+
+        // LMR Conditions:
+        // - reduce depth for moves at sufficient depth
+        // - don't reduce depth of the first 3 moves since they are ordered from best to worst
+        // - don't reduce captures/promotions, or when in check
+        if (depth > 3 && i > 3 && !isInCheck && !(moveFlag & 4 || moveFlag & 8))
+        {
+            depthReduction = precomputedLMR[depth][i];
+        }
+
+        // Make sure the depth reduction does not lead to a depth less than zero
+        int reducedDepth = std::max(0, depth - depthReduction);
+
+
+        // null window to first check if the move is good enough to warrant a full window search which happens when the move's score is above alpha
+        score = -negaMaxAlphaBeta<NodeType::NonPV>(pos, -alpha-1, -alpha, reducedDepth, bestMove, ply+1, rootDepth, true, ss+1);
+
+        if (score > alpha)
+        {
+            score = -negaMaxAlphaBeta<NodeType::NonPV>(pos, -alpha-1, -alpha, depth - 1, bestMove, ply+1, rootDepth, true, ss+1);
+        }
+
+        // re-search if move score stayed within the null window
+        if constexpr (isPv)
+        {
+            if ((score > alpha) && (rootNode || score < beta))
+            {
+                score = -negaMaxAlphaBeta<NodeType::PV>(pos, -beta, -alpha, depth - 1, bestMove, ply+1, rootDepth, true, ss+1);
+            }
+        }
+        pos.unmakeMove();
+
+
+
         if (score > alpha)
         {
             hashFlag = Bound::BOUND_EXACT;
-
-            // Update alpha
             alpha = score;
 
             ttBestMove = move;
@@ -720,32 +758,33 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
             }
 
 
-            // Beta cutoff:
-            // The opponent has already found a move that secures a better score for them.
-            // Therefore he will deviate from this line, so there is no reason to continue searching this branch
+            // beta cutoff
             if (score >= beta)
             {
                 save(posZobrist, ttBestMove, score, staticValue, depth, Bound::BOUND_BETA, generation, ply);
+                // store killer move
                 if (moveIsQuiet)
                 {
-                    // Increase the score of the move that caused cutoff
-                    historyMoves[fromSquare][toSquare] = std::min(historyMoves[fromSquare][toSquare] + depth * depth, historyThreshold);
+                    historyMoves[fromSquare][toSquare] = std::min(historyMoves[fromSquare][toSquare] + depth * depth, 800);
                     killerMoves[ply][1] = killerMoves[ply][0];
                     killerMoves[ply][0] = move;
                 }
 
-                return beta; // Hard beta cutoff
+                return beta; // hard beta cutoff
             }
         }
         else
         {
-            // If the move was quiet and failed to raise alpha, then penalize it
             if (moveIsQuiet)
             {
-                int penalty = (depth * depth) / 2;
-                historyMoves[fromSquare][toSquare] = std::max(historyMoves[fromSquare][toSquare] - penalty, -historyThreshold);
+                // store history move
+                historyMoves[fromSquare][toSquare] -= depth * depth / 2.0;
             }
         }
+
+        // Increment the quiet move counter now for stable late move pruning
+        if (moveIsQuiet) quietMovesCount++;
+
 
     }
     save(posZobrist, ttBestMove, alpha, staticValue, depth, hashFlag, generation, ply);
@@ -851,7 +890,7 @@ Move MoveSearcher::findBestMove(Position pos, int& posEval)
         // To prevent that, we only continue to a deeper search if the time that has elapsed is less than 3 times the optimum time limit
         // For example if we are at depth 16 then a depth 17 search will likely need 2-3x more time to be fully searched.
         // Therefore we attempt to predict if we have enough time left to finish that search, if not then we stop the search here
-        if (tm.isTimeEnabled() && (tm.elapsedTime() * 3 > tm.optimum())) break;
+        if (tm.isTimeEnabled() && (tm.elapsedTime() * 2 > tm.optimum())) break;
     }
 
     return bestMove;
@@ -865,7 +904,7 @@ int MoveSearcher::scoreQuiescenceMove(const Move& move, Position& pos, const Mov
     int score = 0;
     if (move == hashMove)
     {
-        return hashMoveScore;
+        return 64000;
     }
 
     int fromSquare = move & 0x3F;
@@ -885,7 +924,7 @@ int MoveSearcher::scoreQuiescenceMove(const Move& move, Position& pos, const Mov
     }
     Piece attacker = pos.getPieceFromBoard(fromSquare);
 
-    score = 15000 * averagePieceScore[victim] - averagePieceScore[attacker];
+    score = 10 * averagePieceScore[victim] - averagePieceScore[attacker];
 
     return score;
 }
@@ -896,25 +935,25 @@ int MoveSearcher::scoreMove(const Move& move, const Position& pos, const Move& h
 {
     if (move == hashMove)
     {
-        return hashMoveScore;
+        return 32000;
     }
 
     int score = 0;
 
     int flag = getMoveFlag(move);
 
-    if (flag == 11) return 150000; // Reward queen promotion
-    if (flag == 15) score += 170000; // Reward capture that leads to queen promotion
+    if (flag == 11) return 15000; // Reward queen promotion
+    if (flag == 15) score += 17000; // Reward capture that leads to queen promotion
 
     // Punish under-promotions
-    if (flag & 8) return -100000;
+    if (flag & 8) return -10000;
 
     // Source and destination squares for MVV-LVA for captures, or history for quiet moves
     int fromSquare = getFromSquare(move);
     int toSquare = getToSquare(move);
 
     // MVV-LVA for capture moves
-    if (isCapture(flag))
+    if (flag & 4)
     {
         Piece victim = wp;
         if (flag == 5)
@@ -926,14 +965,14 @@ int MoveSearcher::scoreMove(const Move& move, const Position& pos, const Move& h
         }
         Piece attacker = pos.getPieceFromBoard(fromSquare);
 
-        return score + 15000 + 10 * averagePieceScore[victim] - averagePieceScore[attacker];
+        return score + 1500 + 10 * averagePieceScore[(int)(victim) % 6] - averagePieceScore[(int)(attacker) % 6];
     }
 
     // killer moves (only non captures here)
     if (move == killerMoves[ply][0])
-        return firstKillerScore;
+        return 900;
     if (move == killerMoves[ply][1])
-        return secondKillerScore;
+        return 850;
 
     return historyMoves[fromSquare][toSquare];
 }

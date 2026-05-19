@@ -11,11 +11,6 @@
 class Position;
 class Accumulator;
 
-constexpr int historyThreshold = 8000;
-constexpr int firstKillerScore = 9000;
-constexpr int secondKillerScore = 8500;
-constexpr int hashMoveScore = 320000;
-
 inline int MAX_DEPTH = 128;
 
 inline uint64_t MAX_NODES = std::numeric_limits<uint64_t>::max();
@@ -28,7 +23,6 @@ struct SearchStack
 {
     Accumulator accumulator;
 };
-
 
 
 class MoveSearcher
