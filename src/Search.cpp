@@ -164,20 +164,14 @@ int MoveSearcher::quiescence(Position& pos, int alpha, int beta, Move ttBestMove
     int numOfCaps = 0;
 
 
-    Color allyColor;
-    int kingSquare;
-
-    // store ally color and king location for legality info
-    if (pos.isWhiteToMove())
-    {
-        allyColor = White;
-        kingSquare = lsbIndex(pos.getPieceBitboard(wK));
-    }
-    else
-    {
-        allyColor = Black;
-        kingSquare = lsbIndex(pos.getPieceBitboard(bK));
-    }
+    // |=================================================================================================|
+    // |  Legality Information : The engine generates every legal move at once using a legality struct   |
+    // |   that contains information about the position. This info is then used during move generation   |
+    // |     to exclude illegal moves. For this purpose we call a function to find every pinned piece,   |
+    // |   pinner, checker, legal square for the king etc., allowing for very fast legal move generation |
+    // |=================================================================================================|
+    Color allyColor = pos.isWhiteToMove() ? White : Black;
+    int kingSquare = pos.isWhiteToMove() ? lsbIndex(pos.getPieceBitboard(wK)) : lsbIndex(pos.getPieceBitboard(bK));
 
     legalityInformation info = getLegalityInfo(kingSquare, allyColor, pos);
 
@@ -262,9 +256,11 @@ int MoveSearcher::quiescence(Position& pos, int alpha, int beta, Move ttBestMove
             {
                 hashFlag = Bound::BOUND_EXACT;
                 ttBestMove = capture;
-                if (score < beta) // raise alpha only if score < beta - (from stockfish)
+
+                // Only update alpha if the score is within the window (score < beta)
+                if (score < beta)
                 {
-                    // Update alpha here!
+                    // Update alpha here
                     alpha = score;
                 }
                 else
@@ -328,6 +324,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
     // Check if the current node is PV or Root based on the nodeType template argument
     constexpr bool isPv = (nodeType != NodeType::NonPV);
     constexpr bool rootNode = (nodeType == NodeType::Root);
+    constexpr auto nextNodeType = isPv ? NodeType::PV : NodeType::NonPV;
 
     // Return 0 for draw if 3-fold repetition is detected
     if (ply > 0 && pos.checkRepetition(pos.getZobristHash())) return 0;
@@ -400,6 +397,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
     // We calculate the static evaluation of the position for reverse futility pruning etc.
     int staticValue;
     bool ttMoveIsCapture = false;
+    bool ttMoveIsPromo = false;
 
     // If the probe was a hit, it means we already have the static value from the entry,
     // so we do not need to calculate it again
@@ -414,6 +412,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
         // Check if the hash move is a capture - useful for reverse futility and LMR
         int ttMoveFlag = getMoveFlag(ttBestMove);
         ttMoveIsCapture = isCapture(ttMoveFlag);
+        ttMoveIsPromo = isPromotion(ttMoveFlag);
 
     }
     // If the probe was not succesful we need to calculate the static evaluation of the position
@@ -510,22 +509,20 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
     int numOfMoves = 0;
 
     // |=================================================================================================|
-    // |  Legality Information : Because we generate pseudo-legal moves, many of them might be illegal   |
-    // |   since they leave our king in check. To quickly filter out these bad moves, we need to know    |
-    // |     exactly what is happening around our king. Instead of checking this for every single move,  |
-    // |   we pre-calculate a struct containing all the current checkers, pinners, and pinned pieces.    |
-    // |    By collecting this info right before we start, we make move validation fast and simple.      |
+    // |  Legality Information : The engine generates every legal move at once using a legality struct   |
+    // |   that contains information about the position. This info is then used during move generation   |
+    // |     to exclude illegal moves. For this purpose we call a function to find every pinned piece,   |
+    // |   pinner, checker, legal square for the king etc., allowing for very fast legal move generation |
     // |=================================================================================================|
     Color allyColor = pos.isWhiteToMove() ? White : Black;
     int kingSquare = pos.isWhiteToMove() ? lsbIndex(pos.getPieceBitboard(wK)) : lsbIndex(pos.getPieceBitboard(bK));
 
     legalityInformation info = getLegalityInfo(kingSquare, allyColor, pos);
 
-    // generate legal moves using previously calculated legality info
+    // Generate all legal moves using previously calculated legality info
     generateLegalMoves(info, pos, moves, numOfMoves);
 
-
-    // if no moves were generated then check for CHECKMATE or STALEMATE
+    // If no legal moves were generated then check for CHECKMATE or STALEMATE
     if (numOfMoves == 0)
     {
         if (isInCheck) { return ply - CHECKMATE; }
@@ -534,13 +531,13 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
 
     // Keep track of quiet moves searched for late move pruning (LMP)
     int quietMovesCount = 0;
+    Move searchedQuiets[256];
 
-    // sort moves
     int moveScores[numOfMoves];
-
 
     for (int i = 0; i < numOfMoves; i++)
     {
+        // Get the score of every move
         moveScores[i] = scoreMove(moves[i], pos, ttBestMove, ply);
     }
 
@@ -640,11 +637,11 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
 
 
 
-    // start from i = 1 because we already searched the first move
+    // Start from the second move since we already searched the first
     for (int i = 1; i < numOfMoves; i++)
     {
         int nextMoveIndex = i;
-        // insertion sort (huge speed increase), swap move and score if found a better move so that we make that move immediately
+        // Select the move with the highest score
         for (int j = i + 1; j < numOfMoves; j++)
         {
             if (moveScores[j] > moveScores[nextMoveIndex])
