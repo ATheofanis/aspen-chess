@@ -24,13 +24,12 @@ Fast legal move generation using magic bitboards.
 Iterative deepening with aspiration windows over a negamax search with the following enhancements:
 - Alpha-Beta pruning with Principal Variation Search (PVS)
 - Transposition Table (TT) probing
-- Pawn hash table
 - Null Move Pruning (NMP)
 - Futility Pruning, Extended Futility Pruning, Reverse Futility Pruning
 - Late Move Pruning (LMP)
 - Razoring
 - Late Move Reduction (LMR)
-- Move ordering: TT move, Killer moves, History heuristic, Static Exchange Evaluation (SEE)
+- Move ordering: Hash move, Killer moves, History heuristic, Static Exchange Evaluation (SEE)
 
 ### Evaluation
 
@@ -52,3 +51,4 @@ Aspen communicates using the UCI Protocol and is therefore compatible with any C
 - [Stockfish Team](https://stockfishchess.org/) — their open source engine was an invaluable reference for advanced concepts
 - [Bullet](https://github.com/jw1912/bullet) - which I used to train Aspen's neural network
 - [Jim Ablett](https://github.com/jimablett) - for kindly improving upon the previous versions of Aspen's time control, making the engine much stronger
+- [Chal](https://github.com/namanthanki/chal) - a very well written chess engine that helped me improve the engine's search functions
