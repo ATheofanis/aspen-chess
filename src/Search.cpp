@@ -47,13 +47,12 @@ void MoveSearcher::printInfo(int depth, int score)
 template<NodeType nodeType>
 int MoveSearcher::quiescence(Position& pos, int alpha, int beta, Move ttBestMove, int ply, SearchStack* ss)
 {
-    nodes++;
 
     //    |====================================================================|
     //    |  Time / Node Limit : Every 2048 nodes searched, check if we have   |
     //    |   exceeded the maximum time limit, or the maximum node limit       |
     //    |====================================================================|
-    if (tm.isTimeEnabled() && (((nodes & 2047) == 0 && tm.maximumExpired()) || (nodes >= MAX_NODES)))
+    if ((tm.isTimeEnabled() && (((nodes & 2047) == 0 && tm.maximumExpired())) || (nodes >= MAX_NODES)))
     {
         // Update the 'STOP' flag of the timer manager
         tm.stopSearch();
@@ -939,12 +938,15 @@ int MoveSearcher::scoreMove(const Move& move, const Position& pos, const Move& h
 {
     if (move == hashMove)
     {
-        return 10000;
+        return 32000;
     }
 
+    int score = 0;
 
+    int flag = getMoveFlag(move);
 
-    int flag = (move >> 12) & 0xF;
+    if (flag == 11) return 15000;
+    if (flag == 15) score += 17000;
 
     // MVV-LVA for capture moves
     if (flag & 4)
@@ -962,7 +964,7 @@ int MoveSearcher::scoreMove(const Move& move, const Position& pos, const Move& h
         }
         Piece attacker = pos.getPieceFromBoard(fromSquare);
 
-        return 1500 + 10 * averagePieceScore[(int)(victim) % 6] - averagePieceScore[(int)(attacker) % 6];
+        return score + 1500 + 10 * averagePieceScore[(int)(victim) % 6] - averagePieceScore[(int)(attacker) % 6];
     }
 
     // killer moves (only non captures here)

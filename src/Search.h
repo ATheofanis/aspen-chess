@@ -11,7 +11,7 @@
 class Position;
 class Accumulator;
 
-inline int MAX_DEPTH = 64;
+inline int MAX_DEPTH = 128;
 
 inline uint64_t MAX_NODES = std::numeric_limits<uint64_t>::max();
 

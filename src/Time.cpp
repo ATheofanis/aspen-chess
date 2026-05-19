@@ -18,8 +18,8 @@ void TimeManager::start(TimePoint myTime, TimePoint myInc, int movesToGo)
 
     TimePoint totalTime = myTime + myInc * (movesToGo > 0 ? movesToGo - 1 : 20);
 
-    // Use a larger fraction of the available time
-    optimumTimeLimit = totalTime * 55 / 1000;
+    // Use a fraction of the available time
+    optimumTimeLimit = totalTime * 80 / 1000; // ~8% per move
     maximumTimeLimit = std::min(totalTime / 2, totalTime * 180 / 1000);
 
     // Extra safety for very low time
