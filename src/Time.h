@@ -18,7 +18,7 @@ private:
     TimePoint startingTime{};
     TimePoint optimumTimeLimit{}; // This is the soft time limit cap, the search can exceed this limit
     TimePoint maximumTimeLimit{}; // This is the time limit hard cap meaning we can never exceed it in the search
-    bool shouldStop{};
+    bool shouldStop = false;
     bool timeEnabled = true;      // Time is disabled for certain UCI commands
 public:
     // Called once at the start of every search to set the values of startingTime, optimum limit and maximum limit (and also reset the shouldStop flag)
@@ -43,6 +43,13 @@ public:
 
     bool optimumExpired() { return elapsedTime() >= optimumTimeLimit; }
     bool maximumExpired() { return elapsedTime() >= maximumTimeLimit; }
+
+    void reset()
+    {
+        timeEnabled = false;
+        shouldStop = false;
+        startingTime = now();
+    }
 
 };
 

@@ -52,7 +52,7 @@ int MoveSearcher::quiescence(Position& pos, int alpha, int beta, Move ttBestMove
     //    |  Time / Node Limit : Every 2048 nodes searched, check if we have   |
     //    |   exceeded the maximum time limit, or the maximum node limit       |
     //    |====================================================================|
-    if ((tm.isTimeEnabled() && (((nodes & 2047) == 0 && tm.maximumExpired())) || (nodes >= MAX_NODES)))
+    if ((tm.isTimeEnabled() && (((nodes & 2047) == 0 && tm.maximumExpired()))) || (nodes >= MAX_NODES))
     {
         // Update the 'STOP' flag of the timer manager
         tm.stopSearch();
@@ -570,7 +570,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
     pos.makeMove(firstMove);
 
     // full window for first move
-    int score = -negaMaxAlphaBeta<nodeType>(pos, -beta, -alpha, depth - 1, bestMove, ply+1, rootDepth, true, ss+1);
+    int score = -negaMaxAlphaBeta<NodeType::PV>(pos, -beta, -alpha, depth - 1, bestMove, ply+1, rootDepth, true, ss+1);
     pos.unmakeMove();
 
     int firstMoveFromSquare = getFromSquare(firstMove);
@@ -616,7 +616,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
             // TT:
             save(posZobrist, ttBestMove, score, staticValue, depth, Bound::BOUND_BETA, generation, ply);
             // store killer move
-            if (moveIsQuiet);
+            if (moveIsQuiet)
             {
                 historyMoves[firstMoveFromSquare][firstMoveToSquare] = std::min(historyMoves[firstMoveFromSquare][firstMoveToSquare] + depth * depth, 800);
 
@@ -842,7 +842,7 @@ Move MoveSearcher::findBestMove(Position pos, int& posEval)
 
                 // If the time management flag is set to true, it means that the search was interrupted.
                 // The results of an interrupted search are discarded since they are incomplete
-                if (tm.isTimeEnabled() && tm.getShouldStopFlag()) break;
+                if (tm.getShouldStopFlag()) break;
 
                 if (score <= alpha)
                 {
@@ -861,7 +861,7 @@ Move MoveSearcher::findBestMove(Position pos, int& posEval)
             }
         }
 
-        if (tm.isTimeEnabled() && tm.getShouldStopFlag()) break;
+        if (tm.getShouldStopFlag()) break;
 
         bool scoreDroppedSuddenly = (previousScore != VALUE_NONE && score + 25 < previousScore);
         bool bestMoveChanged = (previousMove != NO_MOVE && bmDummy != previousMove);

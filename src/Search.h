@@ -36,6 +36,8 @@ private:
 
     int generation = 0;
 
+    bool nodesLimitReached = false;
+
     // Prints search-related information such as the current depth, the evaluation and the PV table of the position
     void printInfo(int depth, int score);
 

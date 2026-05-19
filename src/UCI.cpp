@@ -411,24 +411,32 @@ void LoopUCI()
         else if (tokens[0] == "go")
         {
             MAX_NODES = std::numeric_limits<uint64_t>::max();
-            TimePoint wtime = 0, btime = 0, winc = 0, binc = 0;
+            TimePoint wtime = std::numeric_limits<uint64_t>::max();
+            TimePoint btime = std::numeric_limits<uint64_t>::max();
+            TimePoint winc = 0;
+            TimePoint binc = 0;
             int movestogo = globalMTG;
+            bool timeEnabled = false;
 
             for (int i = 1; i < tokens.size(); i++) {
                 if (tokens[i] == "wtime") // white remaining time
                 {
+                    timeEnabled = true;
                     wtime = std::atoi(tokens[i+1].c_str());
                 }
                 else if (tokens[i] == "btime") // black remaining time
                 {
+                    timeEnabled = true;
                     btime = std::atoi(tokens[i+1].c_str());
                 }
                 else if (tokens[i] == "winc") // white increment
                 {
+                    timeEnabled = true;
                     winc = std::atoi(tokens[i+1].c_str());
                 }
                 else if (tokens[i] == "binc") // black increment
                 {
+                    timeEnabled = true;
                     binc = std::atoi(tokens[i+1].c_str());
                 }
                 else if (tokens[i] == "movestogo") // moves to go passed by the GUI
@@ -448,10 +456,13 @@ void LoopUCI()
             }
 
             // start the time manager if wtime or btime were given
-            if (tm.isTimeEnabled() && (wtime || btime)) {
+            if (timeEnabled) {
                 TimePoint myTime = (pos.isWhiteToMove()) ? wtime : btime;
                 TimePoint myInc = (pos.isWhiteToMove()) ? winc : binc;
                 tm.start(myTime, myInc, movestogo); // initialize the time manager for the side to move
+            } else
+            {
+                tm.reset();
             }
 
             // Find best Move
