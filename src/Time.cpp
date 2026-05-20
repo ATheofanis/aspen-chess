@@ -16,11 +16,28 @@ void TimeManager::start(TimePoint myTime, TimePoint myInc, int movesToGo)
     shouldStop = false;
     startingTime = now();
 
-    TimePoint totalTime = myTime + myInc * (movesToGo > 0 ? movesToGo - 1 : 20);
+    realTimeLeft = myTime;
+
+    movesToGo = std::max(1, movesToGo - 1);
+    TimePoint totalIncTime = myInc * movesToGo;
+
+
+    TimePoint totalTime = myTime + totalIncTime;
+
+    // Time left without increment to prevent the engine from flagging when it thinks it has time left because of increment
+    TimePoint safeTime = myTime;
 
     // Use a fraction of the available time
-    optimumTimeLimit = totalTime * 55 / 1000; // ~5.5% per move
-    maximumTimeLimit = std::min(totalTime / 2, totalTime * 180 / 1000);
+    optimumTimeLimit = std::min(safeTime / 10, totalTime * 35 / 1000); // ~5.5% per move
+
+    // Never allow the engine to use more than one fifth of the real non-increment time left
+    maximumTimeLimit = std::min(safeTime / 5, totalTime * 180 / 1000);
+
+    // Safety for moderately low time
+    if (myTime < 15000) {
+        optimumTimeLimit = myTime * 120 / 1000;
+        maximumTimeLimit = myTime * 200 / 1000;
+    }
 
     // Extra safety for very low time
     if (myTime < 5000) {

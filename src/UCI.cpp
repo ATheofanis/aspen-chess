@@ -29,7 +29,7 @@
 
 class Position;
 
-int globalMTG = 85;
+int globalMTG = 40;
 
 // print the Unicode character
 inline void printUnicode(UnicodePiece uP) {
@@ -415,7 +415,7 @@ void LoopUCI()
             TimePoint btime = std::numeric_limits<uint64_t>::max();
             TimePoint winc = 0;
             TimePoint binc = 0;
-            int movestogo = globalMTG;
+            int movestogo = 0;
             bool timeEnabled = false;
 
             for (int i = 1; i < tokens.size(); i++) {
@@ -455,6 +455,7 @@ void LoopUCI()
                 }
             }
 
+
             // start the time manager if wtime or btime were given
             if (timeEnabled) {
                 TimePoint myTime = (pos.isWhiteToMove()) ? wtime : btime;
@@ -488,7 +489,7 @@ void LoopUCI()
         }
         else if (tokens[0] == "uci")
         {
-            std::cout << "id name Aspen 1.2.2\n";
+            std::cout << "id name Aspen 1.2.3\n";
             std::cout << "id author ATheo\n";
             std::cout << "option name Hash type spin default 64 min 1 max 32768\n";
             std::cout << "uciok\n";
