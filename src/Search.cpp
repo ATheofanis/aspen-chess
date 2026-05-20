@@ -607,7 +607,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
             pos.makeMove(move);
 
             // Search the first move
-            score = -negaMaxAlphaBeta<nodeType>(pos, -beta, -alpha, depth - 1, bestMove, ply+1, rootDepth, true, ss+1);
+            score = -negaMaxAlphaBeta<nextNodeType>(pos, -beta, -alpha, depth - 1, bestMove, ply+1, rootDepth, true, ss+1);
 
             pos.unmakeMove();
         }
@@ -641,8 +641,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
 
             pos.makeMove(moves[i]);
 
-            // LMR: Reduce the search depth of a move based on current depth and move index
-            // Later moves are usually worse so reduce their depth for more
+            // Base depth reduction is 1
             int depthReduction = 1;
 
             // LMR Conditions:
