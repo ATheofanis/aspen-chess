@@ -112,8 +112,6 @@ inline bool isPromotion(int flag) { return static_cast<bool>(flag & 8); }
 inline bool isEnpassant(int flag) { return (flag == 5); }
 inline bool isQuiet(int flag) { return !(isCapture(flag) || isPromotion(flag)); }
 
-
-
 inline bool moveIsCapture(Move move) { return static_cast<bool>(getMoveFlag(move) & 4); }
 
 
