@@ -644,10 +644,13 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
             // Base depth reduction is 1
             int depthReduction = 1;
 
-            // LMR Conditions:
-            // - reduce depth for moves at sufficient depth
-            // - don't reduce depth of the first 3 moves since they are ordered from best to worst
-            // - don't reduce captures/promotions, or when in check
+            // |===========================================================================|
+            // |   Late Move Reductions (LMR): Since the moves are ordered from most       |
+            // |  promising to least, the deeper we move into the list the worse a move    |
+            // |  will statistically be. We take advantage of this by reducing the depth   |
+            // |  at which later moves are searched. To keep the search stable, we limit   |
+            // |      the reductions strictly to quiet moves that do not give check.       |
+            // |===========================================================================|
             if (depth > 3 && i > 3 && !isInCheck && moveIsQuiet)
             {
                 depthReduction = precomputedLMR[depth][i];
