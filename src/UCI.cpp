@@ -415,7 +415,7 @@ void LoopUCI()
             TimePoint btime = std::numeric_limits<uint64_t>::max();
             TimePoint winc = 0;
             TimePoint binc = 0;
-            int movestogo = 0;
+            int movestogo = 40;
             bool timeEnabled = false;
 
             for (int i = 1; i < tokens.size(); i++) {
@@ -479,7 +479,7 @@ void LoopUCI()
             globalMTG--;
             if (globalMTG <= 0)
             {
-                globalMTG = 20;
+                globalMTG = 30;
             }
 
         }
