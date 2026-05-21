@@ -17,6 +17,7 @@ inline uint64_t MAX_NODES = std::numeric_limits<uint64_t>::max();
 
 inline bool DataGenFlag = false;
 
+constexpr int MAX_HISTORY = 800;
 
 // Search Stack to pass search-related information - work in progress
 struct SearchStack
@@ -50,7 +51,7 @@ private:
     int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMove, int ply, int rootDepth, bool allowNullMove, SearchStack* ss);
 
 public:
-    int historyMoves[64][64]{};
+    int historyMoves[2][64][64]{};
     Move killerMoves[MAX_PLY][2]{};
 
     Move findBestMove(Position pos, int& posEval);
@@ -58,6 +59,8 @@ public:
     int scoreQuiescenceMove(Move move, const Position& pos, Move bestMove);
 
     int scoreMove(Move move, const Position& pos, Move hashMove, int ply = -1);
+
+    void updateHistory(Color sideToMove, int fromSquare, int toSquare, int bonus);
 
     void newGame()
     {

@@ -713,6 +713,8 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
             pos.unmakeMove();
         }
 
+        // Increment the quiet move counter now for stable late move pruning
+        if (moveIsQuiet) quietMoves[quietMovesCount++] = move;
 
         if (score > alpha)
         {
@@ -748,30 +750,34 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
                 // Save the node with beta bound since it exceeds beta
                 save(posZobrist, ttBestMove, score, staticValue, depth, Bound::BOUND_BETA, generation, ply);
 
+                Color sideToMove = pos.isWhiteToMove() ? White : Black;
+
+                const int bonus = 300 * depth - 250;
+
                 // Update killer moves and history for quiet moves
                 if (moveIsQuiet)
                 {
-                    historyMoves[fromSquare][toSquare] = std::min(historyMoves[fromSquare][toSquare] + depth * depth, 800);
+                    updateHistory(sideToMove, getFromSquare(move), getToSquare(move), bonus);
 
                     killerMoves[ply][1] = killerMoves[ply][0];
                     killerMoves[ply][0] = move;
                 }
 
+                for (int j = 0; j < quietMovesCount; j++)
+                {
+                    Move quietMove = quietMoves[j];
+
+                    if (quietMove == move) continue;
+
+                    int qFromSquare = getFromSquare(quietMove);
+                    int qToSquare = getToSquare(quietMove);
+
+                    updateHistory(sideToMove, qFromSquare, qToSquare, -bonus);
+                }
+
                 return beta; // hard beta cutoff
             }
         }
-        else
-        {
-            if (moveIsQuiet)
-            {
-                // History penalty
-                historyMoves[fromSquare][toSquare] -= depth * depth / 2.0;
-            }
-        }
-
-        // Increment the quiet move counter now for stable late move pruning
-        if (i > 0 && moveIsQuiet) quietMovesCount++;
-
     }
 
     save(posZobrist, ttBestMove, alpha, staticValue, depth, hashFlag, generation, ply);
@@ -971,5 +977,12 @@ int MoveSearcher::scoreMove(Move move, const Position& pos, Move hashMove, int p
             return 850;
     }
 
-    return historyMoves[fromSquare][toSquare];
+    return historyMoves[pos.isWhiteToMove() ? White : Black][fromSquare][toSquare];
+}
+
+
+void MoveSearcher::updateHistory(Color sideToMove, int fromSquare, int toSquare, int bonus)
+{
+    int clampedBonus = std::clamp(bonus, -MAX_HISTORY, MAX_HISTORY);
+    historyMoves[sideToMove][fromSquare][toSquare] += clampedBonus - historyMoves[sideToMove][fromSquare][toSquare] * std::abs(clampedBonus) / MAX_HISTORY;
 }
