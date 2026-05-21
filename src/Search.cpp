@@ -165,8 +165,8 @@ int MoveSearcher::quiescence(Position& pos, int alpha, int beta, Move ttBestMove
         alpha = bestValue;
     }
 
-    Move captures[128];
-    int numOfCaps = 0;
+    Move moves[128];
+    int numOfMoves = 0;
 
 
     // |=================================================================================================|
@@ -180,25 +180,41 @@ int MoveSearcher::quiescence(Position& pos, int alpha, int beta, Move ttBestMove
 
     legalityInformation info = getLegalityInfo(kingSquare, allyColor, pos);
 
-    // Generate capture moves using previously calculated legality info
-    generateCaptures(info, pos, captures, numOfCaps);
-
-
-    int moveScores[numOfCaps];
-
-    // get the score of every move for move ordering
-    for (int i = 0; i < numOfCaps; i++)
+    if (inCheck)
     {
-        moveScores[i] = scoreQuiescenceMove(captures[i], pos, ttBestMove);
+        generateLegalMoves(info, pos, moves, numOfMoves);
+    }
+    else
+    {
+        // Generate capture moves using previously calculated legality info
+        generateCaptures(info, pos, moves, numOfMoves);
+    }
+
+    int moveScores[numOfMoves];
+
+    // Get the score of every move for move ordering
+    if (inCheck)
+    {
+        for (int i = 0; i < numOfMoves; i++)
+        {
+            moveScores[i] = scoreMove(moves[i], pos, ttBestMove);
+        }
+    }
+    else
+    {
+        for (int i = 0; i < numOfMoves; i++)
+        {
+            moveScores[i] = scoreQuiescenceMove(moves[i], pos, ttBestMove);
+        }
     }
 
 
-    for (int i = 0; i < numOfCaps; i++)
+    for (int i = 0; i < numOfMoves; i++)
     {
         int nextMoveIndex = i;
 
         // Pick the next best capture
-        for (int j = i + 1; j < numOfCaps; j++)
+        for (int j = i + 1; j < numOfMoves; j++)
         {
             if (moveScores[j] > moveScores[nextMoveIndex])
             {
@@ -209,52 +225,54 @@ int MoveSearcher::quiescence(Position& pos, int alpha, int beta, Move ttBestMove
         if (nextMoveIndex != i)
         {
             std::swap(moveScores[i], moveScores[nextMoveIndex]);
-            std::swap(captures[i], captures[nextMoveIndex]);
+            std::swap(moves[i], moves[nextMoveIndex]);
         }
 
 
 
-        Move capture = captures[i];
-        int fromSquare = capture & 0x3F;
-        int toSquare = (capture >> 6) & 0x3F;
+        Move move = moves[i];
+        int fromSquare = getFromSquare(move);
+        int toSquare = getToSquare(move);
 
-
-        Piece capturedPiece = pos.getPieceFromBoard(toSquare);
-        int capturedPieceScore = averagePieceScore[0];
-
-        if (capturedPiece != NO_PIECE)
+        if (!inCheck)
         {
-            capturedPieceScore = averagePieceScore[capturedPiece];
-        }
+            Piece capturedPiece = pos.getPieceFromBoard(toSquare);
+            int capturedPieceScore = averagePieceScore[0];
 
-        // |==========================================================================================|
-        // | Delta Pruning (Inside the search loop) : If the best score found so far below alpha that |
-        // |    even after the capture is play               |
-        // |  this node is doomed to fail-low. We can safely prune the entire branch right now        |
-        // |           instead of generating and testing captures in the loop.                        |
-        // |==========================================================================================|
-        if (bestValue + capturedPieceScore + 200 < alpha)
-        {
-            continue;
-        }
+            if (capturedPiece != NO_PIECE)
+            {
+                capturedPieceScore = averagePieceScore[capturedPiece];
+            }
+
+            // |==========================================================================================|
+            // | Delta Pruning (Inside the search loop) : If the best score found so far below alpha that |
+            // |    even after the capture is play               |
+            // |  this node is doomed to fail-low. We can safely prune the entire branch right now        |
+            // |           instead of generating and testing captures in the loop.                        |
+            // |==========================================================================================|
+            if (bestValue + capturedPieceScore + 200 < alpha)
+            {
+                continue;
+            }
 
 
-        // SEE pruning
-        int attacker = pos.getPieceFromBoard(fromSquare);
-        // SEE is expensive so i limit it to moves where the attacker's score is higher than the victim's
-        if (averagePieceScore[attacker] > averagePieceScore[capturedPiece])
-        {
-            // skip move if SEE returns less than 0 meaning losing series of captures
-            if (pos.SEE(toSquare, capturedPiece, fromSquare, attacker) < 0) continue;
+            // SEE pruning
+            int attacker = pos.getPieceFromBoard(fromSquare);
+            // SEE is computationally expensive so we can limit it strictly to captures where the attacker is more valuable than the victim
+            if (averagePieceScore[attacker] > averagePieceScore[capturedPiece])
+            {
+                // Skip move if SEE returns less than 0 meaning losing series of captures
+                if (pos.SEE(toSquare, capturedPiece, fromSquare, attacker) < 0) continue;
+            }
         }
 
         (ss+1)->accumulator = ss->accumulator;
-        (ss+1)->accumulator.makeMove(capture, pos);
+        (ss+1)->accumulator.makeMove(move, pos);
 
-        // make move, search it then unmake to get its score from qsearch
-        pos.makeCapture(capture);
+        // Make the move to get its score
+        pos.makeMove(move);
         int score = -quiescence<nodeType>(pos, -beta, -alpha, NO_MOVE, ply + 1, ss+1);
-        pos.unmakeCapture();
+        pos.unmakeMove();
 
 
         if (score > bestValue)
@@ -264,7 +282,7 @@ int MoveSearcher::quiescence(Position& pos, int alpha, int beta, Move ttBestMove
             if (score > alpha)
             {
                 hashFlag = Bound::BOUND_EXACT;
-                ttBestMove = capture;
+                ttBestMove = move;
 
                 // Only update alpha if the score is within the window (score < beta)
                 if (score < beta)
@@ -875,7 +893,7 @@ Move MoveSearcher::findBestMove(Position pos, int& posEval)
 
 
 // Function used for move ordering, specifically for quiescent search
-int MoveSearcher::scoreQuiescenceMove(const Move& move, Position& pos, const Move& hashMove)
+int MoveSearcher::scoreQuiescenceMove(Move move, const Position& pos, Move hashMove)
 {
     int score = 0;
     if (move == hashMove)
@@ -907,7 +925,7 @@ int MoveSearcher::scoreQuiescenceMove(const Move& move, Position& pos, const Mov
 
 
 // Function used to order moves from best to worst
-int MoveSearcher::scoreMove(const Move& move, const Position& pos, const Move& hashMove, const int& ply)
+int MoveSearcher::scoreMove(Move move, const Position& pos, Move hashMove, int ply)
 {
     if (move == hashMove)
     {
@@ -944,11 +962,14 @@ int MoveSearcher::scoreMove(const Move& move, const Position& pos, const Move& h
         return score + 1500 + 10 * averagePieceScore[victim] - averagePieceScore[attacker];
     }
 
-    // killer moves (only non captures here)
-    if (move == killerMoves[ply][0])
-        return 900;
-    if (move == killerMoves[ply][1])
-        return 850;
+    if (ply != -1)
+    {
+        // killer moves (only non captures here)
+        if (move == killerMoves[ply][0])
+            return 900;
+        if (move == killerMoves[ply][1])
+            return 850;
+    }
 
     return historyMoves[fromSquare][toSquare];
 }

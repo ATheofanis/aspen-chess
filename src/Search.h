@@ -55,9 +55,9 @@ public:
 
     Move findBestMove(Position pos, int& posEval);
 
-    int scoreQuiescenceMove(const Move& move, Position& pos, const Move& bestMove);
+    int scoreQuiescenceMove(Move move, const Position& pos, Move bestMove);
 
-    int scoreMove(const Move& move, const Position& pos, const Move& hashMove, const int& ply);
+    int scoreMove(Move move, const Position& pos, Move hashMove, int ply = -1);
 
     void newGame()
     {
