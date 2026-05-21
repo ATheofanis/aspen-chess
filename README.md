@@ -33,9 +33,8 @@ Iterative deepening with aspiration windows over a negamax search with the follo
 
 ### Evaluation
 
-Aspen uses a (768 → 256) × 2 → 1 NNUE architecture, trained with [Bullet](https://github.com/jw1912/bullet). 
-The NNUE was trained exclusively on self-generated data from previous versions of Aspen.
-
+Aspen uses a (768 → 512) × 2 → 1 NNUE architecture, trained with [Bullet](https://github.com/jw1912/bullet). 
+The network was trained exclusively on self-generated data from previous versions of Aspen, using a dataset of 562 million positions.
 
 ## Usage
 
