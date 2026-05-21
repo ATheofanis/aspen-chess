@@ -518,6 +518,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
         canExtendedFutilityPrune = (depth == 2 && !isInCheck && staticValue + 500 <= alpha);
     }
 
+
     // generate the moves by first extracting the legality info of the position
     Move moves[256];
     int numOfMoves = 0;
@@ -653,7 +654,13 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
             // |===========================================================================|
             if (depth > 3 && i > 3 && !isInCheck && moveIsQuiet)
             {
-                depthReduction = precomputedLMR[depth][i];
+                // Reduce the depth of the current move is the hash move is a capture or a promotion
+                // because it probably means the hash move line is much stronger than the current
+                // Also reduce depth if there is no hash move. A branch without a hash move is usually less important,
+                // meaning we can reduce the depth at which we will search it to save time for more important nodes
+                if (i > 6 && (ttBestMove == NO_MOVE || ttMoveIsCapture || ttMoveIsPromo)) depthReduction++;
+
+                depthReduction += precomputedLMR[depth][i];
             }
 
             // Make sure the depth reduction does not lead to a depth less than zero
