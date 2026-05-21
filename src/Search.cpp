@@ -547,6 +547,8 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
     // Keep track of quiet moves searched for late move pruning (LMP)
     int quietMovesCount = 0;
 
+    int quietMoves[256];
+
     int moveScores[numOfMoves];
 
     for (int i = 0; i < numOfMoves; i++)
@@ -658,7 +660,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
                 // because it probably means the hash move line is much stronger than the current
                 // Also reduce depth if there is no hash move. A branch without a hash move is usually less important,
                 // meaning we can reduce the depth at which we will search it to save time for more important nodes
-                if (i > 6 && (ttBestMove == NO_MOVE || ttMoveIsCapture || ttMoveIsPromo)) depthReduction++;
+                if (ttBestMove == NO_MOVE || ttMoveIsCapture || ttMoveIsPromo) depthReduction++;
 
                 depthReduction += precomputedLMR[depth][i];
             }

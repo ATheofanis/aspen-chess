@@ -190,4 +190,4 @@ using history = int[64][64];
 // average piece score for SEE , MVVLVA and other stuff
 constexpr int averagePieceScore[12] = {88, 309, 331, 494, 980, 0, 88, 309, 331, 494, 980, 0};
 
-constexpr int lateMovePruningThreshold[5] = {999, 10, 14, 20, 25};
+constexpr int lateMovePruningThreshold[5] = {999, 6, 12, 17, 25};

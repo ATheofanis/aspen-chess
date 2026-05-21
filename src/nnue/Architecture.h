@@ -6,7 +6,7 @@
 #include "../Types.h"
 
 constexpr int InputSize = 768;
-constexpr int HiddenSize = 256;
+constexpr int HiddenSize = 512;
 
 // Scale of quantization between input and the hidden layer
 constexpr int QuantizationA = 255;

@@ -7,7 +7,7 @@
 #include <iostream>
 #include "../../3rdparty/incbin.h"
 
-INCBIN(NetworkWeights, "NetworkFiles/aspen-net.bin");
+INCBIN(NetworkWeights, "NetworkFiles/aspen-net562-8.bin");
 
 NetworkStruct NNUE;
 
