@@ -180,7 +180,7 @@ int MoveSearcher::quiescence(Position& pos, int alpha, int beta, Move ttBestMove
 
     legalityInformation info = getLegalityInfo(kingSquare, allyColor, pos);
 
-    // generate capture moves using previously calculated legality info
+    // Generate capture moves using previously calculated legality info
     generateCaptures(info, pos, captures, numOfCaps);
 
 
@@ -839,7 +839,7 @@ Move MoveSearcher::findBestMove(Position pos, int& posEval)
 
         if (tm.getShouldStopFlag()) break;
 
-        bool scoreDroppedSuddenly = (previousScore != VALUE_NONE && score + 50 < previousScore);
+        bool scoreDroppedSuddenly = (previousScore != VALUE_NONE && score + 25 < previousScore);
         bool bestMoveChanged = (previousMove != NO_MOVE && bmDummy != previousMove);
 
         bestMove = bmDummy;
@@ -941,7 +941,7 @@ int MoveSearcher::scoreMove(const Move& move, const Position& pos, const Move& h
         }
         Piece attacker = pos.getPieceFromBoard(fromSquare);
 
-        return score + 1500 + 10 * averagePieceScore[(int)(victim) % 6] - averagePieceScore[(int)(attacker) % 6];
+        return score + 1500 + 10 * averagePieceScore[victim] - averagePieceScore[attacker];
     }
 
     // killer moves (only non captures here)
