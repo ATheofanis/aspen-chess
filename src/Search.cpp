@@ -512,9 +512,9 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
         // |   can safely prune the branch and save a lot of time. We just check the game phase first to make   |
         // |   sure we aren't in an endgame where skipping a could be good in certain cases (zugzwang).         |
         // |====================================================================================================|
-        if (allowNullMove && depth > 3 && pos.getGamePhase()) // Do not play a null move twice in a row
+        if (ply > 0 && (alpha == beta - 1) && allowNullMove && depth > 3 && pos.getGamePhase() && beta < CHECKMATE - MAX_PLY) // Do not play a null move twice in a row
         {
-            int reduction = std::min(depth, 3 + depth / 3); // NMP Reduction
+            int reduction = std::min(depth, 4 + depth / 3); // NMP Reduction
             int epSq = pos.getEnpassantSquare();
 
             (ss+1)->accumulator = ss->accumulator;
@@ -829,7 +829,6 @@ Move MoveSearcher::findBestMove(Position pos, int& posEval)
 
     // Set nodes counter to zero before the loop
     nodes = 0;
-    quieNodes = 0;
 
     int score;
 
@@ -845,10 +844,11 @@ Move MoveSearcher::findBestMove(Position pos, int& posEval)
             break;
         }
 
-        if (depth < 5)
+        if (depth < 4)
         {
             score = negaMaxAlphaBeta<NodeType::Root>(pos, alpha, beta, depth, bmDummy, 0, depth, false, ss);
-        } else
+        }
+        else
         {
             // Aspiration window implementation from chess engine chal (https://github.com/namanthanki/chal)
             int delta = 15 + previousScore * previousScore / 16384;
@@ -889,9 +889,8 @@ Move MoveSearcher::findBestMove(Position pos, int& posEval)
         previousScore = score;
         previousMove = bestMove;
 
-        // Print search statistics (Negamax nodes, QSearch nodes and current search depth)
-        if (!DataGenFlag) printInfo(depth, score); // only print info if we are not generating self play data
-
+        // Print search statistics
+        if (!DataGenFlag) printInfo(depth, score); // Only print info if we are not generating self-play data
 
         // If the optimum time limit that the time manager set has expired
         if (tm.isTimeEnabled() && tm.optimumExpired())
@@ -964,7 +963,7 @@ int MoveSearcher::scoreMove(Move move, const Position& pos, Move hashMove, int p
         if (move == killerMoves[ply][1]) return KillerMoveScore1;
     }
 
-    return historyMoves[pos.isWhiteToMove() ? White : Black][fromSquare][toSquare];
+    return historyScores[pos.isWhiteToMove() ? White : Black][fromSquare][toSquare];
 }
 
 // Function to update the history score of a move
@@ -972,5 +971,5 @@ int MoveSearcher::scoreMove(Move move, const Position& pos, Move hashMove, int p
 void MoveSearcher::updateHistory(Color sideToMove, int fromSquare, int toSquare, int value)
 {
     int clampedBonus = std::clamp(value, -MaxHistoryScore, MaxHistoryScore);
-    historyMoves[sideToMove][fromSquare][toSquare] += clampedBonus - historyMoves[sideToMove][fromSquare][toSquare] * std::abs(clampedBonus) / MaxHistoryScore;
+    historyScores[sideToMove][fromSquare][toSquare] += clampedBonus - historyScores[sideToMove][fromSquare][toSquare] * std::abs(clampedBonus) / MaxHistoryScore;
 }

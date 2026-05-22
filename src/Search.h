@@ -17,12 +17,12 @@ inline uint64_t MAX_NODES = std::numeric_limits<uint64_t>::max();
 
 inline bool DataGenFlag = false;
 
-// Search Stack to pass search-related information - work in progress
+// Search Stack to pass search-related information
 struct SearchStack
 {
     Accumulator accumulator;
-    int staticEval;
-    bool inCheck;
+    int staticEval{};
+    bool inCheck = false;
 };
 
 
@@ -30,7 +30,6 @@ class MoveSearcher
 {
 private:
     int nodes = 0;
-    int quieNodes = 0;
 
     Move pvTable[MAX_PLY][MAX_PLY]{};
     int pvLength[MAX_PLY]{};
@@ -51,7 +50,7 @@ private:
     int negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth, Move& bestMove, int ply, int rootDepth, bool allowNullMove, SearchStack* ss);
 
 public:
-    int historyMoves[2][64][64]{};
+    int historyScores[2][64][64]{};
     Move killerMoves[MAX_PLY][2]{};
 
     Move findBestMove(Position pos, int& posEval);
@@ -62,7 +61,7 @@ public:
 
     void newGame()
     {
-        memset(historyMoves, 0, sizeof(historyMoves));
+        memset(historyScores, 0, sizeof(historyScores));
         memset(killerMoves, 0, sizeof(killerMoves));
         generation = 0;
     }
