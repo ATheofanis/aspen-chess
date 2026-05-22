@@ -763,7 +763,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
             // Adjust PV length
             pvLength[ply] = pvLength[ply + 1];
 
-
+            // Only update the best move found if we are at the root
             if (ply == 0)
             {
                 bestMove = move;
@@ -777,30 +777,35 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
 
                 Color sideToMove = pos.isWhiteToMove() ? White : Black;
 
+                // The move that caused the cutoff receives a bonus based on current depth
                 const int bonus = 300 * depth - 250;
 
-                // Update killer moves and history for quiet moves
+                // If the move is quiet update its history score
                 if (moveIsQuiet)
                 {
                     updateHistory(sideToMove, getFromSquare(move), getToSquare(move), bonus);
 
+                    // The move caused a beta cutoff so we also update the killers for this ply
                     killerMoves[ply][1] = killerMoves[ply][0];
                     killerMoves[ply][0] = move;
                 }
 
+                // We also penalize the quiet moves prior to the one we just searched,
+                // since they failed to cause a cutoff and are, therefore, weaker moves
                 for (int j = 0; j < quietMovesCount; j++)
                 {
                     Move quietMove = quietMoves[j];
 
-                    if (quietMove == move) continue;
+                    if (quietMove == move) continue; // Don't penalize the move that caused the beta cutoff
 
                     int qFromSquare = getFromSquare(quietMove);
                     int qToSquare = getToSquare(quietMove);
 
+                    // Call the update history function but with a negative bonus
                     updateHistory(sideToMove, qFromSquare, qToSquare, -bonus);
                 }
-
-                return beta; // hard beta cutoff
+                // Beta cutoff
+                return beta;
             }
         }
     }
@@ -1004,9 +1009,10 @@ int MoveSearcher::scoreMove(Move move, const Position& pos, Move hashMove, int p
     return historyMoves[pos.isWhiteToMove() ? White : Black][fromSquare][toSquare];
 }
 
-
-void MoveSearcher::updateHistory(Color sideToMove, int fromSquare, int toSquare, int bonus)
+// Function to update the history score of a move
+// The value argument is the bonus/penalty applied to the move
+void MoveSearcher::updateHistory(Color sideToMove, int fromSquare, int toSquare, int value)
 {
-    int clampedBonus = std::clamp(bonus, -MAX_HISTORY, MAX_HISTORY);
+    int clampedBonus = std::clamp(value, -MAX_HISTORY, MAX_HISTORY);
     historyMoves[sideToMove][fromSquare][toSquare] += clampedBonus - historyMoves[sideToMove][fromSquare][toSquare] * std::abs(clampedBonus) / MAX_HISTORY;
 }

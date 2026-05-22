@@ -17,6 +17,7 @@ inline uint64_t MAX_NODES = std::numeric_limits<uint64_t>::max();
 
 inline bool DataGenFlag = false;
 
+// -- Values used for move ordering --
 constexpr int MAX_HISTORY = 800;
 
 // Search Stack to pass search-related information - work in progress
@@ -62,7 +63,7 @@ public:
 
     int scoreMove(Move move, const Position& pos, Move hashMove, int ply = -1);
 
-    void updateHistory(Color sideToMove, int fromSquare, int toSquare, int bonus);
+    void updateHistory(Color sideToMove, int fromSquare, int toSquare, int value);
 
     void newGame()
     {
