@@ -203,7 +203,7 @@ public:
     int SEE( int toSquare, int targetPiece, int fromSquare, int attackerPiece) const;
 
     // Checks if the side to move can capture the enemy king
-    bool illegalBoardPosition()
+    bool enemyKingInCheck()
     {
         int kingSquare;
         Color attackingSideColor;

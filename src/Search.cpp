@@ -116,10 +116,12 @@ int MoveSearcher::quiescence(Position& pos, int alpha, int beta, Move ttBestMove
         staticValue = scoreBoardNNUE(pos, ss->accumulator);
     }
 
+    ss->staticEval = staticValue;
+
     Bound hashFlag = Bound::BOUND_ALPHA;
 
 
-    // stand pat
+    // Stand-pat
     bestValue = staticValue;
     bool inCheck = pos.sideToMoveIsInCheck();
 
@@ -364,6 +366,8 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
     // Find out if the side to move is currently in check
     bool isInCheck = pos.sideToMoveIsInCheck();
 
+    ss->inCheck = isInCheck;
+    ss->staticEval = VALUE_NONE;
 
     //    |===============================================================================================|
     //    |  Quiescent Search : Once the search reaches a depth of 0, it hits the standard search limit.  |
@@ -453,6 +457,35 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
         // Call the NNUE evaluation function
         staticValue = scoreBoardNNUE(pos, ss->accumulator);
     }
+
+    ss->staticEval = staticValue;
+
+    { // Unused code (for now)
+        int improving;
+        int worsening;
+
+        if (isInCheck)
+        {
+            improving = false;
+            worsening = true;
+        }
+        else if (ply >= 2 && (ss - 2)->staticEval != VALUE_NONE)
+        {
+            improving = ss->staticEval > (ss - 2)->staticEval;
+            worsening = ss->staticEval < (ss - 2)->staticEval;
+        }
+        else if (ply >= 4 && (ss - 4)->staticEval != VALUE_NONE)
+        {
+            improving = ss->staticEval > (ss - 4)->staticEval;
+            worsening = ss->staticEval < (ss - 4)->staticEval;
+        }
+        else
+        {
+            improving = true;
+            worsening = false;
+        }
+    }
+
 
 
     // Futility , Razoring & NMP
@@ -651,9 +684,11 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
             // | Late Move Pruning: At shallow depths, skip quiet moves if a threshold     |
             // |            number of quiet moves have already been searched.              |
             // |===========================================================================|
-            if (!isPv && !isInCheck && moveIsQuiet && depth <= 4 && quietMovesCount >= lateMovePruningThreshold[depth])
+            if (!isPv && !isInCheck && moveIsQuiet && depth <= 4)
             {
-                continue;
+                int LMP_Threshold = lateMovePruningThreshold[depth];
+
+                if (quietMovesCount >= LMP_Threshold) continue;
             }
 
             // Update the accumulator for the next ply
@@ -792,8 +827,7 @@ Move MoveSearcher::findBestMove(Position pos, int& posEval)
     // Increment generation for transposition table aging replacement scheme
     generation++;
 
-    // Intialize killer and history moves arrays
-    memset(historyMoves, 0, sizeof(historyMoves));
+    // Reset killer moves
     memset(killerMoves, 0, sizeof(killerMoves));
 
     Move bestMove = 0;

@@ -23,6 +23,8 @@ constexpr int MAX_HISTORY = 800;
 struct SearchStack
 {
     Accumulator accumulator;
+    int staticEval;
+    bool inCheck;
 };
 
 
