@@ -193,19 +193,9 @@ int MoveSearcher::quiescence(Position& pos, int alpha, int beta, Move ttBestMove
     int moveScores[numOfMoves];
 
     // Get the score of every move for move ordering
-    if (inCheck)
+    for (int i = 0; i < numOfMoves; i++)
     {
-        for (int i = 0; i < numOfMoves; i++)
-        {
-            moveScores[i] = scoreMove(moves[i], pos, ttBestMove);
-        }
-    }
-    else
-    {
-        for (int i = 0; i < numOfMoves; i++)
-        {
-            moveScores[i] = scoreQuiescenceMove(moves[i], pos, ttBestMove);
-        }
+        moveScores[i] = scoreMove(moves[i], pos, ttBestMove);
     }
 
 
@@ -927,55 +917,24 @@ Move MoveSearcher::findBestMove(Position pos, int& posEval)
 }
 
 
-// Function used for move ordering, specifically for quiescent search
-int MoveSearcher::scoreQuiescenceMove(Move move, const Position& pos, Move hashMove)
-{
-    int score = 0;
-    if (move == hashMove)
-    {
-        return 64000;
-    }
-
-    int fromSquare = move & 0x3F;
-    int toSquare = (move >> 6) & 0x3F;
-    int flag = (move >> 12) & 0xF;
-
-    // MVV-LVA for quiescence
-
-    Piece victim = wp;
-    if (flag == 5)
-    {
-        victim = wp;
-    }
-    else
-    {
-        victim = pos.getPieceFromBoard(toSquare);
-    }
-    Piece attacker = pos.getPieceFromBoard(fromSquare);
-
-    score = 10 * averagePieceScore[victim] - averagePieceScore[attacker];
-
-    return score;
-}
-
 
 // Function used to order moves from best to worst
 int MoveSearcher::scoreMove(Move move, const Position& pos, Move hashMove, int ply)
 {
     if (move == hashMove)
     {
-        return 32000;
+        return HashMoveScore;
     }
 
     int score = 0;
 
     int flag = getMoveFlag(move);
 
-    if (flag == 11) return 15000; // Reward queen promotion
-    if (flag == 15) score += 17000; // Reward capture that leads to queen promotion
+    if (flag == 11) return 150000; // Reward queen promotion
+    if (flag == 15) score += 170000; // Reward capture that leads to queen promotion
 
     // Punish under-promotions
-    if (flag & 8) return -10000;
+    if (flag & 8) return -100000;
 
     // Source and destination squares for MVV-LVA for captures, or history for quiet moves
     int fromSquare = getFromSquare(move);
@@ -988,22 +947,21 @@ int MoveSearcher::scoreMove(Move move, const Position& pos, Move hashMove, int p
         if (flag == 5)
         {
             victim = wp;
-        } else
+        }
+        else
         {
             victim = pos.getPieceFromBoard(toSquare);
         }
         Piece attacker = pos.getPieceFromBoard(fromSquare);
 
-        return score + 1500 + 10 * averagePieceScore[victim] - averagePieceScore[attacker];
+        return score + 25000 + 10 * averagePieceScore[victim] - averagePieceScore[attacker];
     }
 
-    if (ply != -1)
+    if (ply >= 0)
     {
-        // killer moves (only non captures here)
-        if (move == killerMoves[ply][0])
-            return 900;
-        if (move == killerMoves[ply][1])
-            return 850;
+        // Killer moves
+        if (move == killerMoves[ply][0]) return KillerMoveScore0;
+        if (move == killerMoves[ply][1]) return KillerMoveScore1;
     }
 
     return historyMoves[pos.isWhiteToMove() ? White : Black][fromSquare][toSquare];
@@ -1013,6 +971,6 @@ int MoveSearcher::scoreMove(Move move, const Position& pos, Move hashMove, int p
 // The value argument is the bonus/penalty applied to the move
 void MoveSearcher::updateHistory(Color sideToMove, int fromSquare, int toSquare, int value)
 {
-    int clampedBonus = std::clamp(value, -MAX_HISTORY, MAX_HISTORY);
-    historyMoves[sideToMove][fromSquare][toSquare] += clampedBonus - historyMoves[sideToMove][fromSquare][toSquare] * std::abs(clampedBonus) / MAX_HISTORY;
+    int clampedBonus = std::clamp(value, -MaxHistoryScore, MaxHistoryScore);
+    historyMoves[sideToMove][fromSquare][toSquare] += clampedBonus - historyMoves[sideToMove][fromSquare][toSquare] * std::abs(clampedBonus) / MaxHistoryScore;
 }

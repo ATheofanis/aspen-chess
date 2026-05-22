@@ -17,9 +17,6 @@ inline uint64_t MAX_NODES = std::numeric_limits<uint64_t>::max();
 
 inline bool DataGenFlag = false;
 
-// -- Values used for move ordering --
-constexpr int MAX_HISTORY = 800;
-
 // Search Stack to pass search-related information - work in progress
 struct SearchStack
 {
@@ -58,8 +55,6 @@ public:
     Move killerMoves[MAX_PLY][2]{};
 
     Move findBestMove(Position pos, int& posEval);
-
-    int scoreQuiescenceMove(Move move, const Position& pos, Move bestMove);
 
     int scoreMove(Move move, const Position& pos, Move hashMove, int ply = -1);
 
