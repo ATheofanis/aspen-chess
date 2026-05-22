@@ -23,11 +23,14 @@
 #include <vector>
 #include <sstream>
 #include <fstream>
+#include <thread>
 
 #include "DataGen.h"
 #include "Time.h"
 
 class Position;
+
+constexpr uint64_t MaxValue = std::numeric_limits<uint64_t>::max();
 
 int globalMTG = 40;
 
@@ -181,22 +184,6 @@ void dividePerft(Position& pos, int depth)
 }
 
 
-/*
-void findBestMoveTime(Position pos)
-{
-    auto startTime = std::chrono::high_resolution_clock::now();
-    int evalDummy;
-    MoveSearcher searcher;
-    Move bestMove = (searcher.findBestMove(pos, evalDummy));
-    printMove(bestMove);
-    std::cout << "RAW BEST MOVE:" << bestMove << std::endl;
-    auto endTime = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
-    std::cout << duration.count() << " ms" << std::endl;
-}
-*/
-
-
 
 
 int depth = 8;
@@ -317,6 +304,22 @@ std::vector<std::string> tokenize(const std::string& command)
     return tokens;
 }
 
+
+void uciRunSearch(MoveSearcher& searcher, const Position& pos)
+{
+    // Find best Move
+    int evalDummy;
+
+    Move bestMove = searcher.findBestMove(pos, evalDummy);
+
+    // Print best move
+    std::cout << "bestmove ";
+    printMoveNoMessages(bestMove);
+    std::cout << std::endl;
+}
+
+
+
 inline void initializations()
 {
     initLMR();
@@ -333,19 +336,20 @@ inline void initializations()
 }
 
 
-std::string startPos = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-std::string veryTrickyCapturesPos = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
 
 void LoopUCI()
 {
     initializations();
 
+    // Default hash table size is 64 megabytes
     resizeTranspositionTable(64);
 
     std::string command;
     Position pos;
 
     MoveSearcher searcher;
+
+    std::thread searcherThread;
 
     while (getline(std::cin, command))
     {
@@ -410,15 +414,16 @@ void LoopUCI()
         }
         else if (tokens[0] == "go")
         {
-            MAX_NODES = std::numeric_limits<uint64_t>::max();
-            TimePoint wtime = std::numeric_limits<uint64_t>::max();
-            TimePoint btime = std::numeric_limits<uint64_t>::max();
+            MAX_NODES = MaxValue;
+            TimePoint wtime = MaxValue;
+            TimePoint btime = MaxValue;
             TimePoint winc = 0;
             TimePoint binc = 0;
             int movestogo = 40;
             bool timeEnabled = false;
 
-            for (int i = 1; i < tokens.size(); i++) {
+            for (int i = 1; i < tokens.size(); i++)
+            {
                 if (tokens[i] == "wtime") // white remaining time
                 {
                     timeEnabled = true;
@@ -455,26 +460,27 @@ void LoopUCI()
                 }
             }
 
-
-            // start the time manager if wtime or btime were given
+            // If time controls were enabled, which is determined based on UCI input, then start the time manager
             if (timeEnabled) {
                 TimePoint myTime = (pos.isWhiteToMove()) ? wtime : btime;
                 TimePoint myInc = (pos.isWhiteToMove()) ? winc : binc;
                 tm.start(myTime, myInc, movestogo); // initialize the time manager for the side to move
-            } else
+            }
+            // Otherwise reset the time manager, which basically turns time controls off but keeps track of current time
+            // in order to continue printing search statistics, such as NPS and search time
+            else
             {
                 tm.reset();
             }
 
-            // Find best Move
-            int evalDummy;
-            Move bestMove = searcher.findBestMove(pos, evalDummy);
+            searcher.uciStop = true;
 
-            // Print best move
-            std::cout << "bestmove ";
-            printMoveNoMessages(bestMove);
-            std::cout << std::endl;
+            if (searcherThread.joinable()) searcherThread.join();
 
+            searcher.uciStop = false;
+
+            // Run the search using the searcher thread so that we can search while also reading UCI commands
+            searcherThread = std::thread([&](){ uciRunSearch(searcher, pos); });
 
             globalMTG--;
             if (globalMTG <= 0)
@@ -489,12 +495,18 @@ void LoopUCI()
         }
         else if (tokens[0] == "uci")
         {
-            std::cout << "id name Aspen 2.1.0\n";
+            std::cout << "id name Aspen 2.2.0\n";
             std::cout << "id author ATheo\n";
-            std::cout << "option name Hash type spin default 64 min 1 max 32768\n";
+            std::cout << "option name Hash type spin default 64 min 1 max 32768\n"; // Default hash table size is 64 megabytes
             std::cout << "uciok\n";
-        } else if (tokens[0] == "ucinewgame")
+        }
+        else if (tokens[0] == "ucinewgame")
         {
+            // If there is an ongoing search we must cancel to continue with the new game
+            searcher.uciStop = true;
+
+            if (searcherThread.joinable()) searcherThread.join();
+
             globalMTG = 100;
             clearTranspositionTable();
             searcher.newGame();
@@ -508,10 +520,21 @@ void LoopUCI()
                 resizeTranspositionTable(TTSizeMB);
             }
         }
-        // quit command
+        // Quit the program
         else if (tokens[0] == "quit")
         {
+            searcher.uciStop = true;
+
+            if (searcherThread.joinable()) searcherThread.join();
+
             break;
+        }
+        // Immediately stop the search
+        else if (tokens[0] == "stop")
+        {
+            searcher.uciStop = true;
+
+            if (searcherThread.joinable()) searcherThread.join();
         }
     }
 }

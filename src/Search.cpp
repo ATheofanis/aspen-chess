@@ -52,14 +52,14 @@ int MoveSearcher::quiescence(Position& pos, int alpha, int beta, Move ttBestMove
     //    |  Time / Node Limit : Every 2048 nodes searched, check if we have   |
     //    |   exceeded the maximum time limit, or the maximum node limit       |
     //    |====================================================================|
-    if ((tm.isTimeEnabled() && (((nodes & 2047) == 0 && tm.maximumExpired()))) || (nodes >= MAX_NODES))
+    if (uciStop || ((tm.isTimeEnabled() && (((nodes & 2047) == 0 && tm.maximumExpired()))) || (nodes >= MAX_NODES)))
     {
         // Update the 'STOP' flag of the timer manager
         tm.stopSearch();
         return 0;
     }
 
-    if (tm.getShouldStopFlag())
+    if (uciStop || tm.getShouldStopFlag())
     {
         return 0;
     }
@@ -320,14 +320,14 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
     //    |   exceeded the maximum time limit, or the maximum node limit       |
     //    |====================================================================|
 
-    if ((tm.isTimeEnabled() && ((nodes & 2047) == 0) && tm.maximumExpired()) || nodes >= MAX_NODES)
+    if (uciStop || ((tm.isTimeEnabled() && ((nodes & 2047) == 0) && tm.maximumExpired()) || nodes >= MAX_NODES))
     {
         // Update the 'STOP' flag of the timer manager
         tm.stopSearch();
         return 0;
     }
 
-    if (tm.getShouldStopFlag())
+    if (uciStop || tm.getShouldStopFlag())
     {
         return 0;
     }
@@ -429,7 +429,6 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
         int ttMoveFlag = getMoveFlag(ttBestMove);
         ttMoveIsCapture = isCapture(ttMoveFlag);
         ttMoveIsPromo = isPromotion(ttMoveFlag);
-
     }
     // If the probe was not succesful we need to calculate the static evaluation of the position
     else
@@ -835,6 +834,8 @@ Move MoveSearcher::findBestMove(Position pos, int& posEval)
     // Iterative deepening loop
     for (int depth = 1; depth <= MAX_DEPTH; depth++)
     {
+        if (uciStop) break;
+
         Move bmDummy = bestMove;
 
         // Stop if the elapsed time is larger than 90% of the maximum time limit
@@ -880,7 +881,7 @@ Move MoveSearcher::findBestMove(Position pos, int& posEval)
             }
         }
 
-        if (tm.getShouldStopFlag()) break;
+        if (uciStop || tm.getShouldStopFlag()) break;
 
         bool scoreDroppedSuddenly = (previousScore != VALUE_NONE && score + 25 < previousScore);
         bool bestMoveChanged = (previousMove != NO_MOVE && bmDummy != previousMove);
@@ -893,7 +894,7 @@ Move MoveSearcher::findBestMove(Position pos, int& posEval)
         if (!DataGenFlag) printInfo(depth, score); // Only print info if we are not generating self-play data
 
         // If the optimum time limit that the time manager set has expired
-        if (tm.isTimeEnabled() && tm.optimumExpired())
+        if (uciStop || tm.isTimeEnabled() && tm.optimumExpired())
         {
             // If we found a different best move at this depth or the score suddenly dropped then we need to give the engine more time to keep searching to resolve the instability
             if ((bestMoveChanged || scoreDroppedSuddenly) && !tm.maximumExpired())
@@ -908,7 +909,7 @@ Move MoveSearcher::findBestMove(Position pos, int& posEval)
         // To prevent that, we only continue to a deeper search if the time that has elapsed is less than 3 times the optimum time limit
         // For example if we are at depth 16 then a depth 17 search will likely need 2-3x more time to be fully searched.
         // Therefore we attempt to predict if we have enough time left to finish that search, if not then we stop the search here
-        if (tm.isTimeEnabled() && (tm.elapsedTime() * 3 > tm.optimum())) break;
+        if (uciStop || tm.isTimeEnabled() && (tm.elapsedTime() * 3 > tm.optimum())) break;
     }
 
     return bestMove;
