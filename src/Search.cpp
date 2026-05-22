@@ -69,12 +69,11 @@ int MoveSearcher::quiescence(Position& pos, int alpha, int beta, Move ttBestMove
     // Get the zobrist hash of the position in order to probe the Transposition Table for this position
     ZobristHash zobrist = pos.getZobristHash();
 
-    // Best Value is the final value that quiescence search will return
-    int bestValue;
+    int bestScore;
 
     // We also calculate the static evaluation of the position
     // If we are lucky it is already stored inside the transposition table, saving us a lot of time
-    int staticValue;
+    int staticEvaluation;
 
 
     // |=================================================================================================|
@@ -90,8 +89,7 @@ int MoveSearcher::quiescence(Position& pos, int alpha, int beta, Move ttBestMove
     auto [ttHit, ttData] = probe(zobrist);
 
     // Check for TT cutoff
-    if (!isPv && ttHit && ttData.depth >= Q_DEPTH && // add not a PV node check when template is added
-        ( ( ttData.bound == Bound::BOUND_EXACT ) ||
+    if (!isPv && ttHit && ttData.depth >= Q_DEPTH && ( ( ttData.bound == Bound::BOUND_EXACT ) ||
         ( ttData.bound == Bound::BOUND_ALPHA && ttData.evaluation <= alpha ) ||
         ( ttData.bound == Bound::BOUND_BETA && ttData.evaluation >= beta )  ) )
     {
@@ -106,30 +104,30 @@ int MoveSearcher::quiescence(Position& pos, int alpha, int beta, Move ttBestMove
     // If the probe was a hit we have access to the entry's static evaluation and the best move it has stored
     if (ttHit)
     {
-        staticValue = ttData.staticEval; // Static Evaluation
+        staticEvaluation = ttData.staticEval; // Static Evaluation
 
         ttBestMove = ttData.bestMove; // Best Move
     }
     // Otherwise we need to manually calculate the static evaluation
     else
     {
-        staticValue = scoreBoardNNUE(pos, ss->accumulator);
+        staticEvaluation = scoreBoardNNUE(pos, ss->accumulator);
     }
 
-    ss->staticEval = staticValue;
+    ss->staticEval = staticEvaluation;
 
     Bound hashFlag = Bound::BOUND_ALPHA;
 
 
     // Stand-pat
-    bestValue = staticValue;
+    bestScore = staticEvaluation;
     bool inCheck = pos.sideToMoveIsInCheck();
 
 
     // If we are in check then we can't trust the static evaluation to determine the score of the position
     if (inCheck)
     {
-        bestValue = -CHECKMATE;
+        bestScore = -CHECKMATE;
     }
     else
     {
@@ -139,9 +137,9 @@ int MoveSearcher::quiescence(Position& pos, int alpha, int beta, Move ttBestMove
         // |  this node is doomed to fail-low. We can safely prune the entire branch right now        |
         // |           instead of generating and testing captures in the loop.                        |
         // |==========================================================================================|
-        if (bestValue < alpha - 980)
+        if (bestScore < alpha - 980)
         {
-            return bestValue;
+            return bestScore;
         }
 
         // |================================================================================================|
@@ -149,22 +147,22 @@ int MoveSearcher::quiescence(Position& pos, int alpha, int beta, Move ttBestMove
         // |   already >= beta, the position is "too good" and the opponent would have deviated earlier.    |
         // | We return the evaluation immediately (fail-high) without generating or searching any captures. |
         // |================================================================================================|
-        if (bestValue >= beta)
+        if (bestScore >= beta)
         {
             // Store the data we have found in the transposition table, only if a valid best move has been found
             if (ttBestMove != NO_MOVE)
             {
-                save(zobrist, ttBestMove, bestValue, staticValue, Q_DEPTH, Bound::BOUND_BETA, generation, ply);
+                save(zobrist, ttBestMove, bestScore, staticEvaluation, Q_DEPTH, Bound::BOUND_BETA, generation, ply);
             }
-            return bestValue;
+            return bestScore;
         }
     }
 
     nodes++;
 
-    if (bestValue > alpha)
+    if (bestScore > alpha)
     {
-        alpha = bestValue;
+        alpha = bestScore;
     }
 
     Move moves[128];
@@ -248,11 +246,11 @@ int MoveSearcher::quiescence(Position& pos, int alpha, int beta, Move ttBestMove
 
             // |==========================================================================================|
             // | Delta Pruning (Inside the search loop) : If the best score found so far below alpha that |
-            // |    even after the capture is play               |
-            // |  this node is doomed to fail-low. We can safely prune the entire branch right now        |
-            // |           instead of generating and testing captures in the loop.                        |
+            // |    below alpha that even after the capture is played, then this node is most likely      |
+            // |   going to fail-low. We can safely prune the entire branch right now instead of          |
+            // |           generating and testing  captures in the loop.                                  |
             // |==========================================================================================|
-            if (bestValue + capturedPieceScore + 200 < alpha)
+            if (bestScore + capturedPieceScore + 200 < alpha)
             {
                 continue;
             }
@@ -268,6 +266,7 @@ int MoveSearcher::quiescence(Position& pos, int alpha, int beta, Move ttBestMove
             }
         }
 
+        // Update the next ply's accumulator by registering the move
         (ss+1)->accumulator = ss->accumulator;
         (ss+1)->accumulator.makeMove(move, pos);
 
@@ -277,34 +276,25 @@ int MoveSearcher::quiescence(Position& pos, int alpha, int beta, Move ttBestMove
         pos.unmakeMove();
 
 
-        if (score > bestValue)
+        if (score > bestScore) bestScore = score;
+
+        if (score > alpha)
         {
-            bestValue = score;
+            alpha = score;
 
-            if (score > alpha)
-            {
-                hashFlag = Bound::BOUND_EXACT;
-                ttBestMove = move;
-
-                // Only update alpha if the score is within the window (score < beta)
-                if (score < beta)
-                {
-                    // Update alpha here
-                    alpha = score;
-                }
-                else
-                {
-                    save(zobrist, ttBestMove, score, staticValue, Q_DEPTH, Bound::BOUND_BETA, generation, ply);
-                    break;  // Fail high
-                }
-
-            }
+            hashFlag = Bound::BOUND_EXACT;
+            ttBestMove = move;
         }
 
+        if (alpha >= beta)
+        {
+            save(zobrist, ttBestMove, score, staticEvaluation, Q_DEPTH, Bound::BOUND_BETA, generation, ply);
+            break;
+        }
 
     }
-    save(zobrist, ttBestMove, bestValue, staticValue, Q_DEPTH, hashFlag, generation, ply);
-    return bestValue;
+    save(zobrist, ttBestMove, bestScore, staticEvaluation, Q_DEPTH, hashFlag, generation, ply);
+    return bestScore;
 }
 
 
