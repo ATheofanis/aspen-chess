@@ -494,7 +494,7 @@ void LoopUCI()
         }
         else if (tokens[0] == "uci")
         {
-            std::cout << "id name Aspen 2.2.0\n";
+            std::cout << "id name Aspen 2.3.0\n";
             std::cout << "id author ATheo\n";
             std::cout << "option name Hash type spin default 64 min 1 max 32768\n"; // Default hash table size is 64 megabytes
             //std::cout << "option name LMR_Base type spin default 100 min 25 max 175\n";
