@@ -437,32 +437,13 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
 
     ss->staticEval = staticValue;
 
-    { // Unused code (for now)
-        int improving;
-        int worsening;
 
-        if (isInCheck)
-        {
-            improving = false;
-            worsening = true;
-        }
-        else if (ply >= 2 && (ss - 2)->staticEval != VALUE_NONE)
-        {
-            improving = ss->staticEval > (ss - 2)->staticEval;
-            worsening = ss->staticEval < (ss - 2)->staticEval;
-        }
-        else if (ply >= 4 && (ss - 4)->staticEval != VALUE_NONE)
-        {
-            improving = ss->staticEval > (ss - 4)->staticEval;
-            worsening = ss->staticEval < (ss - 4)->staticEval;
-        }
-        else
-        {
-            improving = true;
-            worsening = false;
-        }
+    int improving = false;
+
+    if (!isInCheck && (ply >= 2 && (ss - 2)->staticEval != VALUE_NONE))
+    {
+        improving = ss->staticEval > (ss - 2)->staticEval;
     }
-
 
 
     // Futility , Razoring & NMP
@@ -480,6 +461,9 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
             // Calculate the margin for reverse futility pruning.
             // The greater the depth the greater the margin, keeping the search stable
             int reverseFutilityMargin = 70 * depth;
+
+            // Lower pruning margin when not improving
+            if (improving) reverseFutilityMargin -= 15 * depth;
 
             // If the RFP condition is met simply return the static evaluation
             if (staticValue - reverseFutilityMargin >= beta) return staticValue - reverseFutilityMargin;
@@ -511,12 +495,15 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
         if (ply > 0 && (alpha == beta - 1) && allowNullMove && depth > 3 && pos.getGamePhase() && beta < CHECKMATE - MAX_PLY) // Do not play a null move twice in a row
         {
             int reduction = std::min(depth, 4 + depth / 3); // NMP Reduction
+            if (improving) reduction++; // More NMP reduction when improving
+
             int epSq = pos.getEnpassantSquare();
 
             (ss+1)->accumulator = ss->accumulator;
             pos.makeNullMove(epSq);
             int value = -negaMaxAlphaBeta<NodeType::NonPV>(pos, -beta, -(beta - 1), std::max(1, depth - reduction), bestMove, ply+1, rootDepth, false, ss+1);
             pos.unmakeNullMove(epSq);
+
             // If the value returned still exceeds beta after not playing a move then immediately return that value
             if (value >= beta)
             {
@@ -690,6 +677,8 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
                 // Also reduce depth if there is no hash move. A branch without a hash move is usually less important,
                 // meaning we can reduce the depth at which we will search it to save time for more important nodes
                 if (ttBestMove == NO_MOVE || ttMoveIsCapture || ttMoveIsPromo) depthReduction++;
+
+                if (!improving) depthReduction++; // Prune more late quiet moves when not improving
 
                 depthReduction += precomputedLMR[depth][i];
             }
