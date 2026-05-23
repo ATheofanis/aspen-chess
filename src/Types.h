@@ -197,6 +197,6 @@ constexpr int worseningLateMovePruningThreshold[5] = {999, 8, 14, 20, 28};
 
 // Values used in move ordering
 inline int MaxHistoryScore = 10000;
-inline int KillerMoveScore0 = MaxHistoryScore + 1;
-inline int KillerMoveScore1 = MaxHistoryScore + 2;
+inline int KillerMoveScore0 = MaxHistoryScore + 2;
+inline int KillerMoveScore1 = MaxHistoryScore + 1;
 inline int HashMoveScore = 320000;
