@@ -494,11 +494,10 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
         // |=================================================================================================|
         if (depth <= 3 && pos.getGamePhase() && (alpha == beta - 1))
         {
-            int margin = 100 + depth * 200;
-            if (staticValue + margin < beta)
+            int margin = 300 + depth * 60;
+            if (staticValue + margin < alpha)
             {
-                int qValue =  quiescence<nodeType>(pos, alpha, beta, NO_MOVE, ply, ss);
-                if (qValue < beta) return qValue;
+                return quiescence<nodeType>(pos, alpha, beta, NO_MOVE, ply, ss);
             }
         }
 
