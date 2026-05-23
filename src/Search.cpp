@@ -346,6 +346,13 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
     // Find out if the side to move is currently in check
     bool isInCheck = pos.sideToMoveIsInCheck();
 
+    // Extend search depth if side to move is in check
+    if (isInCheck && ss->previousExtensions < 4)
+    {
+        ss->previousExtensions++;
+        depth++;
+    }
+
     ss->inCheck = isInCheck;
     ss->staticEval = VALUE_NONE;
 
@@ -359,24 +366,15 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
 
     if (depth <= 0)
     {
-        // Do not drop to quiescent search if we are in check
-        if (isInCheck)
-        {
-            // Search for one more depth to reach a non-check position before quiescent search starts
-            depth = 1;
-        } else
-        {
-            // Drop into quiescent search - we are not in check
-            int qVal =  quiescence<nodeType>(pos, alpha, beta, NO_MOVE, ply, ss);
-            return qVal;
-        }
+        // Drop into quiescent search - we are not in check
+        return quiescence<nodeType>(pos, alpha, beta, NO_MOVE, ply, ss);
     }
 
     // Get the zobrist hash of the position to probe the hash table
     ZobristHash posZobrist = pos.getZobristHash();
     Move ttBestMove = NO_MOVE;
-    Bound hashFlag = Bound::BOUND_ALPHA;
 
+    Bound hashFlag = Bound::BOUND_ALPHA;
 
     // |=================================================================================================|
     // |  Transposition Table Probing : Before beginning the search, we probe the transposition table    |
@@ -772,7 +770,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
                 // If the move is quiet update its history score
                 if (moveIsQuiet)
                 {
-                    updateHistory(sideToMove, getFromSquare(move), getToSquare(move), bonus);
+                    updateHistory(sideToMove, fromSquare, toSquare, bonus);
 
                     // The move caused a beta cutoff so we also update the killers for this ply
                     killerMoves[ply][1] = killerMoves[ply][0];

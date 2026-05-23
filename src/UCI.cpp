@@ -13,7 +13,6 @@
 #include "Tuning.h"
 
 
-
 #include "LegalMoveGen.h"
 #include "Position.h"
 #include "PRNG.h"
@@ -498,6 +497,7 @@ void LoopUCI()
             std::cout << "id name Aspen 2.2.0\n";
             std::cout << "id author ATheo\n";
             std::cout << "option name Hash type spin default 64 min 1 max 32768\n"; // Default hash table size is 64 megabytes
+            //std::cout << "option name LMR_Base type spin default 100 min 25 max 175\n";
             std::cout << "uciok\n";
         }
         else if (tokens[0] == "ucinewgame")
@@ -511,13 +511,23 @@ void LoopUCI()
             clearTranspositionTable();
             searcher.newGame();
         }
-        // Resize TT size option
+        // UCI options
         else if (tokens[0] == "setoption" && tokens.size() >= 5)
         {
-            if (tokens[1] == "name" && (tokens[2] == "Hash" || tokens[2] == "hash") && tokens[3] == "value")
+            if (tokens[1] == "name")
             {
-                int TTSizeMB = std::atoi(tokens[4].c_str());
-                resizeTranspositionTable(TTSizeMB);
+                // Resize TT size option
+                if ((tokens[2] == "Hash" || tokens[2] == "hash") && tokens[3] == "value")
+                {
+                    int TTSizeMB = std::atoi(tokens[4].c_str());
+                    resizeTranspositionTable(TTSizeMB);
+                }
+                // Set search parameter value
+                //if ((tokens[2] == "LMR_Base") && tokens[3] == "value")
+                //{
+                //    int base = std::atoi(tokens[4].c_str());
+                //    LMR_Base = base / 100.f;
+                //}
             }
         }
         // Quit the program
