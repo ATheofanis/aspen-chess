@@ -30,8 +30,8 @@ add_executable(AspenChess src/main.cpp
         src/TranspositionTable.h
         src/Tuning.cpp
         src/Tuning.h
-        src/Time.cpp
-        src/Time.h
+        src/TimeManager.cpp
+        src/TimeManager.h
         src/DataGen.cpp
         src/DataGen.h
         src/nnue/nnue.cpp

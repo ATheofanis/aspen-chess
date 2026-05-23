@@ -23,7 +23,7 @@
 #include <sstream>
 #include <iomanip>
 
-#include "Time.h"
+#include "TimeManager.h"
 
 void init()
 {
@@ -48,10 +48,10 @@ void generateData(std::string dataTxtFile)
 
     data << std::fixed << std::setprecision(1);
 
-    TimePoint wtime = 5000000;
-    TimePoint btime = 5000000;
-    TimePoint winc = 5000;
-    TimePoint binc = 5000;
+    TimeMs wtime = 5000000;
+    TimeMs btime = 5000000;
+    TimeMs winc = 5000;
+    TimeMs binc = 5000;
     int movestogo = 1;
 
     data.open(dataTxtFile, std::ios::app);
@@ -110,7 +110,7 @@ void generateData(std::string dataTxtFile)
 
             //hashHistory.push_back(pos.getZobristHash());
 
-            tm.start(500000, 500000, 1);
+            timeManager.start(500000, 500000, 1);
 
             int newEntryEval = -999999;
             searcher.findBestMove(pos, newEntryEval);
@@ -161,7 +161,7 @@ void generateData(std::string dataTxtFile)
                 break;
             }
 
-            tm.start(500000, 500000, 1);
+            timeManager.start(500000, 500000, 1);
 
             int newEntryEval = -999999;
 

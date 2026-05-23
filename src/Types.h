@@ -18,7 +18,7 @@
 using Bitboard = uint64_t;
 using ZobristHash = uint64_t;
 
-using TimePoint = std::chrono::milliseconds::rep;
+using TimeMs = std::chrono::milliseconds::rep;
 
 constexpr int MAX_PLY = 128;
 

@@ -25,7 +25,7 @@
 #include <thread>
 
 #include "DataGen.h"
-#include "Time.h"
+#include "TimeManager.h"
 
 class Position;
 
@@ -364,11 +364,11 @@ void LoopUCI()
                 NumberOfGames = std::atoi(tokens[2].c_str());
                 std::string dataFile = tokens[3];
 
-                TimePoint startingTime = now();
+                TimeMs startingTime = now();
                 MAX_NODES = dataGenMaxNodes;
                 DataGenFlag = true;
                 generateData(dataFile);
-                TimePoint totalTime = now() - startingTime;
+                TimeMs totalTime = now() - startingTime;
                 std::cout << "Data generation finished. Generated " << NumberOfGames << "games in " << totalTime << " ms." << std::endl;
             }
         }
@@ -414,10 +414,10 @@ void LoopUCI()
         else if (tokens[0] == "go")
         {
             MAX_NODES = MaxValue;
-            TimePoint wtime = MaxValue;
-            TimePoint btime = MaxValue;
-            TimePoint winc = 0;
-            TimePoint binc = 0;
+            TimeMs wtime = MaxValue;
+            TimeMs btime = MaxValue;
+            TimeMs winc = 0;
+            TimeMs binc = 0;
             int movestogo = 40;
             bool timeEnabled = false;
 
@@ -449,27 +449,27 @@ void LoopUCI()
                 }
                 else if (tokens[i] == "depth") // change the maximum depth if the depth command is passed
                 {
-                    tm.disableTimeControl();
+                    timeManager.disableTimeControl();
                     MAX_DEPTH = std::atoi(tokens[i+1].c_str());
                 }
                 else if (tokens[i] == "nodes") // set the maximum amount of nodes that can be searched
                 {
-                    tm.disableTimeControl();
+                    timeManager.disableTimeControl();
                     MAX_NODES = std::atoi(tokens[i+1].c_str());
                 }
             }
 
             // If time controls were enabled, which is determined based on UCI input, then start the time manager
             if (timeEnabled) {
-                TimePoint myTime = (pos.isWhiteToMove()) ? wtime : btime;
-                TimePoint myInc = (pos.isWhiteToMove()) ? winc : binc;
-                tm.start(myTime, myInc, movestogo); // initialize the time manager for the side to move
+                TimeMs myTime = (pos.isWhiteToMove()) ? wtime : btime;
+                TimeMs myInc = (pos.isWhiteToMove()) ? winc : binc;
+                timeManager.start(myTime, myInc, movestogo); // initialize the time manager for the side to move
             }
             // Otherwise reset the time manager, which basically turns time controls off but keeps track of current time
             // in order to continue printing search statistics, such as NPS and search time
             else
             {
-                tm.reset();
+                timeManager.reset();
             }
 
             searcher.uciStop = true;
