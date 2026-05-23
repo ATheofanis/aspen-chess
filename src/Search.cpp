@@ -315,6 +315,8 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
     // Increment nodes counter
     nodes++;
 
+    if (ply >= MAX_PLY) return scoreBoardNNUE(pos, ss->accumulator);
+
     //    |====================================================================|
     //    |  Time / Node Limit : Every 2048 nodes searched, check if we have   |
     //    |   exceeded the maximum time limit, or the maximum node limit       |
@@ -680,8 +682,13 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
 
                 if (!improving) depthReduction++; // Prune more late quiet moves when not improving
 
+                if (move == killerMoves[ply][0]) depthReduction--; // Do not reduce too much for the first killer move
+
+                //depthReduction -= historyScores[pos.isWhiteToMove() ? White : Black][fromSquare][toSquare] / 8192;
                 depthReduction += precomputedLMR[depth][i];
             }
+
+            depthReduction = std::max(0, depthReduction);
 
             // Make sure the depth reduction does not lead to a depth less than zero
             int reducedDepth = std::max(0, depth - depthReduction);
@@ -940,7 +947,7 @@ int MoveSearcher::scoreMove(Move move, const Position& pos, Move hashMove, int p
         }
         Piece attacker = pos.getPieceFromBoard(fromSquare);
 
-        return score + 25000 + 10 * averagePieceScore[victim] - averagePieceScore[attacker];
+        return score + 32000 + 10 * averagePieceScore[victim] - averagePieceScore[attacker];
     }
 
     if (ply >= 0)
