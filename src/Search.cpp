@@ -479,10 +479,10 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
         {
             // Calculate the margin for reverse futility pruning.
             // The greater the depth the greater the margin, keeping the search stable
-            int reverseFutilityMargin = 150 * depth;
+            int reverseFutilityMargin = 70 * depth;
 
             // If the RFP condition is met simply return the static evaluation
-            if (staticValue >= beta + reverseFutilityMargin) return staticValue;
+            if (staticValue - reverseFutilityMargin >= beta) return staticValue - reverseFutilityMargin;
         }
 
         // |=================================================================================================|
