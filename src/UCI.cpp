@@ -346,7 +346,7 @@ void LoopUCI()
     std::string command;
     Position pos;
 
-    MoveSearcher searcher;
+    MoveSearcher* searcher = new MoveSearcher();
 
     std::thread searcherThread;
 
@@ -472,14 +472,14 @@ void LoopUCI()
                 timeManager.reset();
             }
 
-            searcher.uciStop = true;
+            searcher->uciStop = true;
 
             if (searcherThread.joinable()) searcherThread.join();
 
-            searcher.uciStop = false;
+            searcher->uciStop = false;
 
             // Run the search using the searcher thread so that we can search while also reading UCI commands
-            searcherThread = std::thread([&](){ uciRunSearch(searcher, pos); });
+            searcherThread = std::thread([&](){ uciRunSearch(*searcher, pos); });
 
             globalMTG--;
             if (globalMTG <= 0)
@@ -503,13 +503,13 @@ void LoopUCI()
         else if (tokens[0] == "ucinewgame")
         {
             // If there is an ongoing search we must cancel to continue with the new game
-            searcher.uciStop = true;
+            searcher->uciStop = true;
 
             if (searcherThread.joinable()) searcherThread.join();
 
             globalMTG = 100;
             clearTranspositionTable();
-            searcher.newGame();
+            searcher->newGame();
         }
         // UCI options
         else if (tokens[0] == "setoption" && tokens.size() >= 5)
@@ -533,7 +533,7 @@ void LoopUCI()
         // Quit the program
         else if (tokens[0] == "quit")
         {
-            searcher.uciStop = true;
+            searcher->uciStop = true;
 
             if (searcherThread.joinable()) searcherThread.join();
 
@@ -542,7 +542,7 @@ void LoopUCI()
         // Immediately stop the search
         else if (tokens[0] == "stop")
         {
-            searcher.uciStop = true;
+            searcher->uciStop = true;
 
             if (searcherThread.joinable()) searcherThread.join();
         }

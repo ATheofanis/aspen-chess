@@ -195,7 +195,7 @@ int MoveSearcher::quiescence(Position& pos, int alpha, int beta, Move ttBestMove
     // Get the score of every move for move ordering
     for (int i = 0; i < numOfMoves; i++)
     {
-        moveScores[i] = scoreMove(moves[i], pos, ttBestMove);
+        moveScores[i] = scoreMove(moves[i], pos, ttBestMove, ss);
     }
 
 
@@ -570,7 +570,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
     for (int i = 0; i < numOfMoves; i++)
     {
         // Get the score of every move
-        moveScores[i] = scoreMove(moves[i], pos, ttBestMove, ply);
+        moveScores[i] = scoreMove(moves[i], pos, ttBestMove, ss, ply);
     }
 
     int score;
@@ -610,6 +610,11 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
 
         // If it is neither a capture nor a promotion, then the move is quiet
         bool moveIsQuiet = !(moveIsCapture || moveIsPromotion);
+
+        Piece movingPiece = pos.getPieceFromBoard(fromSquare);
+
+        (ss+1)->previousMove = move;
+        (ss+1)->pieceMoved = movingPiece;
 
         // |=================================================================================================|
         // |  Principal Variation Search : The first move is the most promising. For this reason, we search  |
@@ -765,7 +770,13 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
                 // If the move is quiet update its history score
                 if (moveIsQuiet)
                 {
+                    // Apply bonus for both history and counter history scores
                     updateHistory(sideToMove, fromSquare, toSquare, bonus);
+
+                    if (ply > 0 && (ss-1))
+                    {
+                        updateCounterHistory((ss-1)->pieceMoved, getToSquare((ss-1)->previousMove), movingPiece, toSquare, bonus);
+                    }
 
                     // The move caused a beta cutoff so we also update the killers for this ply
                     killerMoves[ply][1] = killerMoves[ply][0];
@@ -783,8 +794,16 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
                     int qFromSquare = getFromSquare(quietMove);
                     int qToSquare = getToSquare(quietMove);
 
+                    Piece qPieceMoved = pos.getPieceFromBoard(qFromSquare);
+
                     // Call the update history function but with a negative bonus
                     updateHistory(sideToMove, qFromSquare, qToSquare, -bonus);
+
+                    if (ss-1 && ply > 0)
+                    {
+                        updateCounterHistory((ss-1)->pieceMoved, getToSquare((ss-1)->previousMove), qPieceMoved, qToSquare, -bonus);
+                    }
+
                 }
                 // Beta cutoff
                 return beta;
@@ -912,7 +931,7 @@ Move MoveSearcher::findBestMove(Position pos, int& posEval)
 
 
 // Function used to order moves from best to worst
-int MoveSearcher::scoreMove(Move move, const Position& pos, Move hashMove, int ply)
+int MoveSearcher::scoreMove(Move move, const Position& pos, Move hashMove, SearchStack* ss, int ply)
 {
     if (move == hashMove)
     {
@@ -957,7 +976,24 @@ int MoveSearcher::scoreMove(Move move, const Position& pos, Move hashMove, int p
         if (move == killerMoves[ply][1]) return KillerMoveScore1;
     }
 
-    return historyScores[pos.isWhiteToMove() ? White : Black][fromSquare][toSquare];
+    Piece movingPiece = pos.getPieceFromBoard(fromSquare);
+
+    int counterHistoryScore = 0;
+
+    if (ply > 0 && ss && (ss-1))
+    {
+        Move prevMove = (ss-1)->previousMove;
+        Piece enemyPieceMoved = (ss-1)->pieceMoved;
+
+        if (prevMove != NO_MOVE && enemyPieceMoved != NO_PIECE)
+        {
+            int enemyToSquare = getToSquare(prevMove);
+
+            counterHistoryScore = counterMovesHistory[enemyPieceMoved][enemyToSquare][movingPiece][toSquare];
+        }
+    }
+
+    return historyScores[pos.isWhiteToMove() ? White : Black][fromSquare][toSquare] + counterHistoryScore;
 }
 
 // Function to update the history score of a move
@@ -966,4 +1002,11 @@ void MoveSearcher::updateHistory(Color sideToMove, int fromSquare, int toSquare,
 {
     int clampedBonus = std::clamp(value, -MaxHistoryScore, MaxHistoryScore);
     historyScores[sideToMove][fromSquare][toSquare] += clampedBonus - historyScores[sideToMove][fromSquare][toSquare] * std::abs(clampedBonus) / MaxHistoryScore;
+}
+
+
+void MoveSearcher::updateCounterHistory(Piece enemyPiece, int enemyToSq, Piece friendlyPiece, int friendlyToSq, int value)
+{
+    int clampedBonus = std::clamp(value, -MaxHistoryScore, MaxHistoryScore);
+    counterMovesHistory[enemyPiece][enemyToSq][friendlyPiece][friendlyToSq] += clampedBonus - counterMovesHistory[enemyPiece][enemyToSq][friendlyPiece][friendlyToSq] * std::abs(clampedBonus) / MaxHistoryScore;
 }
