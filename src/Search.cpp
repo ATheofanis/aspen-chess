@@ -283,7 +283,6 @@ int MoveSearcher::quiescence(Position& pos, int alpha, int beta, Move ttBestMove
         }
 
     }
-
     save(zobrist, ttBestMove, bestScore, staticEvaluation, Q_DEPTH, hashFlag, generation, ply);
     return bestScore;
 }
@@ -652,26 +651,10 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
             // |===========================================================================|
             if (!isPv && !isInCheck && moveIsQuiet && depth <= 4)
             {
-                int LMP_Threshold;
-                if (improving)
-                {
-                    LMP_Threshold = improvingLateMovePruningThreshold[depth];
-                }
-                else
-                {
-                    LMP_Threshold = worseningLateMovePruningThreshold[depth];
-                }
+                int LMP_Threshold = lateMovePruningThreshold[depth];
 
                 if (quietMovesCount >= LMP_Threshold) continue;
-
-                if (depth <= 2)
-                {
-                    int historyThreshold = -5000 * depth;
-
-                    if (historyScores[pos.isWhiteToMove() ? White : Black][fromSquare][toSquare] <= historyThreshold) continue;
-                }
             }
-
 
             // Update the accumulator for the next ply
             (ss+1)->accumulator = ss->accumulator;
@@ -923,6 +906,7 @@ Move MoveSearcher::findBestMove(Position pos, int& posEval)
     }
 
     return bestMove;
+
 }
 
 
