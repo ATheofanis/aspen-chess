@@ -653,6 +653,27 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
                 continue;
             }
 
+            // We use the move's history and continuational history score to determine how much its search depth will be reduced
+            // Moves with a high history score are reduced by less, while ones with bad history score are reduced by more
+            int historyScore = historyScores[allyColor][fromSquare][toSquare];
+
+            // Get the total continuation history score for better pruning below
+            int totalContinuationHistScore = 0;
+
+            // Get the Counter Move History score (from the previous move of the opponent)
+            if (ply > 0 && ss->previousMove != NO_MOVE)
+            {
+                totalContinuationHistScore += continuationHistory[ss->pieceMoved][getToSquare(ss->previousMove)][movingPiece][toSquare];
+            }
+
+            // Get the Follow Up History score (from our last move)
+            if (ply > 1 && (ss-1)->previousMove != NO_MOVE)
+            {
+                totalContinuationHistScore += continuationHistory[(ss-1)->pieceMoved][getToSquare((ss-1)->previousMove)][movingPiece][toSquare];
+            }
+
+            int totalHistoryScore = historyScore + totalContinuationHistScore / 2;
+
             // |===========================================================================|
             // | Late Move Pruning: At shallow depths, skip quiet moves if a threshold     |
             // |            number of quiet moves have already been searched.              |
@@ -661,8 +682,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
             {
                 int LMP_Threshold = lateMovePruningThreshold[depth];
 
-                //int historyScore = historyScores[pos.isWhiteToMove() ? White : Black][fromSquare][toSquare];
-                //if (historyScore < -13000) LMP_Threshold--;
+                if (totalHistoryScore <= -16384) LMP_Threshold--;
 
                 if (quietMovesCount >= LMP_Threshold) continue;
             }
@@ -697,25 +717,6 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
                 // Do not reduce too much for the first killer move
                 if (move == killerMoves[ply][0]) depthReduction--;
 
-                // We use the move's history and continuational history score to determine how much its search depth will be reduced
-                // Moves with a high history score are reduced by less, while ones with bad history score are reduced by more
-                int historyScore = historyScores[allyColor][fromSquare][toSquare];
-
-                int totalContinuationHistScore = 0;
-
-                // Get the Counter Move History score (from the previous move of the opponent)
-                if (ply > 0 && ss->previousMove != NO_MOVE)
-                {
-                    totalContinuationHistScore += continuationHistory[ss->pieceMoved][getToSquare(ss->previousMove)][movingPiece][toSquare] / 2;
-                }
-
-                // Get the Follow Up History score (from our last move)
-                if (ply > 1 && (ss-1)->previousMove != NO_MOVE)
-                {
-                    totalContinuationHistScore += continuationHistory[(ss-1)->pieceMoved][getToSquare((ss-1)->previousMove)][movingPiece][toSquare] / 2;
-                }
-
-                int totalHistoryScore = historyScore + totalContinuationHistScore / 2;
 
                 // Divide the total history score by 8192 (for faster division) and subtract it from the reduction
                 // Example: if history score is 16384 then it is a really good move. The result of 16384 / 8192 = 2
@@ -723,7 +724,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
                 // increase the reduction by 2, so we would spend less resources on this bad move
                 depthReduction -= totalHistoryScore / 8192;
 
-
+                // Get the standard LMR formula
                 depthReduction += precomputedLMR[depth][i];
             }
 
@@ -1000,7 +1001,7 @@ int MoveSearcher::scoreMove(Move move, const Position& pos, Move hashMove, Searc
     int fromSquare = getFromSquare(move);
     int toSquare = getToSquare(move);
 
-    // MVV-LVA for capture moves
+    // Sort captures with their SEE score
     if (isCapture(getMoveFlag(move)))
     {
         Piece victim = wp;
@@ -1014,7 +1015,19 @@ int MoveSearcher::scoreMove(Move move, const Position& pos, Move hashMove, Searc
         }
         Piece attacker = pos.getPieceFromBoard(fromSquare);
 
-        return score + CapturesBase + 10 * averagePieceScore[victim] - averagePieceScore[attacker];
+        int victimValue = averagePieceScore[victim];
+        int attackerValue = averagePieceScore[attacker];
+
+        int seeScore = pos.SEE(toSquare, victim, fromSquare, attacker);
+
+        if (seeScore < 0)
+        {
+            return BadCapturesBase + 10 * victimValue - attackerValue; // Penalize captures that lead to negative exchange value
+        }
+        else
+        {
+            return GoodCapturesBase + 10 * victimValue - attackerValue; // Reward captures that lead to a positive or equal exchange
+        }
     }
 
     if (ply >= 0)
@@ -1064,7 +1077,7 @@ int MoveSearcher::scoreMove(Move move, const Position& pos, Move hashMove, Searc
 
 
 
-    return historyScores[pos.isWhiteToMove() ? White : Black][fromSquare][toSquare] + continuationHistoryScore / 2;
+    return historyScores[pos.isWhiteToMove() ? White : Black][fromSquare][toSquare] + continuationHistoryScore / 4;
 }
 
 // Function to update the history score of a move

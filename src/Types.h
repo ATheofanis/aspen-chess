@@ -198,8 +198,14 @@ constexpr int improvingLateMovePruningThreshold[5] = {999, 7, 14, 20, 28};
 
 
 // Values used in move ordering
-inline int MaxHistoryScore = 16384;
-inline int KillerMoveScore0 = MaxHistoryScore * 3 + 2;
-inline int KillerMoveScore1 = MaxHistoryScore * 3 + 1;
-inline int CapturesBase = MaxHistoryScore * 4;
-inline int HashMoveScore = 320000;
+constexpr int MaxHistoryScore = 16384;
+
+// Move Ordering List
+constexpr int HashMoveScore = 320000;                       // Hash Move
+constexpr int QueenPromotion = 170000;                      // Queen Promotion
+constexpr int QueenPromoCapture = 180000;                   // Queen Promotion with Capture
+constexpr int GoodCapturesBase = MaxHistoryScore * 4;       // Good Captures
+constexpr int KillerMoveScore0 = MaxHistoryScore * 3 + 2;   // Killer 1
+constexpr int KillerMoveScore1 = MaxHistoryScore * 3 + 1;   // Killer 2
+constexpr int BadCapturesBase = MaxHistoryScore * 2;        // Bad Captures
+constexpr int UnderPromotions = -100000;                    // Under Promotions
