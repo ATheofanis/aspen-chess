@@ -658,6 +658,9 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
             {
                 int LMP_Threshold = lateMovePruningThreshold[depth];
 
+                int historyScore = historyScores[pos.isWhiteToMove() ? White : Black][fromSquare][toSquare];
+                if (historyScore < -13000) LMP_Threshold--;
+
                 if (quietMovesCount >= LMP_Threshold) continue;
             }
 
@@ -685,7 +688,9 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
                 // meaning we can reduce the depth at which we will search it to save time for more important nodes
                 if (ttBestMove == NO_MOVE || ttMoveIsCapture || ttMoveIsPromo) depthReduction++;
 
-                if (!improving) depthReduction++; // Prune more late quiet moves when not improving
+                int historyScore = historyScores[pos.isWhiteToMove() ? White : Black][fromSquare][toSquare];
+                if (!improving || (historyScore < -13000)) depthReduction++; // Prune more late quiet moves when not improving
+
 
                 if (move == killerMoves[ply][0]) depthReduction--; // Do not reduce too much for the first killer move
 
@@ -765,7 +770,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
                 Color sideToMove = pos.isWhiteToMove() ? White : Black;
 
                 // The move that caused the cutoff receives a bonus based on current depth
-                const int bonus = 300 * depth - 250;
+                const int bonus = std::max(1200, 300 * depth - 250);
 
                 // If the move is quiet update its history score
                 if (moveIsQuiet)
@@ -773,10 +778,10 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
                     // Apply bonus for both history and counter history scores
                     updateHistory(sideToMove, fromSquare, toSquare, bonus);
 
-                    if (ply > 0 && (ss-1))
-                    {
-                        updateCounterHistory((ss-1)->pieceMoved, getToSquare((ss-1)->previousMove), movingPiece, toSquare, bonus);
-                    }
+                    //if (ply > 0 && (ss-1))
+                    //{
+                    //    updateCounterHistory((ss-1)->pieceMoved, getToSquare((ss-1)->previousMove), movingPiece, toSquare, bonus);
+                    //}
 
                     // The move caused a beta cutoff so we also update the killers for this ply
                     killerMoves[ply][1] = killerMoves[ply][0];
@@ -799,10 +804,10 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
                     // Call the update history function but with a negative bonus
                     updateHistory(sideToMove, qFromSquare, qToSquare, -bonus);
 
-                    if (ss-1 && ply > 0)
-                    {
-                        updateCounterHistory((ss-1)->pieceMoved, getToSquare((ss-1)->previousMove), qPieceMoved, qToSquare, -bonus);
-                    }
+                    //if (ss-1 && ply > 0)
+                    //{
+                    //    updateCounterHistory((ss-1)->pieceMoved, getToSquare((ss-1)->previousMove), qPieceMoved, qToSquare, -bonus);
+                    //}
 
                 }
                 // Beta cutoff
@@ -943,7 +948,7 @@ int MoveSearcher::scoreMove(Move move, const Position& pos, Move hashMove, Searc
     int flag = getMoveFlag(move);
 
     if (flag == 11) return 150000; // Reward queen promotion
-    if (flag == 15) score += 170000; // Reward capture that leads to queen promotion
+    if (flag == 15) return 170000; // Reward capture that leads to queen promotion
 
     // Punish under-promotions
     if (flag & 8) return -100000;
@@ -966,7 +971,7 @@ int MoveSearcher::scoreMove(Move move, const Position& pos, Move hashMove, Searc
         }
         Piece attacker = pos.getPieceFromBoard(fromSquare);
 
-        return score + 32000 + 10 * averagePieceScore[victim] - averagePieceScore[attacker];
+        return score + 46000 + 10 * averagePieceScore[victim] - averagePieceScore[attacker];
     }
 
     if (ply >= 0)
@@ -980,18 +985,18 @@ int MoveSearcher::scoreMove(Move move, const Position& pos, Move hashMove, Searc
 
     int counterHistoryScore = 0;
 
-    if (ply > 0 && ss && (ss-1))
-    {
-        Move prevMove = (ss-1)->previousMove;
-        Piece enemyPieceMoved = (ss-1)->pieceMoved;
-
-        if (prevMove != NO_MOVE && enemyPieceMoved != NO_PIECE)
-        {
-            int enemyToSquare = getToSquare(prevMove);
-
-            counterHistoryScore = counterMovesHistory[enemyPieceMoved][enemyToSquare][movingPiece][toSquare];
-        }
-    }
+    //if (ply > 0 && ss && (ss-1))
+    //{
+    //    Move prevMove = (ss-1)->previousMove;
+    //    Piece enemyPieceMoved = (ss-1)->pieceMoved;
+//
+    //    if (prevMove != NO_MOVE && enemyPieceMoved != NO_PIECE)
+    //    {
+    //        int enemyToSquare = getToSquare(prevMove);
+//
+    //        counterHistoryScore = counterMovesHistory[enemyPieceMoved][enemyToSquare][movingPiece][toSquare];
+    //    }
+    //}
 
     return historyScores[pos.isWhiteToMove() ? White : Black][fromSquare][toSquare] + counterHistoryScore;
 }
