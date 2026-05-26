@@ -56,6 +56,8 @@ private:
 public:
     bool uciStop = false;
 
+    int16_t captureHistory[12][12][64]{}; // Attacker | Victim | To Square
+
     int16_t historyScores[2][64][64]{}; // History heuristic
 
     int16_t continuationHistory[12][64][12][64]{};
@@ -71,8 +73,11 @@ public:
 
     void updateContinuationHistory(Piece enemyPiece, int enemyToSq, Piece friendlyPiece, int friendlyToSq, int value);
 
+    void updateCaptureHistory(Piece enemyPiece, Piece friendlyPiece, int toSq, int value);
+
     void newGame()
     {
+        memset(captureHistory, 0, sizeof(captureHistory));
         memset(continuationHistory, 0, sizeof(continuationHistory));
         memset(historyScores, 0, sizeof(historyScores));
         memset(killerMoves, 0, sizeof(killerMoves));
