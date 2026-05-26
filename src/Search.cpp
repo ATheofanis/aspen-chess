@@ -11,6 +11,7 @@
 #include "Score.h"
 #include "TranspositionTable.h"
 #include "TimeManager.h"
+#include "History.h"
 
 
 int precomputedLMR[128][256];
@@ -496,15 +497,15 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
         // |====================================================================================================|
         if (ply > 0 && (alpha == beta - 1) && allowNullMove && depth > 3 && pos.getGamePhase() && beta < CHECKMATE - MAX_PLY) // Do not play a null move twice in a row
         {
-            (ss+1)->previousMove = NO_MOVE;
-            (ss+1)->pieceMoved = NO_PIECE;
-
             int reduction = std::min(depth, 4 + depth / 3); // NMP Reduction
             if (improving) reduction++; // More NMP reduction when improving
 
             int epSq = pos.getEnpassantSquare();
 
             (ss+1)->accumulator = ss->accumulator;
+            //(ss+1)->move = NO_MOVE;
+            //(ss+1)->contHistory = nullptr;
+
             pos.makeNullMove(epSq);
             int value = -negaMaxAlphaBeta<NodeType::NonPV>(pos, -beta, -(beta - 1), std::max(1, depth - reduction), bestMove, ply+1, rootDepth, false, ss+1);
             pos.unmakeNullMove(epSq);
@@ -565,10 +566,8 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
 
     // Keep track of quiet moves searched for late move pruning (LMP)
     int quietMovesCount = 0;
-    int capturesCount = 0;
 
-    Move quietMoves[256];
-    Move captureMoves[256];
+    int quietMoves[256];
 
     int moveScores[numOfMoves];
 
@@ -609,17 +608,18 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
         int toSquare = getToSquare(move);
         int moveFlag = getMoveFlag(move);
 
+        Piece movingPiece = pos.getPieceFromBoard(fromSquare);
+
+        (ss+1)->movedPiece = movingPiece;
+        (ss+1)->move = move;
+        (ss+1)->contHistory = &continuationHistoryScores[movingPiece][toSquare];
+
         // Check if the move is a capture or/and promotion
         bool moveIsCapture = isCapture(moveFlag);
         bool moveIsPromotion = isPromotion(moveFlag);
 
         // If it is neither a capture nor a promotion, then the move is quiet
         bool moveIsQuiet = !(moveIsCapture || moveIsPromotion);
-
-        Piece movingPiece = pos.getPieceFromBoard(fromSquare);
-
-        (ss+1)->previousMove = move;
-        (ss+1)->pieceMoved = movingPiece;
 
         // |=================================================================================================|
         // |  Principal Variation Search : The first move is the most promising. For this reason, we search  |
@@ -655,27 +655,6 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
                 continue;
             }
 
-            // We use the move's history and continuational history score to determine how much its search depth will be reduced
-            // Moves with a high history score are reduced by less, while ones with bad history score are reduced by more
-            //int historyScore = historyScores[allyColor][fromSquare][toSquare];
-//
-            //// Get the total continuation history score for better pruning below
-            //int totalContinuationHistScore = 0;
-//
-            //// Get the Counter Move History score (from the previous move of the opponent)
-            //if (ply > 0 && ss->previousMove != NO_MOVE)
-            //{
-            //    totalContinuationHistScore += continuationHistory[ss->pieceMoved][getToSquare(ss->previousMove)][movingPiece][toSquare];
-            //}
-//
-            //// Get the Follow Up History score (from our last move)
-            //if (ply > 1 && (ss-1)->previousMove != NO_MOVE)
-            //{
-            //    totalContinuationHistScore += continuationHistory[(ss-1)->pieceMoved][getToSquare((ss-1)->previousMove)][movingPiece][toSquare];
-            //}
-//
-            //int totalHistoryScore = historyScore + totalContinuationHistScore / 2;
-
             // |===========================================================================|
             // | Late Move Pruning: At shallow depths, skip quiet moves if a threshold     |
             // |            number of quiet moves have already been searched.              |
@@ -683,8 +662,6 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
             if (!isPv && !isInCheck && moveIsQuiet && depth <= 4)
             {
                 int LMP_Threshold = lateMovePruningThreshold[depth];
-
-                //f (totalHistoryScore <= -16384) LMP_Threshold--;
 
                 if (quietMovesCount >= LMP_Threshold) continue;
             }
@@ -713,20 +690,18 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
                 // meaning we can reduce the depth at which we will search it to save time for more important nodes
                 if (ttBestMove == NO_MOVE || ttMoveIsCapture || ttMoveIsPromo) depthReduction++;
 
-                // Prune more late quiet moves when not improving
-                if (!improving) depthReduction++;
+                if (!improving) depthReduction++; // Prune more late quiet moves when not improving
 
-                // Do not reduce too much for the first killer move
-                if (move == killerMoves[ply][0]) depthReduction--;
+                if (move == killerMoves[ply][0]) depthReduction--; // Do not reduce too much for the first killer move
 
 
-                // Divide the total history score by 8192 (for faster division) and subtract it from the reduction
-                // Example: if history score is 16384 then it is a really good move. The result of 16384 / 8192 = 2
-                // therefore we correctly subtract 2 from the total reduction. If the score was -16384 then we would
-                // increase the reduction by 2, so we would spend less resources on this bad move
-                //depthReduction -= totalHistoryScore / 8192;
+                // Get the total history score for this specific move
+                int totalHistory = historyScores[allyColor][fromSquare][toSquare] + getContHistoryScores(ss, movingPiece, toSquare, ply);
 
-                // Get the standard LMR formula
+                depthReduction -= totalHistory / 8192; // Tuned soon
+
+
+
                 depthReduction += precomputedLMR[depth][i];
             }
 
@@ -764,22 +739,6 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
 
         // Increment the quiet move counter now for stable late move pruning
         if (moveIsQuiet) quietMoves[quietMovesCount++] = move;
-        Piece enemyPiece = NO_PIECE;
-        if (moveIsCapture)
-        {
-            if (isEnpassant(getMoveFlag(move)))
-            {
-                enemyPiece = pos.isWhiteToMove() ? bp : wp;
-            }
-            else
-            {
-                enemyPiece = pos.getPieceFromBoard(toSquare);
-            }
-
-
-            captureMoves[capturesCount++] = move;
-        }
-
 
         if (score > alpha)
         {
@@ -817,97 +776,35 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
 
                 Color sideToMove = pos.isWhiteToMove() ? White : Black;
 
-                Piece enemyPiece = NO_PIECE;
-
                 // The move that caused the cutoff receives a bonus based on current depth
-                const int bonus = std::min(100 * depth * depth, 2000); // 300 * depth - 250;
+                const int bonus = std::clamp(300 * depth - 250, -MaxHistoryScore, MaxHistoryScore);
 
                 // If the move is quiet update its history score
                 if (moveIsQuiet)
                 {
-                    // Apply bonus for both history and counter history scores
                     updateHistory(sideToMove, fromSquare, toSquare, bonus);
-
-                    // Apply bonus to the counter move history score
-                    if (ply > 0 && (ss)->pieceMoved != NO_PIECE && (ss)->previousMove != NO_MOVE)
-                    {
-                        updateContinuationHistory((ss)->pieceMoved, getToSquare((ss)->previousMove), movingPiece, toSquare, bonus);
-                    }
-
-                    // Apply bonus to the follow up history score
-                    if (ply > 1 && (ss-1)->pieceMoved != NO_PIECE && (ss-1)->previousMove != NO_MOVE)
-                    {
-                        updateContinuationHistory((ss-1)->pieceMoved, getToSquare((ss-1)->previousMove), movingPiece, toSquare, bonus);
-                    }
+                    updateContHistories(ss, ply, movingPiece, toSquare, bonus);
 
                     // The move caused a beta cutoff so we also update the killers for this ply
                     killerMoves[ply][1] = killerMoves[ply][0];
                     killerMoves[ply][0] = move;
-
-                    // We also penalize the quiet moves prior to the one we just searched,
-                    // since they failed to cause a cutoff and are, therefore, weaker moves
-                    for (int j = 0; j < quietMovesCount; j++)
-                    {
-                        Move quietMove = quietMoves[j];
-
-                        if (quietMove == move) continue; // Don't penalize the move that caused the beta cutoff
-
-                        int qFromSquare = getFromSquare(quietMove);
-                        int qToSquare = getToSquare(quietMove);
-
-                        Piece qPieceMoved = pos.getPieceFromBoard(qFromSquare);
-
-                        // Call the update history function but with a negative bonus
-                        updateHistory(sideToMove, qFromSquare, qToSquare, -bonus);
-
-                        // Apply penalty to the counter moves history score
-                        if (ply > 0 && (ss)->pieceMoved != NO_PIECE && (ss)->previousMove != NO_MOVE)
-                        {
-                            updateContinuationHistory((ss)->pieceMoved, getToSquare((ss)->previousMove), qPieceMoved, qToSquare, -bonus);
-                        }
-
-                        // Apply penalty to the follow up history score
-                        if (ply > 1 && (ss-1)->pieceMoved != NO_PIECE && (ss-1)->previousMove != NO_MOVE)
-                        {
-                            updateContinuationHistory((ss-1)->pieceMoved, getToSquare((ss-1)->previousMove), qPieceMoved, qToSquare, -bonus);
-                        }
-
-                    }
                 }
-                else if (moveIsCapture)
+
+                // We also penalize the quiet moves prior to the one we just searched,
+                // since they failed to cause a cutoff and are, therefore, weaker moves
+                for (int j = 0; j < quietMovesCount; j++)
                 {
-                    updateCaptureHistory(enemyPiece, movingPiece, toSquare, bonus);
+                    Move quietMove = quietMoves[j];
 
-                    // Penalize prior captures that did not trigger beta cutoff
-                    for (int j = 0; j < capturesCount; j++)
-                    {
-                        Move capture = captureMoves[j];
+                    if (quietMove == move) continue; // Don't penalize the move that caused the beta cutoff
 
-                        if (capture == move) continue; // Don't penalize the move that caused the beta cutoff
+                    int qFromSquare = getFromSquare(quietMove);
+                    int qToSquare = getToSquare(quietMove);
 
-                        int capFromSquare = getFromSquare(capture);
-                        int capToSquare = getToSquare(capture);
-
-                        Piece capPieceMoved = pos.getPieceFromBoard(capFromSquare);
-
-                        // Call the update capture history function with a penalty value
-                        updateCaptureHistory(enemyPiece, movingPiece, capToSquare, -bonus);
-
-                        // Apply penalty to the counter moves history score
-                        if (ply > 0 && (ss)->pieceMoved != NO_PIECE && (ss)->previousMove != NO_MOVE)
-                        {
-                            updateContinuationHistory((ss)->pieceMoved, getToSquare((ss)->previousMove), qPieceMoved, qToSquare, -bonus);
-                        }
-
-                        // Apply penalty to the follow up history score
-                        if (ply > 1 && (ss-1)->pieceMoved != NO_PIECE && (ss-1)->previousMove != NO_MOVE)
-                        {
-                            updateContinuationHistory((ss-1)->pieceMoved, getToSquare((ss-1)->previousMove), qPieceMoved, qToSquare, -bonus);
-                        }
-
-                    }
+                    // Call the update history function but with a negative bonus
+                    updateHistory(sideToMove, qFromSquare, qToSquare, -bonus);
+                    updateContHistories(ss, ply, pos.getPieceFromBoard(qFromSquare), qToSquare, -bonus);
                 }
-
                 // Beta cutoff
                 return beta;
             }
@@ -1034,7 +931,7 @@ Move MoveSearcher::findBestMove(Position pos, int& posEval)
 
 
 // Function used to order moves from best to worst
-int MoveSearcher::scoreMove(Move move, const Position& pos, Move hashMove, SearchStack* ss, int ply)
+int MoveSearcher::scoreMove(Move move, const Position& pos, Move hashMove, SearchStack *ss, int ply)
 {
     if (move == hashMove)
     {
@@ -1045,15 +942,17 @@ int MoveSearcher::scoreMove(Move move, const Position& pos, Move hashMove, Searc
 
     int flag = getMoveFlag(move);
 
-    if (flag == 11) return 150000; // Reward queen promotion
-    if (flag == 15) return 170000; // Reward capture that leads to queen promotion
+    if (flag == 11) return QueenPromotion; // Reward queen promotion
+    if (flag == 15) return QueenPromoCapture; // Reward capture that leads to queen promotion
 
     // Punish under-promotions
-    if (flag & 8) return -100000;
+    if (flag & 8) return UnderPromotions;
 
     // Source and destination squares for MVV-LVA for captures, or history for quiet moves
     int fromSquare = getFromSquare(move);
     int toSquare = getToSquare(move);
+
+    Piece movingPiece = pos.getPieceFromBoard(fromSquare);
 
     // MVV-LVA for capture moves
     if (isCapture(getMoveFlag(move)))
@@ -1067,9 +966,8 @@ int MoveSearcher::scoreMove(Move move, const Position& pos, Move hashMove, Searc
         {
             victim = pos.getPieceFromBoard(toSquare);
         }
-        Piece attacker = pos.getPieceFromBoard(fromSquare);
 
-        return score + 32000 + 10 * averagePieceScore[victim] - averagePieceScore[attacker];
+        return score + GoodCapturesBase + 10 * averagePieceScore[victim] - averagePieceScore[movingPiece];
     }
 
     if (ply >= 0)
@@ -1079,66 +977,15 @@ int MoveSearcher::scoreMove(Move move, const Position& pos, Move hashMove, Searc
         if (move == killerMoves[ply][1]) return KillerMoveScore1;
     }
 
-    Piece movingPiece = pos.getPieceFromBoard(fromSquare);
+    int contHistScore = getContHistoryScores(ss, movingPiece, toSquare, ply);
 
-    int continuationHistoryScore = 0;
-
-    if (ply > 0)
-    {
-        // Counter Move History - We get the opponent's last move. From it we extract the piece that moved and its destination square.
-        // We can then use this information to look into our continuation history array. If we index it by the info we got from the
-        // opponent's last move, as well as the current quiet move we are trying to score, then we get a meaningful score which tells us
-        // how good of a counter the current quiet move is in response to the opponent's move.
-
-        // The opponent's move and piece that they moved
-        Move enemyPrevMove = (ss)->previousMove;
-        Piece enemyPieceMoved = (ss)->pieceMoved;
-
-        if (enemyPrevMove != NO_MOVE && enemyPieceMoved != NO_PIECE)
-        {
-            int enemyToSquare = getToSquare(enemyPrevMove);
-
-            continuationHistoryScore += continuationHistory[enemyPieceMoved][enemyToSquare][movingPiece][toSquare];
-        }
-
-        // Follow Up History - We score the move based on how good of it is in relation to the previous move we played.
-        if (ply > 1)
-        {
-            // The opponent's move and piece that they moved
-            Move ourPrevMove = (ss-1)->previousMove;
-            Piece ourPieceMoved = (ss-1)->pieceMoved;
-
-            if (ourPrevMove != NO_MOVE && ourPieceMoved != NO_PIECE)
-            {
-                int ourToSquare = getToSquare(ourPrevMove);
-
-                continuationHistoryScore += continuationHistory[ourPieceMoved][ourToSquare][movingPiece][toSquare];
-            }
-        }
-    }
-
-
-
-    return historyScores[pos.isWhiteToMove() ? White : Black][fromSquare][toSquare] + continuationHistoryScore / 2;
+    return historyScores[pos.isWhiteToMove() ? White : Black][fromSquare][toSquare] + contHistScore;
 }
+
 
 // Function to update the history score of a move
 // The value argument is the bonus/penalty applied to the move
-void MoveSearcher::updateHistory(Color sideToMove, int fromSquare, int toSquare, int value)
+void MoveSearcher::updateHistory(Color sideToMove, int fromSquare, int toSquare, int bonus)
 {
-    int clampedBonus = std::clamp(value, -MaxHistoryScore, MaxHistoryScore);
-    historyScores[sideToMove][fromSquare][toSquare] += clampedBonus - historyScores[sideToMove][fromSquare][toSquare] * std::abs(clampedBonus) / MaxHistoryScore;
-}
-
-
-void MoveSearcher::updateContinuationHistory(Piece enemyPiece, int enemyToSq, Piece friendlyPiece, int friendlyToSq, int value)
-{
-    int clampedBonus = std::clamp(value, -MaxHistoryScore, MaxHistoryScore);
-    continuationHistory[enemyPiece][enemyToSq][friendlyPiece][friendlyToSq] += clampedBonus - continuationHistory[enemyPiece][enemyToSq][friendlyPiece][friendlyToSq] * std::abs(clampedBonus) / MaxHistoryScore;
-}
-
-void MoveSearcher::updateCaptureHistory(Piece enemyPiece, Piece friendlyPiece, int toSq, int value)
-{
-    int clampedBonus = std::clamp(value, -MaxHistoryScore, MaxHistoryScore);
-    captureHistory[enemyPiece][friendlyPiece][toSq] += clampedBonus - captureHistory[enemyPiece][friendlyPiece][toSq] * std::abs(clampedBonus) / MaxHistoryScore;
+    historyScores[sideToMove][fromSquare][toSquare] += bonus - historyScores[sideToMove][fromSquare][toSquare] * std::abs(bonus) / MaxHistoryScore;
 }

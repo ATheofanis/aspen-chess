@@ -20,13 +20,13 @@ inline bool DataGenFlag = false;
 // Search Stack to pass search-related information
 struct SearchStack
 {
+    ContinuationHistory* contHistory = nullptr;
     Accumulator accumulator;
     int staticEval{};
-    int16_t previousReductions{};
-    int16_t previousExtensions{};
-    Move previousMove = NO_MOVE;
-    Piece pieceMoved = NO_PIECE;
     bool inCheck = false;
+    int previousExtensions{};
+    Move move = NO_MOVE;
+    Piece movedPiece = NO_PIECE;
 };
 
 
@@ -56,29 +56,19 @@ private:
 public:
     bool uciStop = false;
 
-    int16_t captureHistory[12][12][64]{}; // Attacker | Victim | To Square
-
-    int16_t historyScores[2][64][64]{}; // History heuristic
-
-    int16_t continuationHistory[12][64][12][64]{};
-
-    Move killerMoves[MAX_PLY][2]{}; // Killer Moves
-
+    ContinuationHistory continuationHistoryScores[12][64]{};
+    int historyScores[2][64][64]{};
+    Move killerMoves[MAX_PLY][2]{};
 
     Move findBestMove(Position pos, int& posEval);
 
-    int scoreMove(Move move, const Position& pos, Move hashMove, SearchStack* ss, int ply = -1);
+    int scoreMove(Move move, const Position& pos, Move hashMove, SearchStack *ss, int ply = -1);
 
     void updateHistory(Color sideToMove, int fromSquare, int toSquare, int value);
 
-    void updateContinuationHistory(Piece enemyPiece, int enemyToSq, Piece friendlyPiece, int friendlyToSq, int value);
-
-    void updateCaptureHistory(Piece enemyPiece, Piece friendlyPiece, int toSq, int value);
-
     void newGame()
     {
-        memset(captureHistory, 0, sizeof(captureHistory));
-        memset(continuationHistory, 0, sizeof(continuationHistory));
+        memset(continuationHistoryScores, 0, sizeof(continuationHistoryScores));
         memset(historyScores, 0, sizeof(historyScores));
         memset(killerMoves, 0, sizeof(killerMoves));
         generation = 0;

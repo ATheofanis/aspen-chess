@@ -20,6 +20,8 @@ using ZobristHash = uint64_t;
 
 using TimeMs = std::chrono::milliseconds::rep;
 
+typedef int16_t ContinuationHistory[12][64];
+
 constexpr int MAX_PLY = 128;
 
 // returns the character of a piece given its piece index, for example 0 returns P for white pawn, 6 returns p for black pawn
