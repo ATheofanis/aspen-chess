@@ -22,6 +22,7 @@ struct SearchStack
 {
     ContinuationHistory* contHistory = nullptr;
     Accumulator accumulator;
+    int16_t historyScore{};
     int staticEval{};
     bool inCheck = false;
     int previousExtensions{};
