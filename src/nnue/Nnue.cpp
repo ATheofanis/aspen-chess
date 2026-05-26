@@ -7,7 +7,7 @@
 #include <iostream>
 #include "../../3rdparty/incbin.h"
 
-INCBIN(NetworkWeights, "NetworkFiles/aspen-net562-8.bin");
+INCBIN(NetworkWeights, "NetworkFiles/net562-9-30WDL-8B.bin");
 
 NetworkStruct NNUE;
 
@@ -17,7 +17,7 @@ void loadQuantised()
 }
 
 // NNUE evaluation using Lizard SCReLU for faster calculations
-int evaluateNNUE(const Accumulator& acc, Color sideToMove)
+int evaluateNNUE(const Accumulator& acc, Color sideToMove, int bucket)
 {
     const __m256i vec_zero = _mm256_setzero_si256();
     const __m256i vec_qa = _mm256_set1_epi16(QuantizationA);
@@ -32,8 +32,8 @@ int evaluateNNUE(const Accumulator& acc, Color sideToMove)
         const __m256i us = _mm256_load_si256((__m256i*)&stmAcc[i]); // Load from accumulator
         const __m256i them = _mm256_load_si256((__m256i*)&nstmAcc[i]);
 
-        const __m256i us_weights = _mm256_load_si256((__m256i*)&NNUE.outputWeights[i]); // Load from net
-        const __m256i them_weights = _mm256_load_si256((__m256i*)&NNUE.outputWeights[HiddenSize + i]);
+        const __m256i us_weights = _mm256_load_si256((__m256i*)&NNUE.outputWeights[bucket][i]); // Load from net
+        const __m256i them_weights = _mm256_load_si256((__m256i*)&NNUE.outputWeights[bucket][HiddenSize + i]);
 
         const __m256i us_clamped   = _mm256_min_epi16( _mm256_max_epi16(   us, vec_zero ), vec_qa );
         const __m256i them_clamped = _mm256_min_epi16( _mm256_max_epi16( them, vec_zero ), vec_qa );
@@ -59,7 +59,7 @@ int evaluateNNUE(const Accumulator& acc, Color sideToMove)
     int totalSum = _mm_cvtsi128_si32(sum128);
 
     // Dequantize first before adding the output bias so we dont lose precision
-    int score = totalSum / QuantizationA + NNUE.outputBias;
+    int score = totalSum / QuantizationA + NNUE.outputBias[bucket];
 
     // For the final step cast score to 64 bits so it does not overflow from scaling
     // Also de-quantize the total quantization factor
