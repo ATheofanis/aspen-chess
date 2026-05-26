@@ -464,7 +464,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
             // The greater the depth the greater the margin, keeping the search stable
             int reverseFutilityMargin = 70 * depth;
 
-            // Lower pruning margin when not improving
+            // Lower pruning margin when improving
             if (improving) reverseFutilityMargin -= 15 * depth;
 
             // If the RFP condition is met simply return the static evaluation
@@ -652,6 +652,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
             if (!isPv && !isInCheck && moveIsQuiet && depth <= 4)
             {
                 int LMP_Threshold = lateMovePruningThreshold[depth];
+                if (!improving) LMP_Threshold -= depth;
 
                 if (quietMovesCount >= LMP_Threshold) continue;
             }
@@ -760,7 +761,8 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
                 Color sideToMove = pos.isWhiteToMove() ? White : Black;
 
                 // The move that caused the cutoff receives a bonus based on current depth
-                const int bonus = 300 * depth - 250;
+                //const int bonus = 300 * depth - 250;
+                const int bonus = std::clamp(200 * depth * depth - 125, 0, 2000);
 
                 // If the move is quiet update its history score
                 if (moveIsQuiet)
@@ -919,7 +921,6 @@ int MoveSearcher::scoreMove(Move move, const Position& pos, Move hashMove, Searc
         return HashMoveScore;
     }
 
-    int score = 0;
 
     int flag = getMoveFlag(move);
 
@@ -948,7 +949,7 @@ int MoveSearcher::scoreMove(Move move, const Position& pos, Move hashMove, Searc
             victim = pos.getPieceFromBoard(toSquare);
         }
 
-        return score + GoodCapturesBase + 10 * averagePieceScore[victim] - averagePieceScore[movingPiece];
+        return GoodCapturesBase + 10 * averagePieceScore[victim] - averagePieceScore[movingPiece];
     }
 
     if (ply >= 0)
@@ -968,6 +969,7 @@ int MoveSearcher::scoreMove(Move move, const Position& pos, Move hashMove, Searc
 // The value argument is the bonus/penalty applied to the move
 void MoveSearcher::updateHistory(Color sideToMove, int fromSquare, int toSquare, int bonus)
 {
+    int clampedBonus = std::clamp(bonus, -MaxHistoryScore, MaxHistoryScore);
     int *historyEntry = &historyScores[sideToMove][fromSquare][toSquare];
-    *historyEntry += bonus - *historyEntry * std::abs(bonus) / MaxHistoryScore;
+    *historyEntry += clampedBonus - *historyEntry * std::abs(clampedBonus) / MaxHistoryScore;
 }

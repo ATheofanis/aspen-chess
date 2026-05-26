@@ -58,6 +58,7 @@ public:
     bool uciStop = false;
 
     ContinuationHistory continuationHistoryScores[12][64]{};
+    int captureHistory[12][64][12];
     int historyScores[2][64][64]{};
     Move killerMoves[MAX_PLY][2]{};
 
@@ -70,6 +71,7 @@ public:
     void newGame()
     {
         memset(continuationHistoryScores, 0, sizeof(continuationHistoryScores));
+        memset(captureHistory, 0, sizeof(captureHistory));
         memset(historyScores, 0, sizeof(historyScores));
         memset(killerMoves, 0, sizeof(killerMoves));
         generation = 0;

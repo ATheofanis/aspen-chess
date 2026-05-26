@@ -209,5 +209,5 @@ constexpr int QueenPromoCapture = 180000;                   // Queen Promotion w
 constexpr int GoodCapturesBase = MaxHistoryScore * 4;       // Good Captures
 constexpr int KillerMoveScore0 = MaxHistoryScore * 3 + 2;   // Killer 1
 constexpr int KillerMoveScore1 = MaxHistoryScore * 3 + 1;   // Killer 2
-constexpr int BadCapturesBase = MaxHistoryScore * 2;        // Bad Captures
+constexpr int BadCapturesBase = MaxHistoryScore - MaxHistoryScore / 4;    // Bad Captures
 constexpr int UnderPromotions = -100000;                    // Under Promotions
