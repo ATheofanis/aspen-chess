@@ -11,10 +11,10 @@
 #include "Score.h"
 #include "TranspositionTable.h"
 #include "TimeManager.h"
-#include "History.h"
 
 
 int precomputedLMR[128][256];
+
 
 // prints current depth and number of nodes searched for negamax and qsearch for the position
 void MoveSearcher::printInfo(int depth, int score)
@@ -465,7 +465,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
             int reverseFutilityMargin = 70 * depth;
 
             // Lower pruning margin when not improving
-            if (!improving) reverseFutilityMargin -= 15 * depth;
+            if (improving) reverseFutilityMargin -= 15 * depth;
 
             // If the RFP condition is met simply return the static evaluation
             if (staticValue - reverseFutilityMargin >= beta) return staticValue - reverseFutilityMargin;
@@ -502,9 +502,6 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
             int epSq = pos.getEnpassantSquare();
 
             (ss+1)->accumulator = ss->accumulator;
-            (ss+1)->move = NO_MOVE;
-            //(ss+1)->contHistory = nullptr;
-
             pos.makeNullMove(epSq);
             int value = -negaMaxAlphaBeta<NodeType::NonPV>(pos, -beta, -(beta - 1), std::max(1, depth - reduction), bestMove, ply+1, rootDepth, false, ss+1);
             pos.unmakeNullMove(epSq);
@@ -607,12 +604,6 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
         int toSquare = getToSquare(move);
         int moveFlag = getMoveFlag(move);
 
-        Piece movingPiece = pos.getPieceFromBoard(fromSquare);
-
-        (ss+1)->movedPiece = movingPiece;
-        (ss+1)->move = move;
-        (ss+1)->contHistory = &continuationHistoryScores[movingPiece][toSquare];
-
         // Check if the move is a capture or/and promotion
         bool moveIsCapture = isCapture(moveFlag);
         bool moveIsPromotion = isPromotion(moveFlag);
@@ -654,14 +645,6 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
                 continue;
             }
 
-            // Get the total history score for this specific move
-            int totalHistory = historyScores[allyColor][fromSquare][toSquare] + getContHistoryScores(ss, movingPiece, toSquare, ply);
-
-            if (depth <= 3 && totalHistory < -8000 * depth)
-            {
-                continue;
-            }
-
             // |===========================================================================|
             // | Late Move Pruning: At shallow depths, skip quiet moves if a threshold     |
             // |            number of quiet moves have already been searched.              |
@@ -669,10 +652,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
             if (!isPv && !isInCheck && moveIsQuiet && depth <= 4)
             {
                 int LMP_Threshold = lateMovePruningThreshold[depth];
-                if (totalHistory < -8192)
-                {
-                    LMP_Threshold -= depth;
-                }
+
                 if (quietMovesCount >= LMP_Threshold) continue;
             }
 
@@ -704,10 +684,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
 
                 if (move == killerMoves[ply][0]) depthReduction--; // Do not reduce too much for the first killer move
 
-                int historyReduction = std::clamp(totalHistory / 8192, -2, 2); // Tuned soon
-
-                depthReduction -= historyReduction;
-
+                //depthReduction -= historyScores[pos.isWhiteToMove() ? White : Black][fromSquare][toSquare] / 8192;
                 depthReduction += precomputedLMR[depth][i];
             }
 
@@ -726,14 +703,6 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
             if (score > alpha && depthReduction > 1)
             {
                 score = -negaMaxAlphaBeta<NodeType::NonPV>(pos, -alpha-1, -alpha, depth - 1, bestMove, ply+1, rootDepth, true, ss+1);
-
-                if ((score <= alpha || score >= beta))
-                {
-                    const int bonus = std::clamp(200 * depth * depth - 125, 0, 2000);
-                    const int continuationBonus = bonus/3;
-
-                    updateContHistories(ss, ply, movingPiece, toSquare, score >= beta ? continuationBonus : (-continuationBonus));
-                }
             }
 
             // If we are at a PV node
@@ -752,7 +721,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
         }
 
         // Increment the quiet move counter now for stable late move pruning
-        if (moveIsQuiet && quietMovesCount < 32) quietMoves[quietMovesCount++] = move;
+        if (moveIsQuiet) quietMoves[quietMovesCount++] = move;
 
         if (score > alpha)
         {
@@ -782,24 +751,21 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
                 bestMove = move;
             }
 
-            Color sideToMove;
             // The score exceeds beta, the opponent will deviate from this line so we can prune this branch
             if (score >= beta)
             {
                 // Save the node with beta bound since it exceeds beta
                 save(posZobrist, ttBestMove, score, staticValue, depth, Bound::BOUND_BETA, generation, ply);
 
-                sideToMove = pos.isWhiteToMove() ? White : Black;
+                Color sideToMove = pos.isWhiteToMove() ? White : Black;
 
                 // The move that caused the cutoff receives a bonus based on current depth
-                const int bonus = std::clamp(200 * depth * depth - 125, 0, 2000);
-                const int continuationBonus = bonus/3;
+                const int bonus = 300 * depth - 250;
 
                 // If the move is quiet update its history score
                 if (moveIsQuiet)
                 {
                     updateHistory(sideToMove, fromSquare, toSquare, bonus);
-                    updateContHistories(ss, ply, movingPiece, toSquare, continuationBonus);
 
                     // The move caused a beta cutoff so we also update the killers for this ply
                     killerMoves[ply][1] = killerMoves[ply][0];
@@ -819,11 +785,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
 
                     // Call the update history function but with a negative bonus
                     updateHistory(sideToMove, qFromSquare, qToSquare, -bonus);
-                    updateContHistories(ss, ply, pos.getPieceFromBoard(qFromSquare), qToSquare, -continuationBonus);
                 }
-
-                ss->historyScore = historyScores[sideToMove][fromSquare][toSquare];
-
                 // Beta cutoff
                 return beta;
             }
@@ -976,10 +938,10 @@ int MoveSearcher::scoreMove(Move move, const Position& pos, Move hashMove, Searc
     // MVV-LVA for capture moves
     if (isCapture(getMoveFlag(move)))
     {
-        Piece victim = wp;
+        Piece victim;
         if (flag == 5)
         {
-            victim = wp;
+            victim = pos.isWhiteToMove() ? bp : wp;
         }
         else
         {
@@ -996,9 +958,9 @@ int MoveSearcher::scoreMove(Move move, const Position& pos, Move hashMove, Searc
         if (move == killerMoves[ply][1]) return KillerMoveScore1;
     }
 
-    int contHistScore = getContHistoryScores(ss, movingPiece, toSquare, ply);
+    //int contHistScore = getContHistoryScores(ss, movingPiece, toSquare, ply);
 
-    return 3 * historyScores[pos.isWhiteToMove() ? White : Black][fromSquare][toSquare] + contHistScore;
+    return historyScores[pos.isWhiteToMove() ? White : Black][fromSquare][toSquare];
 }
 
 
