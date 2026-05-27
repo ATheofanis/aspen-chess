@@ -187,7 +187,7 @@ struct legalityInformation
     int numOfChecks{};
 };
 
-using history = int[64][64];
+using history = int[2][64][64];
 
 // average piece score for SEE, MVVLVA and other stuff
 constexpr int averagePieceScore[12] = {88, 309, 331, 494, 980, 0, 88, 309, 331, 494, 980, 0};

@@ -383,6 +383,7 @@ public:
         return true;
     }
 
+
     // Checks if a given move is physically possible for the current position
     bool moveIsValid(Move move) const
     {

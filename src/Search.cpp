@@ -11,6 +11,7 @@
 #include "Score.h"
 #include "TranspositionTable.h"
 #include "TimeManager.h"
+#include "MovePicker.h"
 
 
 int precomputedLMR[128][256];
@@ -536,7 +537,6 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
 
 
     // generate the moves by first extracting the legality info of the position
-    Move moves[256];
     int numOfMoves = 0;
 
     // |=================================================================================================|
@@ -550,56 +550,21 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
 
     legalityInformation info = getLegalityInfo(kingSquare, allyColor, pos);
 
-    // Generate all legal moves using previously calculated legality info
-    generateLegalMoves(info, pos, moves, numOfMoves);
-
-    // If no legal moves were generated then check for CHECKMATE or STALEMATE
-    if (numOfMoves == 0)
-    {
-        if (isInCheck) { return ply - CHECKMATE; }
-        return 0;
-    }
-
     // Keep track of quiet moves searched for late move pruning (LMP)
     int quietMovesCount = 0;
 
     int quietMoves[256];
 
-    int moveScores[numOfMoves];
 
-    for (int i = 0; i < numOfMoves; i++)
-    {
-        // Get the score of every move
-        moveScores[i] = scoreMove(moves[i], pos, ttBestMove, ss, ply);
-    }
+    // Position, Info, History, ttMove, QS Flag, Killer1, Killer2
+    MovePicker movePicker(pos, info, &historyScores, ttBestMove, false, killerMoves[ply][0], killerMoves[ply][1]);
+    Move move;
 
     int score;
 
     // Begin searching all the moves until we either run out of moves or a cutoff occurs
-    for (int i = 0; i < numOfMoves; i++)
+    while ((move = movePicker.nextMove()) != NO_MOVE)
     {
-        int maxScore = moveScores[i];
-        int nextMoveIndex = i;
-
-        // Pick the move with the highest score
-        for (int j = i + 1; j < numOfMoves; j++)
-        {
-            if (moveScores[j] > maxScore)
-            {
-                maxScore = moveScores[j];
-                nextMoveIndex = j;
-            }
-        }
-
-        // Swap the best move found to the beginning of the list so that we don't loop through it at the next iteration
-        if (nextMoveIndex != i)
-        {
-            std::swap(moveScores[i], moveScores[nextMoveIndex]);
-            std::swap(moves[i], moves[nextMoveIndex]);
-        }
-
-        Move move = moves[i];
-
         int fromSquare = getFromSquare(move);
         int toSquare = getToSquare(move);
         int moveFlag = getMoveFlag(move);
@@ -616,7 +581,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
         // |   it with a full window, while the remaining moves are searched with a limited 'null window'.   |
         // |        If the move stayed within the null window, it is re-searched with a normal one           |
         // |=================================================================================================|
-        if (i == 0)
+        if (numOfMoves == 0)
         {
             // Update the accumulator for the next ply
             (ss+1)->accumulator = ss->accumulator;
@@ -652,16 +617,16 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
             if (!isPv && !isInCheck && moveIsQuiet && depth <= 4)
             {
                 int LMP_Threshold = lateMovePruningThreshold[depth];
-                if (!improving) LMP_Threshold -= depth;
+                //if (!improving) LMP_Threshold -= depth;
 
                 if (quietMovesCount >= LMP_Threshold) continue;
             }
 
             // Update the accumulator for the next ply
             (ss+1)->accumulator = ss->accumulator;
-            (ss+1)->accumulator.makeMove(moves[i], pos);
+            (ss+1)->accumulator.makeMove(move, pos);
 
-            pos.makeMove(moves[i]);
+            pos.makeMove(move);
 
             // Base depth reduction is 1
             int depthReduction = 1;
@@ -673,7 +638,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
             // |  at which later moves are searched. To keep the search stable, we limit   |
             // |      the reductions strictly to quiet moves that do not give check.       |
             // |===========================================================================|
-            if (depth > 3 && i > 3 && !isInCheck && moveIsQuiet)
+            if (depth > 3 && numOfMoves > 3 && !isInCheck && moveIsQuiet)
             {
                 // Reduce the depth of the current move is the hash move is a capture or a promotion
                 // because it probably means the hash move line is much stronger than the current
@@ -686,7 +651,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
                 if (move == killerMoves[ply][0]) depthReduction--; // Do not reduce too much for the first killer move
 
                 //depthReduction -= historyScores[pos.isWhiteToMove() ? White : Black][fromSquare][toSquare] / 8192;
-                depthReduction += precomputedLMR[depth][i];
+                depthReduction += precomputedLMR[depth][numOfMoves];
             }
 
             depthReduction = std::max(0, depthReduction);
@@ -791,7 +756,15 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
                 return beta;
             }
         }
+        numOfMoves++;
     }
+
+    if (numOfMoves == 0)
+    {
+        if (isInCheck) { return ply - CHECKMATE; }
+        return 0;
+    }
+
 
     save(posZobrist, ttBestMove, alpha, staticValue, depth, hashFlag, generation, ply);
     return alpha;

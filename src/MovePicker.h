@@ -9,8 +9,6 @@ enum class MovePickerPhase : int {
     HashMove,                   // If there is a valid hash move it is always searched first
     GenAndScoreCapsAndPromos,   // Generate and sort every capture and promotion
     WinningCapturesAndPromos,   // Winning captures and queen promotions
-    FirstKillerMove,             // The first killer move is selected
-    SecondKillerMove,           // The second killer move is selected
     GenAndScoreQuietMoves,      // Generate and sort all quiet moves
     QuietMoves,                 // Every quiet move
     LosingCapturesAndPromos,    // Losing captures and under-promotions
@@ -35,7 +33,7 @@ private:
     Move secondKillerMove;
 
     // History moves passed by the move searcher
-    const history* historyMoves;
+    const history* historyScores;
 
     int moveScores[256]{};
     int numOfMoves{};
@@ -50,11 +48,10 @@ public:
 
     // Position, Info, History, ttMove, QS Flag, Killer1, Killer2
     MovePicker(const Position& pos, const legalityInformation& info, const history* history, Move ttMove, bool isQSearch, Move killer1 = NO_MOVE, Move killer2 = NO_MOVE) :
-        position(pos), legalityInfo(info), historyMoves(history), hashMove(ttMove), skipQuietMoves(isQSearch), firstKillerMove(killer1), secondKillerMove(killer2),
+        position(pos), legalityInfo(info), historyScores(history), hashMove(ttMove), skipQuietMoves(isQSearch), firstKillerMove(killer1), secondKillerMove(killer2),
         phase(MovePickerPhase::HashMove) {}
 
-    int scoreQuietMove(Move move);
-    int scoreCaptureAndPromoMove(Move move);
+    int scoreMove(Move move);
 
     void scoreCapAndPromoMoves();
     void scoreQuietMoves();

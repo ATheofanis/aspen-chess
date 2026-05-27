@@ -25,6 +25,7 @@
 #include <thread>
 
 #include "DataGen.h"
+#include "PseudoMoveGen.h"
 #include "TimeManager.h"
 
 class Position;
@@ -122,7 +123,7 @@ long long Perft(Position& pos, int depth)
     //std::cout << "PERFT FOR MOVE:" << std::endl;
     //printMove(move);
 
-    Move moves[256];
+    Move pseudoMoves[256];
     int numOfMoves = 0, i;
     long long nodes = 0;
 
@@ -134,21 +135,32 @@ long long Perft(Position& pos, int depth)
 
     //std::cout << " GENERATING LEGAL MOVES:" << std::endl;
 
-    generateLegalMoves(info, pos, moves, numOfMoves);
+    generatePseudoLegalCapAndPromoMoves(pos, pseudoMoves, numOfMoves);
+    generatePseudoLegalQuietMoves(pos, pseudoMoves, numOfMoves);
 
-    //std::cout << " MADE IT AFTER LEGALITY EXTRACTION AND MOVE GEN PREPARING FOR LOOP WITH " << numOfMoves << " NUM OF MOVES." << std::endl;
+    Move moves[256];
+
+    int pseudoMoveCount = numOfMoves;
+    numOfMoves = 0;
+
+    for (int j = 0; j < pseudoMoveCount; j++)
+    {
+        Move mv = pseudoMoves[j];
+        if (pos.moveIsLegal(info, mv))
+        {
+            moves[numOfMoves++] = mv;
+        }
+    }
+    //generateLegalMoves(info, pos, moves, numOfMoves);
 
     for (i = 0; i < numOfMoves; i++)
     {
-
         //printMove(moves[i]);
         pos.makeMove(moves[i]);
 
 
         nodes += Perft(pos, depth - 1);
         pos.unmakeMove();
-
-
 
     }
     return nodes;
@@ -157,18 +169,30 @@ long long Perft(Position& pos, int depth)
 
 void dividePerft(Position& pos, int depth)
 {
-    Move moves[256];
-    int numOfMvs = 0;
+    Move pseudoMoves[256];
+    int numOfMoves = 0;
 
 
     legalityInformation info = getLegalityInfo(lsbIndex(pos.isWhiteToMove() ? pos.getPieceBitboard(wK) : pos.getPieceBitboard(bK)), pos.isWhiteToMove() ? White : Black, pos);
 
     //std::cout << " GENERATING LEGAL MOVES:" << std::endl;
 
-    generateLegalMoves(info, pos, moves, numOfMvs);
+    generatePseudoLegalCapAndPromoMoves(pos, pseudoMoves, numOfMoves);
+    generatePseudoLegalQuietMoves(pos, pseudoMoves, numOfMoves);
+
+    Move moves[256];
+
+    numOfMoves = 0;
+    for (const Move mv : pseudoMoves)
+    {
+        if (pos.moveIsLegal(info, mv))
+        {
+            moves[numOfMoves++] = mv;
+        }
+    }
 
     long long total = 0;
-    for (int i = 0; i < numOfMvs; i++)
+    for (int i = 0; i < numOfMoves; i++)
     {
         long long nodes = 0;
         pos.makeMove(moves[i]);
@@ -378,7 +402,7 @@ void LoopUCI()
             // non fen string ---------
             if (tokens.size() >= 2 && tokens[1] == "startpos")
             {
-                if (tokens[2] == "moves")
+                if (tokens.size() >= 3 && tokens[2] == "moves")
                 {
                     pos = parsePosition(tokens, 3);
                 }
@@ -456,6 +480,11 @@ void LoopUCI()
                 {
                     timeManager.disableTimeControl();
                     MAX_NODES = std::atoi(tokens[i+1].c_str());
+                }
+                else if (tokens[i] == "perft")
+                {
+                    int perftDepth = std::atoi(tokens[i+1].c_str());
+                    dividePerft(pos, perftDepth);
                 }
             }
 
