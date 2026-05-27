@@ -32,7 +32,7 @@ inline void applyHistoryBonus(int16_t *entry, int bonus)
 }
 
 // Apply bonus/penalty to the continuation history tables
-// The offsets are 1, 2 and 4. 1 is for the opponents last move, 2 is for our last move, and for is for our second last move
+// The offsets are 1, 2 and 4. 1 is for the opponents last move, 2 is for our last move, and 4 is for our second last move
 inline void updateContHistories(SearchStack* ss, int ply, Piece movingPiece, int toSquare, int bonus)
 {
     constexpr int offsets[3] = {1, 2, 4};

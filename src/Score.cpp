@@ -209,11 +209,8 @@ int getBishopPairScore(const Position& pos)
 // NNUE evaluation of the position
 int scoreBoardNNUE(const Position& pos, Accumulator accumulator)
 {
-    // Select the proper output bucket
-    int bucket = chooseOutputBuckets(pos.getOccupiedBitboard());
-
     // Call the NNUE evaluation function
-    int NNUEscore = evaluateNNUE(accumulator, pos.isWhiteToMove() ? White : Black, bucket);
+    int NNUEscore = evaluateNNUE(accumulator, pos.isWhiteToMove() ? White : Black);
 
     return NNUEscore;
 }

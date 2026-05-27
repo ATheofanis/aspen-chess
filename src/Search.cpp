@@ -761,8 +761,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
                 Color sideToMove = pos.isWhiteToMove() ? White : Black;
 
                 // The move that caused the cutoff receives a bonus based on current depth
-                //const int bonus = 300 * depth - 250;
-                const int bonus = std::clamp(200 * depth * depth - 125, 0, 2000);
+                const int bonus = 300 * depth - 250;
 
                 // If the move is quiet update its history score
                 if (moveIsQuiet)
