@@ -27,6 +27,7 @@
 #include "DataGen.h"
 #include "PseudoMoveGen.h"
 #include "TimeManager.h"
+#include "Parameters.h"
 
 class Position;
 
@@ -526,7 +527,7 @@ void LoopUCI()
             std::cout << "id name Aspen 2.3.0\n";
             std::cout << "id author ATheo\n";
             std::cout << "option name Hash type spin default 64 min 1 max 32768\n"; // Default hash table size is 64 megabytes
-            //std::cout << "option name LMR_Base type spin default 100 min 25 max 175\n";
+            Aspen::Parameters::printTunableParameters();
             std::cout << "uciok\n";
         }
         else if (tokens[0] == "ucinewgame")
@@ -551,12 +552,10 @@ void LoopUCI()
                     int TTSizeMB = std::atoi(tokens[4].c_str());
                     resizeTranspositionTable(TTSizeMB);
                 }
-                // Set search parameter value
-                //if ((tokens[2] == "LMR_Base") && tokens[3] == "value")
-                //{
-                //    int base = std::atoi(tokens[4].c_str());
-                //    LMR_Base = base / 100.f;
-                //}
+                else
+                {
+                    if (tokens.size() >= 4) Aspen::Parameters::setParameter(tokens[2], std::atoi(tokens[4].c_str()));
+                }
             }
         }
         // Quit the program

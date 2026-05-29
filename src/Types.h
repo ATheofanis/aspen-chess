@@ -12,6 +12,8 @@
 #include <unordered_map>
 #include <chrono>
 
+#include "Parameters.h"
+
 
 // this file holds various enum's, arrays and variables with the 'using' keyword
 
@@ -193,7 +195,7 @@ using history = int[2][64][64];
 constexpr int averagePieceScore[12] = {88, 309, 331, 494, 980, 0, 88, 309, 331, 494, 980, 0};
 
 // LMR thresholds, normal, improving and worsening
-constexpr int lateMovePruningThreshold[5] = {999, 6, 12, 17, 25};
+//inline int lateMovePruningThreshold[5] = {999, Aspen::Parameters::LMP_D1, Aspen::Parameters::LMP_D2, Aspen::Parameters::LMP_D3, Aspen::Parameters::LMP_D4};
 
 constexpr int worseningLateMovePruningThreshold[5] = {999, 5, 10, 14, 20};
 constexpr int improvingLateMovePruningThreshold[5] = {999, 7, 14, 20, 28};
