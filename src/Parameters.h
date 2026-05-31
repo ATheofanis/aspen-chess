@@ -22,7 +22,7 @@ namespace Aspen::Parameters
     // Q-SEARCH PARAMETERS
     inline int QS_DeltaMargin = 980;
     inline int QS_DeltaCaptureMargin = 200;
-    inline int QS_SEE_Threshold = -50;
+    inline int QS_SEE_Threshold = 0;
 
 
     // LMP PARAMETERS FOR EACH DEPTH

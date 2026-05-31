@@ -17,7 +17,7 @@
 using namespace Aspen::Parameters;
 
 
-double precomputedLMR[128][256];
+int precomputedLMR[128][256];
 
 
 // prints current depth and number of nodes searched for negamax and qsearch for the position
@@ -504,14 +504,10 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
         // |   can safely prune the branch and save a lot of time. We just check the game phase first to make   |
         // |   sure we aren't in an endgame where skipping a could be good in certain cases (zugzwang).         |
         // |====================================================================================================|
-        if (ply > 0 && (alpha == beta - 1) && allowNullMove && depth > NMP_MinDepth && pos.getGamePhase() && beta < CHECKMATE - MAX_PLY) // Do not play a null move twice in a row
+        if (ply > 0 && (alpha == beta - 1) && allowNullMove && depth > 3 && pos.getGamePhase() && beta < CHECKMATE - MAX_PLY) // Do not play a null move twice in a row
         {
-            int reduction = std::min(depth, NMP_Base + (depth * 10000) / NMP_Divisor); // NMP Reduction
-            if (improving) reduction+= NMP_ImprovingBonus; // More NMP reduction when improving
-
-            reduction /= 100;
-
-            reduction = std::min(depth, reduction);
+            int reduction = std::min(depth, 4 + depth / 3); // NMP Reduction
+            if (improving) reduction++; // More NMP reduction when improving
 
             int epSq = pos.getEnpassantSquare();
 
@@ -676,7 +672,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
             // |===========================================================================|
             if (!isPv && !isInCheck && moveIsQuiet && depth <= 4)
             {
-                int LMP_Threshold = lateMovePruningThreshold[depth];
+                int LMP_Threshold = lateMovePruningThreshold2[depth];
                 if (!improving) LMP_Threshold -= depth;
 
                 if (quietMovesCount >= LMP_Threshold) continue;

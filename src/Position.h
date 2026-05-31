@@ -421,7 +421,7 @@ public:
         if (movingPiece == wp)
         {
             // Promotions only on 7th rank
-            if (moveFlag & 8 && fromMask & rank7) return false;
+            if (moveFlag & 8 && !(fromMask & rank7)) return false;
             if (moveFlag == 5) return (toSquare == enPassantSquare) && (toSquare == fromSquare + 7 || toSquare == fromSquare + 9);
             if (isCap) return (toMask & blackPiecesBitboard) && (toSquare == fromSquare + 7 || toSquare == fromSquare + 9);
             if (moveFlag == 1) return (toSquare == fromSquare + 16) && !(toMask & occupiedSquaresBitboard) && !((1ULL << (fromSquare + 8)) & occupiedSquaresBitboard) && (fromSquare / 8 == 1);
@@ -429,7 +429,7 @@ public:
         }
         else if (movingPiece == bp)
         {
-            if (moveFlag & 8 && fromMask & rank2) return false;
+            if (moveFlag & 8 && !(fromMask & rank2)) return false;
             if (moveFlag == 5) return (toSquare == enPassantSquare) && (toSquare == fromSquare - 7 || toSquare == fromSquare - 9);
             if (isCap) return (toMask & whitePiecesBitboard) && (toSquare == fromSquare - 7 || toSquare == fromSquare - 9);
             if (moveFlag == 1) return (toSquare == fromSquare - 16) && !(toMask & occupiedSquaresBitboard) && !((1ULL << (fromSquare - 8)) & occupiedSquaresBitboard) && (fromSquare / 8 == 6);
