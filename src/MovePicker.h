@@ -7,11 +7,8 @@
 
 enum class MovePickerPhase : int {
     HashMove,                   // If there is a valid hash move it is always searched first
-    GenAndScoreCapsAndPromos,   // Generate and sort every capture and promotion
-    WinningCapturesAndPromos,   // Winning captures and queen promotions
-    GenAndScoreQuietMoves,      // Generate and sort all quiet moves
-    QuietMoves,                 // Every quiet move
-    LosingCapturesAndPromos,    // Losing captures and under-promotions
+    GenLegalMoves,
+    PlayLegalMoves,
     End                         // The end - all moves have been searched
 };
 
@@ -54,5 +51,5 @@ public:
     int scoreMove(Move move);
 
     void scoreCapAndPromoMoves();
-    void scoreQuietMoves();
+    void scoreMoves();
 };

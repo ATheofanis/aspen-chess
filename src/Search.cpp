@@ -141,7 +141,7 @@ int MoveSearcher::quiescence(Position& pos, int alpha, int beta, Move ttBestMove
         // |  this node is doomed to fail-low. We can safely prune the entire branch right now        |
         // |           instead of generating and testing captures in the loop.                        |
         // |==========================================================================================|
-        if (bestScore < alpha - QS_DeltaMargin)
+        if (bestScore < alpha - 980)
         {
             return bestScore;
         }
@@ -244,7 +244,7 @@ int MoveSearcher::quiescence(Position& pos, int alpha, int beta, Move ttBestMove
             // |   going to fail-low. We can safely prune the entire branch right now instead of          |
             // |           generating and testing  captures in the loop.                                  |
             // |==========================================================================================|
-            if (bestScore + capturedPieceScore + QS_DeltaCaptureMargin < alpha)
+            if (bestScore + capturedPieceScore + 200 < alpha)
             {
                 continue;
             }
@@ -256,7 +256,7 @@ int MoveSearcher::quiescence(Position& pos, int alpha, int beta, Move ttBestMove
             if (averagePieceScore[attacker] > averagePieceScore[capturedPiece])
             {
                 // Skip move if SEE returns less than 0 meaning losing series of captures
-                if (pos.SEE(toSquare, capturedPiece, fromSquare, attacker) < QS_SEE_Threshold) continue;
+                if (pos.SEE(toSquare, capturedPiece, fromSquare, attacker) < 0) continue;
             }
         }
 
@@ -468,14 +468,14 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
         // |     node, the king must not be in check, the hash move must not be a capture,                   |
         // |                    and the remaining depth must be relatively low.                              |
         // |=================================================================================================|
-        if (depth <= RFP_MaxDepth && !ttMoveIsCapture)
+        if (depth <= 7 && !ttMoveIsCapture)
         {
             // Calculate the margin for reverse futility pruning.
             // The greater the depth the greater the margin, keeping the search stable
-            int reverseFutilityMargin = RFP_MarginMultiplier * depth + RFP_MarginBase;
+            int reverseFutilityMargin = 70 * depth;
 
             // Lower pruning margin when improving
-            if (improving) reverseFutilityMargin -= (RFP_ImprovingMultiplier * depth + RFP_ImprovingBase);
+            if (improving) reverseFutilityMargin -= 15 * depth;
 
             // If the RFP condition is met simply return the static evaluation
             if (staticValue - reverseFutilityMargin >= beta) return staticValue - reverseFutilityMargin;
@@ -488,9 +488,9 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
         // |   tactics, we instead drop directly into quiescence search. If the value it returns is still    |
         // |             below alpha, we can safely prune the branch and return that value.                  |
         // |=================================================================================================|
-        if (depth <= RazoringMaxDepth && pos.getGamePhase() && (alpha == beta - 1))
+        if (depth <= 3 && pos.getGamePhase() && (alpha == beta - 1))
         {
-            int margin = RazoringMarginBase + depth * RazoringMarginMultiplier;
+            int margin = 300 + depth * 60;
             if (staticValue + margin < alpha)
             {
                 return quiescence<nodeType>(pos, alpha, beta, NO_MOVE, ply, ss);
@@ -540,12 +540,13 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
     if constexpr (!isPv)
     {
         // We must also not be in check
-        canFutilityPrune = (depth == 1 && !isInCheck && staticValue + FP_Margin1 <= alpha);
-        canExtendedFutilityPrune = (depth == 2 && !isInCheck && staticValue + FP_Margin2 <= alpha);
+        canFutilityPrune = (depth == 1 && !isInCheck && staticValue + 200 <= alpha);
+        canExtendedFutilityPrune = (depth == 2 && !isInCheck && staticValue + 500 <= alpha);
     }
 
 
     // generate the moves by first extracting the legality info of the position
+    Move moves[256];
     int numOfMoves = 0;
 
     // |=================================================================================================|
@@ -559,22 +560,56 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
 
     legalityInformation info = getLegalityInfo(kingSquare, allyColor, pos);
 
+    // Generate all legal moves using previously calculated legality info
+    generateLegalMoves(info, pos, moves, numOfMoves);
+
+    // If no legal moves were generated then check for CHECKMATE or STALEMATE
+    if (numOfMoves == 0)
+    {
+        if (isInCheck) { return ply - CHECKMATE; }
+        return 0;
+    }
+
     // Keep track of quiet moves searched for late move pruning (LMP)
     int quietMovesCount = 0;
 
     int quietMoves[256];
 
+    int moveScores[numOfMoves];
 
-    // Position, Info, History, ttMove, QS Flag, Killer1, Killer2
-    MovePicker movePicker(pos, info, &historyScores, ttBestMove, false, killerMoves[ply][0], killerMoves[ply][1]);
-    Move move;
+    for (int i = 0; i < numOfMoves; i++)
+    {
+        // Get the score of every move
+        moveScores[i] = scoreMove(moves[i], pos, ttBestMove, ss, ply);
+    }
 
+    int searchedMoves = 0;
     int score;
 
     // Begin searching all the moves until we either run out of moves or a cutoff occurs
-    while ((move = movePicker.nextMove()) != NO_MOVE)
+    for (int i = 0; i < numOfMoves; i++)
     {
-        if (move == ss->excludedMove) continue;
+        int maxScore = moveScores[i];
+        int nextMoveIndex = i;
+
+        // Pick the move with the highest score
+        for (int j = i + 1; j < numOfMoves; j++)
+        {
+            if (moveScores[j] > maxScore)
+            {
+                maxScore = moveScores[j];
+                nextMoveIndex = j;
+            }
+        }
+
+        // Swap the best move found to the beginning of the list so that we don't loop through it at the next iteration
+        if (nextMoveIndex != i)
+        {
+            std::swap(moveScores[i], moveScores[nextMoveIndex]);
+            std::swap(moves[i], moves[nextMoveIndex]);
+        }
+
+        Move move = moves[i];
 
         int fromSquare = getFromSquare(move);
         int toSquare = getToSquare(move);
@@ -592,52 +627,52 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
         // |   it with a full window, while the remaining moves are searched with a limited 'null window'.   |
         // |        If the move stayed within the null window, it is re-searched with a normal one           |
         // |=================================================================================================|
-        if (numOfMoves == 0)
+        if (i == 0)
         {
             int extension = 0;
 
             // Singular Extension
-            if (!rootNode && depth >= SE_MinDepth && ply <= rootDepth * 2 && move == ttBestMove && ttData.depth >= depth - 3
-                && (ttData.bound == Bound::BOUND_EXACT || ttData.bound == Bound::BOUND_BETA)
-                && std::abs(ttData.evaluation) < CHECKMATE - MAX_PLY)
-            {
-                int margin = depth * SE_MarginMultiplier / SE_MarginDivisor;
-                int singularBeta = std::max(ttData.evaluation - margin, -CHECKMATE);
-                int singularDepth = (depth - SE_DepthSubtractor) / SE_DepthDivisor;
-
-                ss->excludedMove = move;
-                Move dummyMove;
-                int singularScore = negaMaxAlphaBeta<NodeType::NonPV>(pos, singularBeta - 1, singularBeta, singularDepth, dummyMove, ply, rootDepth, false, ss, cutNode);
-                ss->excludedMove = NO_MOVE;
-
-                if (singularScore < singularBeta)
-                {
-                    if (!isPv && singularScore < singularBeta - SE_TripleThreshold && depth <= SE_TripleMaxDepth && !isCapture(getMoveFlag(move)))
-                    {
-                        extension = 3;
-                    } else if (!isPv && singularScore < singularBeta - SE_DoubleThreshold && depth <= SE_DoubleMaxDepth) {
-                        extension = 2;
-                    } else {
-                        extension = 1;
-                    }
-                }
-                else if (singularBeta >= beta)
-                {
-                    return singularBeta;
-                }
-                else if (ttData.evaluation >= beta)
-                {
-                    extension = -2 + isPv;
-                }
-                else if (ttData.evaluation <= alpha)
-                {
-                    extension = -1;
-                }
-                else if (cutNode)
-                {
-                    extension = -2;
-                }
-            }
+            //if (!rootNode && depth >= SE_MinDepth && ply <= rootDepth * 2 && move == ttBestMove && ttData.depth >= depth - 3
+            //    && (ttData.bound == Bound::BOUND_EXACT || ttData.bound == Bound::BOUND_BETA)
+            //    && std::abs(ttData.evaluation) < CHECKMATE - MAX_PLY)
+            //{
+            //    int margin = depth * SE_MarginMultiplier / SE_MarginDivisor;
+            //    int singularBeta = std::max(ttData.evaluation - margin, -CHECKMATE);
+            //    int singularDepth = (depth - SE_DepthSubtractor) / SE_DepthDivisor;
+//
+            //    ss->excludedMove = move;
+            //    Move dummyMove;
+            //    int singularScore = negaMaxAlphaBeta<NodeType::NonPV>(pos, singularBeta - 1, singularBeta, singularDepth, dummyMove, ply, rootDepth, false, ss, cutNode);
+            //    ss->excludedMove = NO_MOVE;
+//
+            //    if (singularScore < singularBeta)
+            //    {
+            //        if (!isPv && singularScore < singularBeta - SE_TripleThreshold && depth <= SE_TripleMaxDepth && !isCapture(getMoveFlag(move)))
+            //        {
+            //            extension = 3;
+            //        } else if (!isPv && singularScore < singularBeta - SE_DoubleThreshold && depth <= SE_DoubleMaxDepth) {
+            //            extension = 2;
+            //        } else {
+            //            extension = 1;
+            //        }
+            //    }
+            //    else if (singularBeta >= beta)
+            //    {
+            //        return singularBeta;
+            //    }
+            //    else if (ttData.evaluation >= beta)
+            //    {
+            //        extension = -2 + isPv;
+            //    }
+            //    else if (ttData.evaluation <= alpha)
+            //    {
+            //        extension = -1;
+            //    }
+            //    else if (cutNode)
+            //    {
+            //        extension = -2;
+            //    }
+            //}
 
             // Update the accumulator for the next ply
             (ss+1)->accumulator = ss->accumulator;
@@ -672,8 +707,8 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
             // |===========================================================================|
             if (!isPv && !isInCheck && moveIsQuiet && depth <= 4)
             {
-                int LMP_Threshold = lateMovePruningThreshold2[depth];
-                if (!improving) LMP_Threshold -= depth;
+                int LMP_Threshold = lateMovePruningThreshold[depth];
+                //if (!improving) LMP_Threshold -= depth;
 
                 if (quietMovesCount >= LMP_Threshold) continue;
             }
@@ -694,32 +729,26 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
             // |  at which later moves are searched. To keep the search stable, we limit   |
             // |      the reductions strictly to quiet moves that do not give check.       |
             // |===========================================================================|
-            if (depth > 3 && numOfMoves > 3 && !isInCheck && moveIsQuiet)
+            if (depth > 3 && i > 3 && !isInCheck && moveIsQuiet)
             {
                 // Reduce the depth of the current move is the hash move is a capture or a promotion
                 // because it probably means the hash move line is much stronger than the current
                 // Also reduce depth if there is no hash move. A branch without a hash move is usually less important,
                 // meaning we can reduce the depth at which we will search it to save time for more important nodes
-                if (ttBestMove == NO_MOVE)
-                {
-                    depthReduction += LMR_NoHashPenalty;
-                }
-                else if (ttMoveIsCapture || ttMoveIsPromo)
-                {
-                    depthReduction += LMR_HashIsCapPromoPenalty;
-                }
+                if (ttBestMove == NO_MOVE || ttMoveIsCapture || ttMoveIsPromo) depthReduction++;
 
-                if (!improving) depthReduction += LMR_NotImprovingPenalty; // Prune more late quiet moves when not improving
+                if (!improving) depthReduction++; // Prune more late quiet moves when not improving
 
-                if (move == killerMoves[ply][0]) depthReduction -= LMR_KillerBonus; // Do not reduce too much for the first killer move
+                if (move == killerMoves[ply][0]) depthReduction--; // Do not reduce too much for the first killer move
 
-                depthReduction += precomputedLMR[depth][numOfMoves];
+                //depthReduction -= historyScores[pos.isWhiteToMove() ? White : Black][fromSquare][toSquare] / 8192;
+                depthReduction += precomputedLMR[depth][i];
             }
 
-            int finalDepthReduction = std::max(0, depthReduction / 100);
+            depthReduction = std::max(0, depthReduction);
 
             // Make sure the depth reduction does not lead to a depth less than zero
-            int reducedDepth = std::max(0, depth - finalDepthReduction);
+            int reducedDepth = std::max(0, depth - depthReduction);
 
 
             // LMR + PVS : Depth reduction combined with a null window for moves after the first.
@@ -821,14 +850,9 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
                 return beta;
             }
         }
-        numOfMoves++;
+        searchedMoves++;
     }
 
-    if (numOfMoves == 0)
-    {
-        if (isInCheck) { return ply - CHECKMATE; }
-        return 0;
-    }
 
 
     if (ss->excludedMove == NO_MOVE) save(posZobrist, ttBestMove, alpha, staticValue, depth, hashFlag, generation, ply);

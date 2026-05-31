@@ -262,16 +262,8 @@ public:
         int moveFlag = getMoveFlag(move);
         Piece piece = Board[fromSquare];
 
-        Color attacker = Black;
-        int squaresColorDelta = 0;
-        if (!whiteToMoveFlag)
-        {
-            attacker = White;
-            squaresColorDelta = 56;
-        }
-
         // If the moving piece is the white king
-        if (piece == wK || piece == bK)
+        if (piece == wK)
         {
 
             // Check the legality of white kingside castles
@@ -279,9 +271,9 @@ public:
             {
                 // If any of the squares that the king passes through are under attack then the move is illegal
                 // The squares for white kingside castles are : e1, f1, g1
-                if (squareUnderAttack(e1 + squaresColorDelta, attacker, *this, occupiedSquaresBitboard) ||
-                    squareUnderAttack(f1 + squaresColorDelta, attacker, *this, occupiedSquaresBitboard) ||
-                    squareUnderAttack(g1 + squaresColorDelta, attacker, *this, occupiedSquaresBitboard))
+                if (squareUnderAttack(e1, Black, *this, occupiedSquaresBitboard) ||
+                    squareUnderAttack(f1, Black, *this, occupiedSquaresBitboard) ||
+                    squareUnderAttack(g1, Black, *this, occupiedSquaresBitboard))
                 {
                     return false;
                 }
@@ -290,11 +282,11 @@ public:
             // Check the legality of white queenside castles
             if (moveFlag == 3)
             {
-                // If any of the squares that the king passes through are under attack then the move is illegal
-                // The squares for white queenside castles are : e1, d1, c1
-                if (squareUnderAttack(e1 + squaresColorDelta, attacker, *this, occupiedSquaresBitboard) ||
-                    squareUnderAttack(d1 + squaresColorDelta, attacker, *this, occupiedSquaresBitboard) ||
-                    squareUnderAttack(c1 + squaresColorDelta, attacker, *this, occupiedSquaresBitboard))
+                //If any of the squares that the king passes through are under attack then the move is illegal
+                //The squares for white queenside castles are : e1, d1, c1
+                if (squareUnderAttack(e1, Black, *this, occupiedSquaresBitboard) ||
+                    squareUnderAttack(d1, Black, *this, occupiedSquaresBitboard) ||
+                    squareUnderAttack(c1, Black, *this, occupiedSquaresBitboard))
                 {
                     return false;
                 }
@@ -304,9 +296,44 @@ public:
             // For normal king moves we just need to check that the destination square is not under attack
             // We also need to pass a different occupancy than the current so that the old king's position is not taken into account,
             // which prevents edge cases where the old king's position counts as a blockade for the new position of the king
-            return !(squareUnderAttack(toSquare, attacker, *this, occupiedSquaresBitboard & ~(1ULL << fromSquare)));
+            return !(squareUnderAttack(toSquare, Black, *this, occupiedSquaresBitboard & ~(1ULL << fromSquare)));
+
         }
 
+        // If the moving piece is the black king
+        if (piece == bK)
+        {
+            // Check the legality of black kingside castles
+            if (moveFlag == 2)
+            {
+                // If any of the squares that the king passes through are under attack then the move is illegal
+                // The squares for black kingside castles are : e8, f8, g8
+                if (squareUnderAttack(e8, White, *this, occupiedSquaresBitboard) ||
+                    squareUnderAttack(f8, White, *this, occupiedSquaresBitboard) ||
+                    squareUnderAttack(g8, White, *this, occupiedSquaresBitboard))
+                {
+                    return false;
+                }
+                return true;
+            }
+            // Check the legality of black queenside castles
+            if (moveFlag == 3)
+            {
+                //If any of the squares that the king passes through are under attack then the move is illegal
+                //The squares for black queenside castles are : e8, d8, c8
+                if (squareUnderAttack(e8, White, *this, occupiedSquaresBitboard) ||
+                    squareUnderAttack(d8, White, *this, occupiedSquaresBitboard) ||
+                    squareUnderAttack(c8, White, *this, occupiedSquaresBitboard))
+                {
+                    return false;
+                }
+                return true;
+            }
+            // For normal king moves we just need to check that the destination square is not under attack
+            // We also need to pass a different occupancy than the current so that the old king's position is not taken into account,
+            // which prevents edge cases where the old king's position counts as a blockade for the new position of the king
+            return !(squareUnderAttack(toSquare, White, *this, occupiedSquaresBitboard & ~(1ULL << fromSquare)));
+        }
 
         if (info.numOfChecks >= 2) return false;
 
@@ -355,7 +382,6 @@ public:
         // If non of the above are true then the move is legal
         return true;
     }
-
 
     // Checks if a given move is physically possible for the current position
     bool moveIsValid(Move move) const
@@ -421,7 +447,7 @@ public:
         if (movingPiece == wp)
         {
             // Promotions only on 7th rank
-            if (moveFlag & 8 && !(fromMask & rank7)) return false;
+            if (moveFlag & 8 && fromSquare / 8 != 6) return false;
             if (moveFlag == 5) return (toSquare == enPassantSquare) && (toSquare == fromSquare + 7 || toSquare == fromSquare + 9);
             if (isCap) return (toMask & blackPiecesBitboard) && (toSquare == fromSquare + 7 || toSquare == fromSquare + 9);
             if (moveFlag == 1) return (toSquare == fromSquare + 16) && !(toMask & occupiedSquaresBitboard) && !((1ULL << (fromSquare + 8)) & occupiedSquaresBitboard) && (fromSquare / 8 == 1);
@@ -429,7 +455,7 @@ public:
         }
         else if (movingPiece == bp)
         {
-            if (moveFlag & 8 && !(fromMask & rank2)) return false;
+            if (moveFlag & 8 && fromSquare / 8 != 1) return false;
             if (moveFlag == 5) return (toSquare == enPassantSquare) && (toSquare == fromSquare - 7 || toSquare == fromSquare - 9);
             if (isCap) return (toMask & whitePiecesBitboard) && (toSquare == fromSquare - 7 || toSquare == fromSquare - 9);
             if (moveFlag == 1) return (toSquare == fromSquare - 16) && !(toMask & occupiedSquaresBitboard) && !((1ULL << (fromSquare - 8)) & occupiedSquaresBitboard) && (fromSquare / 8 == 6);
@@ -449,4 +475,6 @@ public:
 
         return false;
     }
+
+
 };
