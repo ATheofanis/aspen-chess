@@ -37,7 +37,7 @@ void save(ZobristHash zobristHash, Move bestMove, int evaluation, int staticEval
 // searches for an entry inside the transposition table
 std::tuple<bool, TTData> probe(ZobristHash zobristHash)
 {
-    int index = zobristHash & (TTSize - 1);
+    size_t index = TTIndex(zobristHash);
 
     TTEntry entry = transpositionTable[index];
 

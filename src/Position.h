@@ -147,6 +147,8 @@ public:
     // true if it is whites turn to move
     [[nodiscard]] constexpr bool isWhiteToMove() const { return whiteToMoveFlag; }
 
+    [[nodiscard]] constexpr bool getSideToMove() const { return whiteToMoveFlag ? White : Black; }
+
     // returns castle rights
     [[nodiscard]] CastlingRights getCastlingRights() const { return castleRights; }
 

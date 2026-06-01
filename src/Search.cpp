@@ -141,7 +141,8 @@ int MoveSearcher::quiescence(Position& pos, int alpha, int beta, Move ttBestMove
         // |  this node is doomed to fail-low. We can safely prune the entire branch right now        |
         // |           instead of generating and testing captures in the loop.                        |
         // |==========================================================================================|
-        if (bestScore < alpha - 980)
+        int delta = 980;
+        if (bestScore < alpha - delta)
         {
             return bestScore;
         }
@@ -263,6 +264,8 @@ int MoveSearcher::quiescence(Position& pos, int alpha, int beta, Move ttBestMove
         // Update the next ply's accumulator by registering the move
         (ss+1)->accumulator = ss->accumulator;
         (ss+1)->accumulator.makeMove(move, pos);
+
+        //TTPrefetch(getKeyAfterMove(move, zobrist, pos));
 
         // Make the move to get its score
         pos.makeMove(move);
@@ -512,6 +515,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
             int epSq = pos.getEnpassantSquare();
 
             (ss+1)->accumulator = ss->accumulator;
+            //TTPrefetch(getKeyAfterMove(NO_MOVE, posZobrist, pos));
             pos.makeNullMove(epSq);
             int value = -negaMaxAlphaBeta<NodeType::NonPV>(pos, -beta, -(beta - 1), std::max(1, depth - reduction), bestMove, ply+1, rootDepth, false, ss+1, !cutNode);
             pos.unmakeNullMove(epSq);
@@ -631,53 +635,55 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
         {
             int extension = 0;
 
+            /*
             // Singular Extension
-            //if (!rootNode && depth >= SE_MinDepth && ply <= rootDepth * 2 && move == ttBestMove && ttData.depth >= depth - 3
-            //    && (ttData.bound == Bound::BOUND_EXACT || ttData.bound == Bound::BOUND_BETA)
-            //    && std::abs(ttData.evaluation) < CHECKMATE - MAX_PLY)
-            //{
-            //    int margin = depth * SE_MarginMultiplier / SE_MarginDivisor;
-            //    int singularBeta = std::max(ttData.evaluation - margin, -CHECKMATE);
-            //    int singularDepth = (depth - SE_DepthSubtractor) / SE_DepthDivisor;
-//
-            //    ss->excludedMove = move;
-            //    Move dummyMove;
-            //    int singularScore = negaMaxAlphaBeta<NodeType::NonPV>(pos, singularBeta - 1, singularBeta, singularDepth, dummyMove, ply, rootDepth, false, ss, cutNode);
-            //    ss->excludedMove = NO_MOVE;
-//
-            //    if (singularScore < singularBeta)
-            //    {
-            //        if (!isPv && singularScore < singularBeta - SE_TripleThreshold && depth <= SE_TripleMaxDepth && !isCapture(getMoveFlag(move)))
-            //        {
-            //            extension = 3;
-            //        } else if (!isPv && singularScore < singularBeta - SE_DoubleThreshold && depth <= SE_DoubleMaxDepth) {
-            //            extension = 2;
-            //        } else {
-            //            extension = 1;
-            //        }
-            //    }
-            //    else if (singularBeta >= beta)
-            //    {
-            //        return singularBeta;
-            //    }
-            //    else if (ttData.evaluation >= beta)
-            //    {
-            //        extension = -2 + isPv;
-            //    }
-            //    else if (ttData.evaluation <= alpha)
-            //    {
-            //        extension = -1;
-            //    }
-            //    else if (cutNode)
-            //    {
-            //        extension = -2;
-            //    }
-            //}
+            if (!rootNode && depth >= SE_MinDepth && ply <= rootDepth * 2 && move == ttBestMove && ttData.depth >= depth - 3
+                && (ttData.bound == Bound::BOUND_EXACT || ttData.bound == Bound::BOUND_BETA)
+                && std::abs(ttData.evaluation) < CHECKMATE - MAX_PLY)
+            {
+                int margin = depth * SE_MarginMultiplier / SE_MarginDivisor;
+                int singularBeta = std::max(ttData.evaluation - margin, -CHECKMATE);
+                int singularDepth = (depth - SE_DepthSubtractor) / SE_DepthDivisor;
 
+                ss->excludedMove = move;
+                Move dummyMove;
+                int singularScore = negaMaxAlphaBeta<NodeType::NonPV>(pos, singularBeta - 1, singularBeta, singularDepth, dummyMove, ply, rootDepth, false, ss, cutNode);
+                ss->excludedMove = NO_MOVE;
+
+                if (singularScore < singularBeta)
+                {
+                    if (!isPv && singularScore < singularBeta - SE_TripleThreshold && depth <= SE_TripleMaxDepth && !isCapture(getMoveFlag(move)))
+                    {
+                        extension = 3;
+                    } else if (!isPv && singularScore < singularBeta - SE_DoubleThreshold && depth <= SE_DoubleMaxDepth) {
+                        extension = 2;
+                    } else {
+                        extension = 1;
+                    }
+                }
+                else if (singularBeta >= beta)
+                {
+                    return singularBeta;
+                }
+                else if (ttData.evaluation >= beta)
+                {
+                    extension = -2 + isPv;
+                }
+                else if (ttData.evaluation <= alpha)
+                {
+                    extension = -1;
+                }
+                else if (cutNode)
+                {
+                    extension = -2;
+                }
+            }
+*/
             // Update the accumulator for the next ply
             (ss+1)->accumulator = ss->accumulator;
             (ss+1)->accumulator.makeMove(move, pos);
 
+            //TTPrefetch(getKeyAfterMove(move, posZobrist, pos));
 
             pos.makeMove(move);
 
@@ -716,6 +722,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
             // Update the accumulator for the next ply
             (ss+1)->accumulator = ss->accumulator;
             (ss+1)->accumulator.makeMove(move, pos);
+            //TTPrefetch(getKeyAfterMove(move, posZobrist, pos));
 
             pos.makeMove(move);
 

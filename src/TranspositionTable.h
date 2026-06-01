@@ -92,3 +92,14 @@ inline void clearTranspositionTable()
 
 
 void resizeTranspositionTable(int megabytes);
+
+
+inline size_t TTIndex(ZobristHash zobrist)
+{
+    return zobrist & (TTSize - 1);
+}
+
+
+inline void TTPrefetch(ZobristHash zobrist) {
+    __builtin_prefetch(&transpositionTable[TTIndex(zobrist)]);
+}
