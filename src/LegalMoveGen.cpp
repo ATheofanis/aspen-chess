@@ -224,15 +224,12 @@ void pawnAdvances(const legalityInformation& info, Bitboard oneSqAdvanceQuiet, B
         // the pinner is a rook then the only legal move would be to advance but in this case we know the promotion square is empty so that is not a possible case.
         if (!(info.pinned & (1ULL << startSquare)))
         {
-            //for (Move flag = 8; flag < 12; flag++)
-            //{
-            //    Move move = startSquare | (endSquare << 6) | (flag << 12);
+            for (Move flag = 8; flag < 12; flag++)
+            {
+                Move move = startSquare | (endSquare << 6) | (flag << 12);
 
-            //    moves[numOfMoves++] = move;
-            //}
-            // Only store queen and knight promotions
-            moves[numOfMoves++] = startSquare | (endSquare << 6) | (11 << 12);
-            moves[numOfMoves++] = startSquare | (endSquare << 6) | (8 << 12);
+                moves[numOfMoves++] = move;
+            }
         }
     }
 }
@@ -249,14 +246,12 @@ void storePromotions(const legalityInformation& info, Bitboard promotions, Color
         // the pinner is a rook then the only legal move would be to advance but in this case we know the promotion square is empty so that is not a possible case.
         if (!(info.pinned & (1ULL << startSquare)))
         {
-            //for (Move flag = 8; flag < 12; flag++)
-            //{
-            //    Move move = startSquare | (endSquare << 6) | (flag << 12);
-//
-            //    moves[numOfMoves++] = move;
-            //}
-            moves[numOfMoves++] = startSquare | (endSquare << 6) | (11 << 12);
-            moves[numOfMoves++] = startSquare | (endSquare << 6) | (8 << 12);
+            for (Move flag = 8; flag < 12; flag++)
+            {
+                Move move = startSquare | (endSquare << 6) | (flag << 12);
+
+                moves[numOfMoves++] = move;
+            }
         }
     }
 }
@@ -345,35 +340,19 @@ void generateWhitePawnMoves(const Position& pos, const legalityInformation& info
         Move endSquare = static_cast<Move>(popLsbAndReturnIndex(whitePawnLeftPromoCaptures));
         Move startSquare = endSquare - 7;
 
-        //for (Move flag = 12; flag < 16; flag++)
-        //{
-        //    Move move = startSquare | (endSquare << 6) | (flag << 12);
-        //    if (!(info.pinned & (1ULL << startSquare)))
-        //    {
-        //        moves[numOfMoves++] = move;
-        //    } else
-        //    {
-        //        if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
-        //        {
-        //            moves[numOfMoves++] = move;
-        //        }
-        //    }
-        //}
-
-        Move queenPromoCap = startSquare | (endSquare << 6) | (15 << 12);
-        Move knightPromoCap = startSquare | (endSquare << 6) | (12 << 12);
-
-        if (!(info.pinned & (1ULL << startSquare)))
+        for (Move flag = 12; flag < 16; flag++)
         {
-            moves[numOfMoves++] = queenPromoCap;
-            moves[numOfMoves++] = knightPromoCap;
-        }
-        else
-        {
-            if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
+            Move move = startSquare | (endSquare << 6) | (flag << 12);
+
+            if (!(info.pinned & (1ULL << startSquare)))
             {
-                moves[numOfMoves++] = queenPromoCap;
-                moves[numOfMoves++] = knightPromoCap;
+                moves[numOfMoves++] = move;
+            } else
+            {
+                if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
+                {
+                    moves[numOfMoves++] = move;
+                }
             }
         }
     }
@@ -410,34 +389,20 @@ void generateWhitePawnMoves(const Position& pos, const legalityInformation& info
     {
         Move endSquare = static_cast<Move>(popLsbAndReturnIndex(whitePawnRightPromoCaptures));
         Move startSquare = endSquare - 9;
-        //for (Move flag = 12; flag < 16; flag++)
-        //{
-        //    Move move = startSquare | (endSquare << 6) | (flag << 12);
-        //    if (!(info.pinned & (1ULL << startSquare)))
-        //    {
-        //        moves[numOfMoves++] = move;
-        //    } else
-        //    {
-        //        if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
-        //        {
-        //            moves[numOfMoves++] = move;
-        //        }
-        //    }
-        //}
-        Move queenPromoCap = startSquare | (endSquare << 6) | (15 << 12);
-        Move knightPromoCap = startSquare | (endSquare << 6) | (12 << 12);
+        for (Move flag = 12; flag < 16; flag++)
+        {
+            Move move = startSquare | (endSquare << 6) | (flag << 12);
 
-        if (!(info.pinned & (1ULL << startSquare)))
-        {
-            moves[numOfMoves++] = queenPromoCap;
-            moves[numOfMoves++] = knightPromoCap;
-        }
-        else
-        {
-            if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
+
+            if (!(info.pinned & (1ULL << startSquare)))
             {
-                moves[numOfMoves++] = queenPromoCap;
-                moves[numOfMoves++] = knightPromoCap;
+                moves[numOfMoves++] = move;
+            } else
+            {
+                if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
+                {
+                    moves[numOfMoves++] = move;
+                }
             }
         }
     }
@@ -591,37 +556,22 @@ void generateWhitePawnCaptures(const Position& pos, const legalityInformation& i
     // capture with promotion
     while (whitePawnLeftPromoCaptures)
     {
-        uint16_t endSquare = static_cast<Move>(popLsbAndReturnIndex(whitePawnLeftPromoCaptures));
-        uint16_t startSquare = endSquare - 7;
+        Move endSquare = static_cast<Move>(popLsbAndReturnIndex(whitePawnLeftPromoCaptures));
+        Move startSquare = endSquare - 7;
 
-        //for (Move flag = 12; flag < 16; flag++)
-        //{
-        //    Move move = startSquare | (endSquare << 6) | (flag << 12);
-        //    if (!(info.pinned & (1ULL << startSquare)))
-        //    {
-        //        moves[numOfMoves++] = move;
-        //    } else
-        //    {
-        //        if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
-        //        {
-        //            moves[numOfMoves++] = move;
-        //        }
-        //    }
-        //}
-        Move queenPromoCap = startSquare | (endSquare << 6) | (15 << 12);
-        Move knightPromoCap = startSquare | (endSquare << 6) | (12 << 12);
+        for (Move flag = 12; flag < 16; flag++)
+        {
+            Move move = startSquare | (endSquare << 6) | (flag << 12);
 
-        if (!(info.pinned & (1ULL << startSquare)))
-        {
-            moves[numOfMoves++] = queenPromoCap;
-            moves[numOfMoves++] = knightPromoCap;
-        }
-        else
-        {
-            if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
+            if (!(info.pinned & (1ULL << startSquare)))
             {
-                moves[numOfMoves++] = queenPromoCap;
-                moves[numOfMoves++] = knightPromoCap;
+                moves[numOfMoves++] = move;
+            } else
+            {
+                if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
+                {
+                    moves[numOfMoves++] = move;
+                }
             }
         }
     }
@@ -658,36 +608,20 @@ void generateWhitePawnCaptures(const Position& pos, const legalityInformation& i
     {
         Move endSquare = static_cast<Move>(popLsbAndReturnIndex(whitePawnRightPromoCaptures));
         Move startSquare = endSquare - 9;
-        //for (Move flag = 12; flag < 16; flag++)
-        //{
-        //    Move move = startSquare | (endSquare << 6) | (flag << 12);
-//
-//
-        //    if (!(info.pinned & (1ULL << startSquare)))
-        //    {
-        //        moves[numOfMoves++] = move;
-        //    } else
-        //    {
-        //        if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
-        //        {
-        //            moves[numOfMoves++] = move;
-        //        }
-        //    }
-        //}
-        Move queenPromoCap = startSquare | (endSquare << 6) | (15 << 12);
-        Move knightPromoCap = startSquare | (endSquare << 6) | (12 << 12);
+        for (Move flag = 12; flag < 16; flag++)
+        {
+            Move move = startSquare | (endSquare << 6) | (flag << 12);
 
-        if (!(info.pinned & (1ULL << startSquare)))
-        {
-            moves[numOfMoves++] = queenPromoCap;
-            moves[numOfMoves++] = knightPromoCap;
-        }
-        else
-        {
-            if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
+
+            if (!(info.pinned & (1ULL << startSquare)))
             {
-                moves[numOfMoves++] = queenPromoCap;
-                moves[numOfMoves++] = knightPromoCap;
+                moves[numOfMoves++] = move;
+            } else
+            {
+                if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
+                {
+                    moves[numOfMoves++] = move;
+                }
             }
         }
     }
@@ -849,35 +783,19 @@ void generateWhitePawnCapturesAndPromos(const Position& pos, const legalityInfor
         Move endSquare = static_cast<Move>(popLsbAndReturnIndex(whitePawnLeftPromoCaptures));
         Move startSquare = endSquare - 7;
 
-        //for (Move flag = 12; flag < 16; flag++)
-        //{
-        //    Move move = startSquare | (endSquare << 6) | (flag << 12);
-//
-        //    if (!(info.pinned & (1ULL << startSquare)))
-        //    {
-        //        moves[numOfMoves++] = move;
-        //    } else
-        //    {
-        //        if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
-        //        {
-        //            moves[numOfMoves++] = move;
-        //        }
-        //    }
-        //}
-        Move queenPromoCap = startSquare | (endSquare << 6) | (15 << 12);
-        Move knightPromoCap = startSquare | (endSquare << 6) | (12 << 12);
+        for (Move flag = 12; flag < 16; flag++)
+        {
+            Move move = startSquare | (endSquare << 6) | (flag << 12);
 
-        if (!(info.pinned & (1ULL << startSquare)))
-        {
-            moves[numOfMoves++] = queenPromoCap;
-            moves[numOfMoves++] = knightPromoCap;
-        }
-        else
-        {
-            if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
+            if (!(info.pinned & (1ULL << startSquare)))
             {
-                moves[numOfMoves++] = queenPromoCap;
-                moves[numOfMoves++] = knightPromoCap;
+                moves[numOfMoves++] = move;
+            } else
+            {
+                if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
+                {
+                    moves[numOfMoves++] = move;
+                }
             }
         }
     }
@@ -914,36 +832,20 @@ void generateWhitePawnCapturesAndPromos(const Position& pos, const legalityInfor
     {
         Move endSquare = static_cast<Move>(popLsbAndReturnIndex(whitePawnRightPromoCaptures));
         Move startSquare = endSquare - 9;
-        //for (Move flag = 12; flag < 16; flag++)
-        //{
-        //    Move move = startSquare | (endSquare << 6) | (flag << 12);
-//
-//
-        //    if (!(info.pinned & (1ULL << startSquare)))
-        //    {
-        //        moves[numOfMoves++] = move;
-        //    } else
-        //    {
-        //        if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
-        //        {
-        //            moves[numOfMoves++] = move;
-        //        }
-        //    }
-        //}
-        Move queenPromoCap = startSquare | (endSquare << 6) | (15 << 12);
-        Move knightPromoCap = startSquare | (endSquare << 6) | (12 << 12);
+        for (Move flag = 12; flag < 16; flag++)
+        {
+            Move move = startSquare | (endSquare << 6) | (flag << 12);
 
-        if (!(info.pinned & (1ULL << startSquare)))
-        {
-            moves[numOfMoves++] = queenPromoCap;
-            moves[numOfMoves++] = knightPromoCap;
-        }
-        else
-        {
-            if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
+
+            if (!(info.pinned & (1ULL << startSquare)))
             {
-                moves[numOfMoves++] = queenPromoCap;
-                moves[numOfMoves++] = knightPromoCap;
+                moves[numOfMoves++] = move;
+            } else
+            {
+                if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
+                {
+                    moves[numOfMoves++] = move;
+                }
             }
         }
     }
@@ -1177,35 +1079,19 @@ void generateBlackPawnMoves(const Position& pos, const legalityInformation& info
         Move endSquare = static_cast<Move>(popLsbAndReturnIndex(blackPawnLeftPromoCaptures));
         Move startSquare = endSquare + 9;
 
-        //for (Move flag = 12; flag < 16; flag++)
-        //{
-        //    Move move = startSquare | (endSquare << 6) | (flag << 12);
-//
-        //    if (!(info.pinned & (1ULL << startSquare)))
-        //    {
-        //        moves[numOfMoves++] = move;
-        //    } else
-        //    {
-        //        if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
-        //        {
-        //            moves[numOfMoves++] = move;
-        //        }
-        //    }
-        //}
-        Move queenPromoCap = startSquare | (endSquare << 6) | (15 << 12);
-        Move knightPromoCap = startSquare | (endSquare << 6) | (12 << 12);
+        for (Move flag = 12; flag < 16; flag++)
+        {
+            Move move = startSquare | (endSquare << 6) | (flag << 12);
 
-        if (!(info.pinned & (1ULL << startSquare)))
-        {
-            moves[numOfMoves++] = queenPromoCap;
-            moves[numOfMoves++] = knightPromoCap;
-        }
-        else
-        {
-            if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
+            if (!(info.pinned & (1ULL << startSquare)))
             {
-                moves[numOfMoves++] = queenPromoCap;
-                moves[numOfMoves++] = knightPromoCap;
+                moves[numOfMoves++] = move;
+            } else
+            {
+                if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
+                {
+                    moves[numOfMoves++] = move;
+                }
             }
         }
     }
@@ -1244,36 +1130,20 @@ void generateBlackPawnMoves(const Position& pos, const legalityInformation& info
 
         Move endSquare = static_cast<Move>(popLsbAndReturnIndex(blackPawnRightPromoCaptures));
         Move startSquare = endSquare + 7;
-        //for (Move flag = 12; flag < 16; flag++)
-        //{
-
-        //    Move move = startSquare | (endSquare << 6) | (flag << 12);
-
-        //    if (!(info.pinned & (1ULL << startSquare)))
-        //    {
-        //        moves[numOfMoves++] = move;
-        //    } else
-        //    {
-        //        if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
-        //        {
-        //            moves[numOfMoves++] = move;
-        //        }
-        //    }
-        //}
-        Move queenPromoCap = startSquare | (endSquare << 6) | (15 << 12);
-        Move knightPromoCap = startSquare | (endSquare << 6) | (12 << 12);
-
-        if (!(info.pinned & (1ULL << startSquare)))
+        for (Move flag = 12; flag < 16; flag++)
         {
-            moves[numOfMoves++] = queenPromoCap;
-            moves[numOfMoves++] = knightPromoCap;
-        }
-        else
-        {
-            if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
+
+            Move move = startSquare | (endSquare << 6) | (flag << 12);
+
+            if (!(info.pinned & (1ULL << startSquare)))
             {
-                moves[numOfMoves++] = queenPromoCap;
-                moves[numOfMoves++] = knightPromoCap;
+                moves[numOfMoves++] = move;
+            } else
+            {
+                if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
+                {
+                    moves[numOfMoves++] = move;
+                }
             }
         }
     }
@@ -1436,35 +1306,19 @@ void generateBlackPawnCaptures(const Position& pos, const legalityInformation& i
         Move endSquare = static_cast<Move>(popLsbAndReturnIndex(blackPawnLeftPromoCaptures));
         Move startSquare = endSquare + 9;
 
-        //for (Move flag = 12; flag < 16; flag++)
-        //{
-        //    Move move = startSquare | (endSquare << 6) | (flag << 12);
-//
-        //    if (!(info.pinned & (1ULL << startSquare)))
-        //    {
-        //        moves[numOfMoves++] = move;
-        //    } else
-        //    {
-        //        if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
-        //        {
-        //            moves[numOfMoves++] = move;
-        //        }
-        //    }
-        //}
-        Move queenPromoCap = startSquare | (endSquare << 6) | (15 << 12);
-        Move knightPromoCap = startSquare | (endSquare << 6) | (12 << 12);
+        for (Move flag = 12; flag < 16; flag++)
+        {
+            Move move = startSquare | (endSquare << 6) | (flag << 12);
 
-        if (!(info.pinned & (1ULL << startSquare)))
-        {
-            moves[numOfMoves++] = queenPromoCap;
-            moves[numOfMoves++] = knightPromoCap;
-        }
-        else
-        {
-            if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
+            if (!(info.pinned & (1ULL << startSquare)))
             {
-                moves[numOfMoves++] = queenPromoCap;
-                moves[numOfMoves++] = knightPromoCap;
+                moves[numOfMoves++] = move;
+            } else
+            {
+                if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
+                {
+                    moves[numOfMoves++] = move;
+                }
             }
         }
     }
@@ -1502,35 +1356,19 @@ void generateBlackPawnCaptures(const Position& pos, const legalityInformation& i
     {
         Move endSquare = static_cast<Move>(popLsbAndReturnIndex(blackPawnRightPromoCaptures));
         Move startSquare = endSquare + 7;
-        //for (Move flag = 12; flag < 16; flag++)
-        //{
-        //    Move move = startSquare | (endSquare << 6) | (flag << 12);
-
-        //    if (!(info.pinned & (1ULL << startSquare)))
-        //    {
-        //        moves[numOfMoves++] = move;
-        //    } else
-        //    {
-        //        if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
-        //        {
-        //            moves[numOfMoves++] = move;
-        //        }
-        //    }
-        //}
-        Move queenPromoCap = startSquare | (endSquare << 6) | (15 << 12);
-        Move knightPromoCap = startSquare | (endSquare << 6) | (12 << 12);
-
-        if (!(info.pinned & (1ULL << startSquare)))
+        for (Move flag = 12; flag < 16; flag++)
         {
-            moves[numOfMoves++] = queenPromoCap;
-            moves[numOfMoves++] = knightPromoCap;
-        }
-        else
-        {
-            if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
+            Move move = startSquare | (endSquare << 6) | (flag << 12);
+
+            if (!(info.pinned & (1ULL << startSquare)))
             {
-                moves[numOfMoves++] = queenPromoCap;
-                moves[numOfMoves++] = knightPromoCap;
+                moves[numOfMoves++] = move;
+            } else
+            {
+                if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
+                {
+                    moves[numOfMoves++] = move;
+                }
             }
         }
     }
@@ -1686,35 +1524,19 @@ void generateBlackPawnCapturesAndPromos(const Position& pos, const legalityInfor
         Move endSquare = static_cast<Move>(popLsbAndReturnIndex(blackPawnLeftPromoCaptures));
         Move startSquare = endSquare + 9;
 
-        //for (Move flag = 12; flag < 16; flag++)
-        //{
-        //    Move move = startSquare | (endSquare << 6) | (flag << 12);
-//
-        //    if (!(info.pinned & (1ULL << startSquare)))
-        //    {
-        //        moves[numOfMoves++] = move;
-        //    } else
-        //    {
-        //        if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
-        //        {
-        //            moves[numOfMoves++] = move;
-        //        }
-        //    }
-        //}
-        Move queenPromoCap = startSquare | (endSquare << 6) | (15 << 12);
-        Move knightPromoCap = startSquare | (endSquare << 6) | (12 << 12);
+        for (Move flag = 12; flag < 16; flag++)
+        {
+            Move move = startSquare | (endSquare << 6) | (flag << 12);
 
-        if (!(info.pinned & (1ULL << startSquare)))
-        {
-            moves[numOfMoves++] = queenPromoCap;
-            moves[numOfMoves++] = knightPromoCap;
-        }
-        else
-        {
-            if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
+            if (!(info.pinned & (1ULL << startSquare)))
             {
-                moves[numOfMoves++] = queenPromoCap;
-                moves[numOfMoves++] = knightPromoCap;
+                moves[numOfMoves++] = move;
+            } else
+            {
+                if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
+                {
+                    moves[numOfMoves++] = move;
+                }
             }
         }
     }
@@ -1752,35 +1574,19 @@ void generateBlackPawnCapturesAndPromos(const Position& pos, const legalityInfor
     {
         Move endSquare = static_cast<Move>(popLsbAndReturnIndex(blackPawnRightPromoCaptures));
         Move startSquare = endSquare + 7;
-        //for (Move flag = 12; flag < 16; flag++)
-        //{
-        //    Move move = startSquare | (endSquare << 6) | (flag << 12);
-//
-        //    if (!(info.pinned & (1ULL << startSquare)))
-        //    {
-        //        moves[numOfMoves++] = move;
-        //    } else
-        //    {
-        //        if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
-        //        {
-        //            moves[numOfMoves++] = move;
-        //        }
-        //    }
-        //}
-        Move queenPromoCap = startSquare | (endSquare << 6) | (15 << 12);
-        Move knightPromoCap = startSquare | (endSquare << 6) | (12 << 12);
+        for (Move flag = 12; flag < 16; flag++)
+        {
+            Move move = startSquare | (endSquare << 6) | (flag << 12);
 
-        if (!(info.pinned & (1ULL << startSquare)))
-        {
-            moves[numOfMoves++] = queenPromoCap;
-            moves[numOfMoves++] = knightPromoCap;
-        }
-        else
-        {
-            if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
+            if (!(info.pinned & (1ULL << startSquare)))
             {
-                moves[numOfMoves++] = queenPromoCap;
-                moves[numOfMoves++] = knightPromoCap;
+                moves[numOfMoves++] = move;
+            } else
+            {
+                if (info.pinnedPieceLegalSquares[startSquare] & (1ULL << endSquare))
+                {
+                    moves[numOfMoves++] = move;
+                }
             }
         }
     }

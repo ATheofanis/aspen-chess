@@ -141,8 +141,7 @@ int MoveSearcher::quiescence(Position& pos, int alpha, int beta, Move ttBestMove
         // |  this node is doomed to fail-low. We can safely prune the entire branch right now        |
         // |           instead of generating and testing captures in the loop.                        |
         // |==========================================================================================|
-        int delta = 980;
-        if (bestScore < alpha - delta)
+        if (bestScore < alpha - 980)
         {
             return bestScore;
         }
@@ -157,7 +156,7 @@ int MoveSearcher::quiescence(Position& pos, int alpha, int beta, Move ttBestMove
             // Store the data we have found in the transposition table, only if a valid best move has been found
             if (ttBestMove != NO_MOVE)
             {
-                save(zobrist, ttBestMove, bestScore, staticEvaluation, Q_DEPTH, Bound::BOUND_BETA, generation, ply);
+                save(zobrist, ttBestMove, bestScore, staticEvaluation, Q_DEPTH, Bound::BOUND_BETA, generation, isPv, ply);
             }
             return bestScore;
         }
@@ -228,6 +227,9 @@ int MoveSearcher::quiescence(Position& pos, int alpha, int beta, Move ttBestMove
         Move move = moves[i];
         int fromSquare = getFromSquare(move);
         int toSquare = getToSquare(move);
+        int moveFlag = getMoveFlag(move);
+
+        if (moveFlag == 13 || moveFlag == 14) continue;
 
         if (!inCheck)
         {
@@ -265,8 +267,6 @@ int MoveSearcher::quiescence(Position& pos, int alpha, int beta, Move ttBestMove
         (ss+1)->accumulator = ss->accumulator;
         (ss+1)->accumulator.makeMove(move, pos);
 
-        //TTPrefetch(getKeyAfterMove(move, zobrist, pos));
-
         // Make the move to get its score
         pos.makeMove(move);
         int score = -quiescence<nodeType>(pos, -beta, -alpha, NO_MOVE, ply + 1, ss+1);
@@ -285,12 +285,12 @@ int MoveSearcher::quiescence(Position& pos, int alpha, int beta, Move ttBestMove
 
         if (alpha >= beta)
         {
-            save(zobrist, ttBestMove, score, staticEvaluation, Q_DEPTH, Bound::BOUND_BETA, generation, ply);
+            save(zobrist, ttBestMove, score, staticEvaluation, Q_DEPTH, Bound::BOUND_BETA, generation, isPv, ply);
             break;
         }
 
     }
-    save(zobrist, ttBestMove, bestScore, staticEvaluation, Q_DEPTH, hashFlag, generation, ply);
+    save(zobrist, ttBestMove, bestScore, staticEvaluation, Q_DEPTH, hashFlag, generation, isPv, ply);
     return bestScore;
 }
 
@@ -515,7 +515,6 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
             int epSq = pos.getEnpassantSquare();
 
             (ss+1)->accumulator = ss->accumulator;
-            //TTPrefetch(getKeyAfterMove(NO_MOVE, posZobrist, pos));
             pos.makeNullMove(epSq);
             int value = -negaMaxAlphaBeta<NodeType::NonPV>(pos, -beta, -(beta - 1), std::max(1, depth - reduction), bestMove, ply+1, rootDepth, false, ss+1, !cutNode);
             pos.unmakeNullMove(epSq);
@@ -619,12 +618,15 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
         int toSquare = getToSquare(move);
         int moveFlag = getMoveFlag(move);
 
+        if (moveFlag == 13 || moveFlag == 14 || moveFlag == 8 || moveFlag == 9) continue;
+
         // Check if the move is a capture or/and promotion
         bool moveIsCapture = isCapture(moveFlag);
         bool moveIsPromotion = isPromotion(moveFlag);
 
         // If it is neither a capture nor a promotion, then the move is quiet
         bool moveIsQuiet = !(moveIsCapture || moveIsPromotion);
+        bool moveIsTactical = !moveIsQuiet;
 
         // |=================================================================================================|
         // |  Principal Variation Search : The first move is the most promising. For this reason, we search  |
@@ -635,7 +637,6 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
         {
             int extension = 0;
 
-            /*
             // Singular Extension
             if (!rootNode && depth >= SE_MinDepth && ply <= rootDepth * 2 && move == ttBestMove && ttData.depth >= depth - 3
                 && (ttData.bound == Bound::BOUND_EXACT || ttData.bound == Bound::BOUND_BETA)
@@ -678,17 +679,16 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
                     extension = -2;
                 }
             }
-*/
+
             // Update the accumulator for the next ply
             (ss+1)->accumulator = ss->accumulator;
             (ss+1)->accumulator.makeMove(move, pos);
 
-            //TTPrefetch(getKeyAfterMove(move, posZobrist, pos));
 
             pos.makeMove(move);
 
             // Search the first move
-            score = -negaMaxAlphaBeta<nextNodeType>(pos, -beta, -alpha, depth - 1 + extension, bestMove, ply+1, rootDepth, true, ss+1, false);
+            score = -negaMaxAlphaBeta<nextNodeType>(pos, -beta, -alpha, depth - 1 + extension, bestMove, ply+1, rootDepth, true, ss+1, isPv ? false : !cutNode);
 
             pos.unmakeMove();
         }
@@ -722,7 +722,6 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
             // Update the accumulator for the next ply
             (ss+1)->accumulator = ss->accumulator;
             (ss+1)->accumulator.makeMove(move, pos);
-            //TTPrefetch(getKeyAfterMove(move, posZobrist, pos));
 
             pos.makeMove(move);
 
@@ -736,7 +735,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
             // |  at which later moves are searched. To keep the search stable, we limit   |
             // |      the reductions strictly to quiet moves that do not give check.       |
             // |===========================================================================|
-            if (depth > 3 && i > 3 && !isInCheck && moveIsQuiet)
+            if (depth > 2 && i > 2 && !isInCheck && moveIsQuiet)
             {
                 // Reduce the depth of the current move is the hash move is a capture or a promotion
                 // because it probably means the hash move line is much stronger than the current
@@ -748,7 +747,12 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
 
                 if (move == killerMoves[ply][0]) depthReduction--; // Do not reduce too much for the first killer move
 
-                //depthReduction -= historyScores[pos.isWhiteToMove() ? White : Black][fromSquare][toSquare] / 8192;
+                if (cutNode) depthReduction++;
+
+                if (ttData.depth > depth) depthReduction++;
+
+                if (ttHit && !ttData.isPv) depthReduction++;
+
                 depthReduction += precomputedLMR[depth][i];
             }
 
@@ -821,7 +825,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
                 if (ss->excludedMove == NO_MOVE)
                 {
                     // Save the node with beta bound since it exceeds beta
-                    save(posZobrist, ttBestMove, score, staticValue, depth, Bound::BOUND_BETA, generation, ply);
+                    save(posZobrist, ttBestMove, score, staticValue, depth, Bound::BOUND_BETA, generation, isPv, ply);
                 }
 
                 Color sideToMove = pos.isWhiteToMove() ? White : Black;
@@ -862,7 +866,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
 
 
 
-    if (ss->excludedMove == NO_MOVE) save(posZobrist, ttBestMove, alpha, staticValue, depth, hashFlag, generation, ply);
+    if (ss->excludedMove == NO_MOVE) save(posZobrist, ttBestMove, alpha, staticValue, depth, hashFlag, generation, isPv, ply);
 
     return alpha;
 }

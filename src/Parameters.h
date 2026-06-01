@@ -62,17 +62,17 @@ namespace Aspen::Parameters
 
 
     // SINGULAR EXTENSION
-    inline int SE_MinDepth = 6;
-    inline int SE_MarginMultiplier = 6;      // MARGIN MULTIPLIER FOR SE
-    inline int SE_MarginDivisor = 8;                 // MARGIN DIVISON FOR SE
-    inline int SE_DepthSubtractor = 1;        // HOW MUCH WE SUBTRACT FROM THE DEPTH
+    inline int SE_MinDepth = 7;
+    inline int SE_MarginMultiplier = 1;      // MARGIN MULTIPLIER FOR SE
+    inline int SE_MarginDivisor = 1;                 // MARGIN DIVISON FOR SE
+    inline int SE_DepthSubtractor = 2;        // HOW MUCH WE SUBTRACT FROM THE DEPTH
     inline int SE_DepthDivisor = 2;
     // THRESHOLDS FOR EXTENSIONS/REDUCTIONS
-    inline int SE_TripleMaxDepth = 7;      // MAX DEPTH FOR +3 EXT SEARCH
-    inline int SE_TripleThreshold = 43;      // MARGIN FOR +3
+    inline int SE_TripleMaxDepth = 15;      // MAX DEPTH FOR +3 EXT SEARCH
+    inline int SE_TripleThreshold = 60;      // MARGIN FOR +3
 
-    inline int SE_DoubleMaxDepth = 6;         // MAX DEPTH FOR +2 EXT SEARCH
-    inline int SE_DoubleThreshold = 12;      // MARGIN FOR +2
+    inline int SE_DoubleMaxDepth = 15;         // MAX DEPTH FOR +2 EXT SEARCH
+    inline int SE_DoubleThreshold = 20;      // MARGIN FOR +2
 
 
     // HISTORY BONUS -> (300 * depth - 250)
