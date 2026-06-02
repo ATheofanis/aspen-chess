@@ -1,10 +1,9 @@
-<h1 align="center">Aspen Chess Engine</h1>
-
-<p align="center">
+<h1 align="center">
+  Aspen Chess Engine <br/>
   <img src="https://img.shields.io/github/v/release/ATheofanis/AChess?style=flat-square&color=green&style=plastic" alt="Release">
   <img src="https://img.shields.io/badge/license-GPLv3-success?style=flat-square&color=informational&style=plastic" alt="License: GPL v3">
   <img src="https://img.shields.io/badge/C++-20-00599C?style=flat-square&logo=c%2B%2B&color=important&style=plastic" alt="C++">
-</p>
+</h1>
 
 Aspen is a UCI chess engine written in C++ that evaluates positions using a custom NNUE.
 
