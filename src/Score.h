@@ -7,6 +7,7 @@
 #include "Bitboard.h"
 #include "nnue/Accumulator.h"
 
+struct SearchStack;
 class Position;
 class Accumulator;
 class MoveSearcher;
@@ -280,6 +281,6 @@ inline void initPSTtables()
 }
 
 
-int scoreBoardNNUE(const Position& pos, Accumulator accumulator);
+int scoreBoardNNUE(const Position& pos, SearchStack* ss);
 
 int scoreBoard(const Position& pos);

@@ -7,6 +7,8 @@
 // Used to initialize or reset the accumulator
 void Accumulator::initializeAccumulator(const Position& pos)
 {
+    isValid = true;
+
     // Set the value of the hidden neurons to their respective bias from the neural network
     for (int h = 0; h < HiddenSize; h++)
     {
@@ -364,13 +366,13 @@ void Accumulator::makeCastle(int kingFromSq, int kingToSq, int kingPieceIndex, i
 
 
 // Function to update the accumulator when a move is made
-void Accumulator::makeMove(Move move, const Position& pos)
+void Accumulator::makeMove(Move move, Piece movingPiece, Piece capturedPiece)
 {
     int fromSquare = move & 0x3F;
     int toSquare = (move >> 6) & 0x3F;
     int flag = (move >> 12) & 0xF;
 
-    int movingPieceIndex = pos.getPieceFromBoard(fromSquare);
+    int movingPieceIndex = movingPiece;
 
     bool whiteToMove = movingPieceIndex < 6;
 
@@ -398,11 +400,11 @@ void Accumulator::makeMove(Move move, const Position& pos)
             {
                 int promotedPieceIndex = colorDelta + flag % 4 + 1;
 
-                makeCapture<true>(fromSquare, toSquare, colorDelta, toSquare, pos.getPieceFromBoard(toSquare), promotedPieceIndex);
+                makeCapture<true>(fromSquare, toSquare, colorDelta, toSquare, capturedPiece, promotedPieceIndex);
             }
             else // Normal captures
             {
-                makeCapture<false>(fromSquare, toSquare, movingPieceIndex, toSquare, pos.getPieceFromBoard(toSquare));
+                makeCapture<false>(fromSquare, toSquare, movingPieceIndex, toSquare, capturedPiece);
             }
         }
     }

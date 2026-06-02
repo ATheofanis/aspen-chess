@@ -115,7 +115,7 @@ int MoveSearcher::quiescence(Position& pos, int alpha, int beta, Move ttBestMove
     // Otherwise we need to manually calculate the static evaluation
     else
     {
-        staticEvaluation = scoreBoardNNUE(pos, ss->accumulator);
+        staticEvaluation = scoreBoardNNUE(pos, ss);
     }
 
     ss->staticEval = staticEvaluation;
@@ -231,9 +231,20 @@ int MoveSearcher::quiescence(Position& pos, int alpha, int beta, Move ttBestMove
 
         if (moveFlag == 13 || moveFlag == 14) continue;
 
+        Piece attacker = pos.getPieceFromBoard(fromSquare);
+        Piece capturedPiece = NO_PIECE;
+
         if (!inCheck)
         {
-            Piece capturedPiece = pos.getPieceFromBoard(toSquare);
+            if (moveFlag == 5)
+            {
+                capturedPiece = pos.isWhiteToMove() ? bp : wp;
+            }
+            else
+            {
+                capturedPiece = pos.getPieceFromBoard(toSquare);
+            }
+
             int capturedPieceScore = averagePieceScore[0];
 
             if (capturedPiece != NO_PIECE)
@@ -254,7 +265,6 @@ int MoveSearcher::quiescence(Position& pos, int alpha, int beta, Move ttBestMove
 
 
             // SEE pruning
-            int attacker = pos.getPieceFromBoard(fromSquare);
             // SEE is computationally expensive so we can limit it strictly to captures where the attacker is more valuable than the victim
             if (averagePieceScore[attacker] > averagePieceScore[capturedPiece])
             {
@@ -263,9 +273,10 @@ int MoveSearcher::quiescence(Position& pos, int alpha, int beta, Move ttBestMove
             }
         }
 
-        // Update the next ply's accumulator by registering the move
-        (ss+1)->accumulator = ss->accumulator;
-        (ss+1)->accumulator.makeMove(move, pos);
+        (ss)->move = move;
+        (ss)->movedPiece = attacker;
+        (ss)->capturedPiece = capturedPiece;
+        (ss+1)->accumulator.isValid = false;
 
         // Make the move to get its score
         pos.makeMove(move);
@@ -322,7 +333,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
     // Increment nodes counter
     nodes++;
 
-    if (ply >= MAX_PLY) return scoreBoardNNUE(pos, ss->accumulator);
+    if (ply >= MAX_PLY) return scoreBoardNNUE(pos, ss);
 
     //    |====================================================================|
     //    |  Time / Node Limit : Every 2048 nodes searched, check if we have   |
@@ -447,7 +458,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
     else
     {
         // Call the NNUE evaluation function
-        staticValue = scoreBoardNNUE(pos, ss->accumulator);
+        staticValue = scoreBoardNNUE(pos, ss);
     }
 
     ss->staticEval = staticValue;
@@ -507,14 +518,19 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
         // |   can safely prune the branch and save a lot of time. We just check the game phase first to make   |
         // |   sure we aren't in an endgame where skipping a could be good in certain cases (zugzwang).         |
         // |====================================================================================================|
-        if (ply > 0 && (alpha == beta - 1) && allowNullMove && depth > 3 && pos.getGamePhase() && beta < CHECKMATE - MAX_PLY) // Do not play a null move twice in a row
+        if (ply > 0 && (alpha == beta - 1) && allowNullMove && depth > 4 && pos.getGamePhase() && beta < CHECKMATE - MAX_PLY) // Do not play a null move twice in a row
         {
             int reduction = std::min(depth, 4 + depth / 3); // NMP Reduction
             if (improving) reduction++; // More NMP reduction when improving
 
             int epSq = pos.getEnpassantSquare();
 
-            (ss+1)->accumulator = ss->accumulator;
+            (ss)->move = NO_MOVE;
+            ss->movedPiece = NO_PIECE;
+            (ss)->capturedPiece = NO_PIECE;
+            (ss+1)->accumulator.isValid = false;
+
+
             pos.makeNullMove(epSq);
             int value = -negaMaxAlphaBeta<NodeType::NonPV>(pos, -beta, -(beta - 1), std::max(1, depth - reduction), bestMove, ply+1, rootDepth, false, ss+1, !cutNode);
             pos.unmakeNullMove(epSq);
@@ -628,6 +644,20 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
         bool moveIsQuiet = !(moveIsCapture || moveIsPromotion);
         bool moveIsTactical = !moveIsQuiet;
 
+        Piece movingPiece = pos.getPieceFromBoard(fromSquare);
+        Piece capturedPiece = NO_PIECE;
+        if (moveIsCapture)
+        {
+            if (moveFlag == 5)
+            {
+                capturedPiece = pos.isWhiteToMove() ? bp : wp;
+            }
+            else
+            {
+                capturedPiece = pos.getPieceFromBoard(toSquare);
+            }
+        }
+
         // |=================================================================================================|
         // |  Principal Variation Search : The first move is the most promising. For this reason, we search  |
         // |   it with a full window, while the remaining moves are searched with a limited 'null window'.   |
@@ -648,7 +678,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
 
                 ss->excludedMove = move;
                 Move dummyMove;
-                int singularScore = negaMaxAlphaBeta<NodeType::NonPV>(pos, singularBeta - 1, singularBeta, singularDepth, dummyMove, ply, rootDepth, false, ss, cutNode);
+                int singularScore = negaMaxAlphaBeta<NodeType::NonPV>(pos, singularBeta - 1, singularBeta, singularDepth, dummyMove, ply+1, rootDepth, false, ss+1, cutNode);
                 ss->excludedMove = NO_MOVE;
 
                 if (singularScore < singularBeta)
@@ -680,10 +710,10 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
                 }
             }
 
-            // Update the accumulator for the next ply
-            (ss+1)->accumulator = ss->accumulator;
-            (ss+1)->accumulator.makeMove(move, pos);
-
+            (ss)->move = move;
+            (ss)->movedPiece = movingPiece;
+            (ss)->capturedPiece = capturedPiece;
+            (ss+1)->accumulator.isValid = false;
 
             pos.makeMove(move);
 
@@ -718,10 +748,10 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
 
                 if (quietMovesCount >= LMP_Threshold) continue;
             }
-
-            // Update the accumulator for the next ply
-            (ss+1)->accumulator = ss->accumulator;
-            (ss+1)->accumulator.makeMove(move, pos);
+            (ss)->move = move;
+            (ss)->movedPiece = movingPiece;
+            (ss)->capturedPiece = capturedPiece;
+            (ss+1)->accumulator.isValid = false;
 
             pos.makeMove(move);
 

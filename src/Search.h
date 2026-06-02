@@ -28,6 +28,7 @@ struct SearchStack
     int previousExtensions{};
     Move move = NO_MOVE;
     Piece movedPiece = NO_PIECE;
+    Piece capturedPiece = NO_PIECE;
     Move excludedMove = NO_MOVE;
 };
 
