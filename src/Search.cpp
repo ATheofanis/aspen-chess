@@ -234,23 +234,18 @@ int MoveSearcher::quiescence(Position& pos, int alpha, int beta, Move ttBestMove
         Piece attacker = pos.getPieceFromBoard(fromSquare);
         Piece capturedPiece = NO_PIECE;
 
+        if (moveFlag == 5)
+        {
+            capturedPiece = pos.isWhiteToMove() ? bp : wp;
+        }
+        else if (moveFlag & 4)
+        {
+            capturedPiece = pos.getPieceFromBoard(toSquare);
+        }
+
         if (!inCheck)
         {
-            if (moveFlag == 5)
-            {
-                capturedPiece = pos.isWhiteToMove() ? bp : wp;
-            }
-            else
-            {
-                capturedPiece = pos.getPieceFromBoard(toSquare);
-            }
-
-            int capturedPieceScore = averagePieceScore[0];
-
-            if (capturedPiece != NO_PIECE)
-            {
-                capturedPieceScore = averagePieceScore[capturedPiece];
-            }
+            int capturedPieceScore = averagePieceScore[capturedPiece];
 
             // |==========================================================================================|
             // | Delta Pruning (Inside the search loop) : If the best score found so far below alpha that |
@@ -543,7 +538,6 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
         }
     }
 
-
     // |===================================================================================================|
     // |    Futility Pruning: If we are at depth 1 and the static evaluation is far below alpha, then      |
     // |  searching quiet moves is likely futile since they are unlikely to raise the score above alpha.   |
@@ -562,7 +556,6 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
         canFutilityPrune = (depth == 1 && !isInCheck && staticValue + 200 <= alpha);
         canExtendedFutilityPrune = (depth == 2 && !isInCheck && staticValue + 500 <= alpha);
     }
-
 
     // generate the moves by first extracting the legality info of the position
     Move moves[256];
@@ -678,7 +671,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
 
                 ss->excludedMove = move;
                 Move dummyMove;
-                int singularScore = negaMaxAlphaBeta<NodeType::NonPV>(pos, singularBeta - 1, singularBeta, singularDepth, dummyMove, ply+1, rootDepth, false, ss+1, cutNode);
+                int singularScore = negaMaxAlphaBeta<NodeType::NonPV>(pos, singularBeta - 1, singularBeta, singularDepth, dummyMove, ply, rootDepth, false, ss, cutNode);
                 ss->excludedMove = NO_MOVE;
 
                 if (singularScore < singularBeta)
