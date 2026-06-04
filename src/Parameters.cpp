@@ -64,6 +64,9 @@ namespace Aspen::Parameters
         {"SE_DoubleMaxDepth", &SE_DoubleMaxDepth, 3, 10},
         {"SE_DoubleThreshold", &SE_DoubleThreshold, 0, 30},
 
+        // Capture History Pruning
+        {"CapHistPruningThreshold", &CapHistPruningThreshold, -MaxHistoryScore, MaxHistoryScore},
+
         // History Bonus
         {"HistoryBonusMultiplier", &HistoryBonusMultiplier, 100, 600},
         {"HistoryBonusSubtractor", &HistoryBonusSubtractor, 0, 600},

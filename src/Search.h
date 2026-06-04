@@ -60,7 +60,7 @@ public:
     bool uciStop = false;
 
     ContinuationHistory continuationHistoryScores[12][64]{};
-    int captureHistory[12][64][12];
+    int captureHistory[12][64][12]{}; // Victim | ToSquare | Attacker
     int historyScores[2][64][64]{};
     Move killerMoves[MAX_PLY][2]{};
 
@@ -69,6 +69,8 @@ public:
     int scoreMove(Move move, const Position& pos, Move hashMove, SearchStack *ss, int ply = -1);
 
     void updateHistory(Color sideToMove, int fromSquare, int toSquare, int value);
+
+    void updateCaptureHistory(Piece captured, int toSquare, Piece attacker, int bonus);
 
     void newGame()
     {

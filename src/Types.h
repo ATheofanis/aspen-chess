@@ -201,7 +201,6 @@ constexpr int improvingLateMovePruningThreshold[5] = {999, 7, 14, 20, 28};
 
 // Values used in move ordering
 constexpr int MaxHistoryScore = 16384;
-
 // Move Ordering List
 constexpr int HashMoveScore = 320000;                       // Hash Move
 constexpr int QueenPromotion = 170000;                      // Queen Promotion

@@ -75,6 +75,9 @@ namespace Aspen::Parameters
     inline int SE_DoubleThreshold = 20;      // MARGIN FOR +2
 
 
+    // CAPTURE HISTORY PRUNING
+    inline int CapHistPruningThreshold = 8192;
+
     // HISTORY BONUS -> (300 * depth - 250)
     inline int HistoryBonusMultiplier = 300;
     inline int HistoryBonusSubtractor = 250;

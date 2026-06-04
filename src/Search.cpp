@@ -521,7 +521,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
             int epSq = pos.getEnpassantSquare();
 
             (ss)->move = NO_MOVE;
-            ss->movedPiece = NO_PIECE;
+            (ss)->movedPiece = NO_PIECE;
             (ss)->capturedPiece = NO_PIECE;
             (ss+1)->accumulator.isValid = false;
 
@@ -584,8 +584,10 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
 
     // Keep track of quiet moves searched for late move pruning (LMP)
     int quietMovesCount = 0;
+    int capturesCount = 0;
 
     int quietMoves[256];
+    int captures[64];
 
     int moveScores[numOfMoves];
 
@@ -626,6 +628,8 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
         int fromSquare = getFromSquare(move);
         int toSquare = getToSquare(move);
         int moveFlag = getMoveFlag(move);
+
+        Color sideToMove = pos.isWhiteToMove() ? White : Black;
 
         if (moveFlag == 13 || moveFlag == 14 || moveFlag == 8 || moveFlag == 9) continue;
 
@@ -679,9 +683,13 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
                     if (!isPv && singularScore < singularBeta - SE_TripleThreshold && depth <= SE_TripleMaxDepth && !isCapture(getMoveFlag(move)))
                     {
                         extension = 3;
-                    } else if (!isPv && singularScore < singularBeta - SE_DoubleThreshold && depth <= SE_DoubleMaxDepth) {
+                    }
+                    else if (!isPv && singularScore < singularBeta - SE_DoubleThreshold && depth <= SE_DoubleMaxDepth)
+                    {
                         extension = 2;
-                    } else {
+                    }
+                    else
+                    {
                         extension = 1;
                     }
                 }
@@ -717,6 +725,14 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
         }
         else
         {
+            // SEE pruning
+            // SEE is computationally expensive so we can limit it strictly to captures where the attacker is more valuable than the victim
+            if (!isPv && !isInCheck && moveIsCapture && depth <= 3 && averagePieceScore[movingPiece] > averagePieceScore[capturedPiece])
+            {
+                // Skip move if SEE returns less than 0 meaning losing series of captures
+                if (captureHistory[capturedPiece][toSquare][movingPiece] < CapHistPruningThreshold && pos.SEE(toSquare, capturedPiece, fromSquare, movingPiece) < 0) continue;
+            }
+
             // |===================================================================================================|
             // |    Futility Pruning: If we are at depth 1 and the static evaluation is far below alpha, then      |
             // |  searching quiet moves is likely futile since they are unlikely to raise the score above alpha.   |
@@ -737,10 +753,11 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
             if (!isPv && !isInCheck && moveIsQuiet && depth <= 4)
             {
                 int LMP_Threshold = lateMovePruningThreshold[depth];
-                //if (!improving) LMP_Threshold -= depth;
+                if (historyScores[sideToMove][fromSquare][toSquare] < -8192) LMP_Threshold -= depth * 2; // Note : Test -depth ----------------------------------------- (!!!)
 
                 if (quietMovesCount >= LMP_Threshold) continue;
             }
+
             (ss)->move = move;
             (ss)->movedPiece = movingPiece;
             (ss)->capturedPiece = capturedPiece;
@@ -812,7 +829,14 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
         }
 
         // Increment the quiet move counter now for stable late move pruning
-        if (moveIsQuiet) quietMoves[quietMovesCount++] = move;
+        if (moveIsQuiet)
+        {
+            quietMoves[quietMovesCount++] = move;
+        }
+        else if (moveIsCapture)
+        {
+            captures[capturesCount++] = move;
+        }
 
         if (score > alpha)
         {
@@ -854,7 +878,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
                 Color sideToMove = pos.isWhiteToMove() ? White : Black;
 
                 // The move that caused the cutoff receives a bonus based on current depth
-                const int bonus = HistoryBonusMultiplier * depth - HistoryBonusSubtractor;
+                const int bonus = std::max(1200, HistoryBonusMultiplier * depth - HistoryBonusSubtractor);
 
                 // If the move is quiet update its history score
                 if (moveIsQuiet)
@@ -864,22 +888,51 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
                     // The move caused a beta cutoff so we also update the killers for this ply
                     killerMoves[ply][1] = killerMoves[ply][0];
                     killerMoves[ply][0] = move;
-                }
 
-                // We also penalize the quiet moves prior to the one we just searched,
-                // since they failed to cause a cutoff and are, therefore, weaker moves
-                for (int j = 0; j < quietMovesCount; j++)
+                    // We also penalize the quiet moves prior to the one we just searched,
+                    // since they failed to cause a cutoff and are, therefore, weaker moves
+                    for (int j = 0; j < quietMovesCount; j++)
+                    {
+                        Move quietMove = quietMoves[j];
+
+                        if (quietMove == move) continue; // Don't penalize the move that caused the beta cutoff
+
+                        int qFromSquare = getFromSquare(quietMove);
+                        int qToSquare = getToSquare(quietMove);
+
+                        // Call the update history function but with a negative bonus
+                        updateHistory(sideToMove, qFromSquare, qToSquare, -bonus);
+                    }
+                }
+                else if (moveIsCapture)
                 {
-                    Move quietMove = quietMoves[j];
+                    updateCaptureHistory(capturedPiece, toSquare, movingPiece, bonus);
 
-                    if (quietMove == move) continue; // Don't penalize the move that caused the beta cutoff
+                    // Penalize prior captures
+                    for (int j = 0; j < capturesCount; j++)
+                    {
+                        Move capture = captures[j];
 
-                    int qFromSquare = getFromSquare(quietMove);
-                    int qToSquare = getToSquare(quietMove);
+                        if (capture == move) continue; // Don't penalize the move that caused the beta cutoff
 
-                    // Call the update history function but with a negative bonus
-                    updateHistory(sideToMove, qFromSquare, qToSquare, -bonus);
+                        int cFromSquare = getFromSquare(capture);
+                        int cToSquare = getToSquare(capture);
+                        Piece captured;
+
+                        if (getMoveFlag(capture) == 5)
+                        {
+                            captured = pos.isWhiteToMove() ? bp : wp;
+                        }
+                        else
+                        {
+                            captured = pos.getPieceFromBoard(cToSquare);
+                        }
+
+                        // Call the update capture history function but with a negative bonus
+                        updateCaptureHistory(captured, cToSquare, pos.getPieceFromBoard(cFromSquare), -bonus);
+                    }
                 }
+
                 // Beta cutoff
                 return beta;
             }
@@ -1045,7 +1098,7 @@ int MoveSearcher::scoreMove(Move move, const Position& pos, Move hashMove, Searc
             victim = pos.getPieceFromBoard(toSquare);
         }
 
-        return GoodCapturesBase + 10 * averagePieceScore[victim] - averagePieceScore[movingPiece];
+        return GoodCapturesBase + captureHistory[victim][toSquare][movingPiece] + averagePieceScore[victim] - averagePieceScore[movingPiece];
     }
 
     if (ply >= 0)
@@ -1068,4 +1121,12 @@ void MoveSearcher::updateHistory(Color sideToMove, int fromSquare, int toSquare,
     int clampedBonus = std::clamp(bonus, -MaxHistoryScore, MaxHistoryScore);
     int *historyEntry = &historyScores[sideToMove][fromSquare][toSquare];
     *historyEntry += clampedBonus - *historyEntry * std::abs(clampedBonus) / MaxHistoryScore;
+}
+
+// Function to update capture history scores (Victim | ToSquare | Attacker)
+void MoveSearcher::updateCaptureHistory(Piece captured, int toSquare, Piece attacker, int bonus)
+{
+    int clampedBonus = std::clamp(bonus, -MaxHistoryScore, MaxHistoryScore);
+    int *capHistoryEntry = &captureHistory[captured][toSquare][attacker];
+    *capHistoryEntry += clampedBonus - *capHistoryEntry * std::abs(clampedBonus) / MaxHistoryScore;
 }
