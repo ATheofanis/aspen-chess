@@ -7,7 +7,7 @@
 
 
 // function to save current position to the transposition table (using depth and generation (age) replacement scheme)
-void save(ZobristHash zobristHash, Move bestMove, int evaluation, int staticEval, int depth, Bound bound, int entryGeneration, int ply)
+void save(ZobristHash zobristHash, Move bestMove, int evaluation, int staticEval, int depth, Bound bound, int entryGeneration, int isPv, int ply)
 {
     // get the index based on the zobrist hash
     int index = zobristHash & (TTSize - 1);
@@ -29,7 +29,7 @@ void save(ZobristHash zobristHash, Move bestMove, int evaluation, int staticEval
     // also replace if the old entry's generation is not the same as the current generation meaning it is from a prior search
     if (entry.entryDepth < depth || entry.entryGen != generation)
     {
-        transpositionTable[index] = TTEntry(zobristHash, bestMove, evaluation, staticEval, depth, (uint8_t)bound, entryGeneration);
+        transpositionTable[index] = TTEntry(zobristHash, bestMove, evaluation, staticEval, depth, (uint8_t)bound, entryGeneration, isPv);
     }
 }
 
@@ -37,7 +37,7 @@ void save(ZobristHash zobristHash, Move bestMove, int evaluation, int staticEval
 // searches for an entry inside the transposition table
 std::tuple<bool, TTData> probe(ZobristHash zobristHash)
 {
-    int index = zobristHash & (TTSize - 1);
+    size_t index = TTIndex(zobristHash);
 
     TTEntry entry = transpositionTable[index];
 
@@ -49,7 +49,7 @@ std::tuple<bool, TTData> probe(ZobristHash zobristHash)
     }
 
     // no entry was found
-    return {false, TTData(VALUE_NONE, VALUE_NONE, VALUE_NONE, NO_MOVE, Bound::BOUND_NONE)};
+    return {false, TTData(VALUE_NONE, VALUE_NONE, VALUE_NONE, NO_MOVE, Bound::BOUND_NONE, 0)};
 }
 
 

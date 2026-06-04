@@ -8,6 +8,8 @@
 // - (https://en.wikipedia.org/wiki/Zobrist_hashing)
 
 
+class Position;
+
 // We need an array to hold randomly generated values for each combination of a piece and a position (6 pieces × 2 colors × 64 board positions)
 extern ZobristHash zobristPieces[64][12];
 
@@ -23,3 +25,5 @@ extern ZobristHash zobristBlackToMove;
 // This function will initialize the zobrist hash variables to randomly generated 64-bit values using the xoshiro256** algorithm
 // It must be called once at startup
 void initZobrist();
+
+ZobristHash getKeyAfterMove(Move move, ZobristHash zobrist, const Position& pos);

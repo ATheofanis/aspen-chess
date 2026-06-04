@@ -46,7 +46,7 @@ public:
     bool optimumExpired()
     {
         TimeMs elapsed = elapsedTime();
-        if (elapsed >= optimumTimeLimit || elapsed > realTimeLeft / 5) return true;
+        if (elapsed >= optimumTimeLimit || elapsed > realTimeLeft / 10) return true;
         return false;
     }
 

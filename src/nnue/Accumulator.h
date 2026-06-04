@@ -16,6 +16,8 @@ public:
     alignas(32) int16_t white[HiddenSize]{};
     alignas(32) int16_t black[HiddenSize]{};
 
+    bool isValid = false;
+
     Accumulator() = default;
 
     Accumulator(const Position& pos)
@@ -36,5 +38,5 @@ public:
 
     void makeCastle(int kingFromSq, int kingToSq, int kingPieceIndex, int rookFromSq, int rookToSq, int rookPieceIndex);
 
-    void makeMove(Move move, const Position& pos);
+    void makeMove(Move move, Piece movingPiece, Piece capturedPiece);
 };

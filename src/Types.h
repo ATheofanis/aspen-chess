@@ -20,6 +20,8 @@ using ZobristHash = uint64_t;
 
 using TimeMs = std::chrono::milliseconds::rep;
 
+typedef int16_t ContinuationHistory[12][64];
+
 constexpr int MAX_PLY = 128;
 
 // returns the character of a piece given its piece index, for example 0 returns P for white pawn, 6 returns p for black pawn
@@ -185,18 +187,26 @@ struct legalityInformation
     int numOfChecks{};
 };
 
-using history = int[64][64];
+using history = int[2][64][64];
 
-// average piece score for SEE , MVVLVA and other stuff
+// average piece score for SEE, MVVLVA and other stuff
 constexpr int averagePieceScore[12] = {88, 309, 331, 494, 980, 0, 88, 309, 331, 494, 980, 0};
 
 // LMR thresholds, normal, improving and worsening
-constexpr int lateMovePruningThreshold[5] = {999, 6, 12, 17, 25};
+constexpr int lateMovePruningThreshold2[5] = {999, 6, 12, 17, 25};
+
 constexpr int worseningLateMovePruningThreshold[5] = {999, 5, 10, 14, 20};
 constexpr int improvingLateMovePruningThreshold[5] = {999, 7, 14, 20, 28};
 
+
 // Values used in move ordering
-inline int MaxHistoryScore = 10000;
-inline int KillerMoveScore0 = MaxHistoryScore + 2;
-inline int KillerMoveScore1 = MaxHistoryScore + 1;
-inline int HashMoveScore = 320000;
+constexpr int MaxHistoryScore = 16384;
+// Move Ordering List
+constexpr int HashMoveScore = 320000;                       // Hash Move
+constexpr int QueenPromotion = 170000;                      // Queen Promotion
+constexpr int QueenPromoCapture = 180000;                   // Queen Promotion with Capture
+constexpr int GoodCapturesBase = MaxHistoryScore * 4;       // Good Captures
+constexpr int KillerMoveScore0 = MaxHistoryScore * 3 + 2;   // Killer 1
+constexpr int KillerMoveScore1 = MaxHistoryScore * 3 + 1;   // Killer 2
+constexpr int BadCapturesBase = MaxHistoryScore - MaxHistoryScore / 4;    // Bad Captures
+constexpr int UnderPromotions = -100000;                    // Under Promotions

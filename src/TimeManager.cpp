@@ -30,19 +30,13 @@ void TimeManager::start(TimeMs myTime, TimeMs myInc, int movesToGo)
     TimeMs safeTime = myTime;
 
     // Use a fraction of the available time
-    optimumTimeLimit = std::min(safeTime / 10, totalTime * 35 / 1000); // ~5.5% per move
+    optimumTimeLimit = std::min(safeTime / 10, totalTime * 40 / 1000); // ~4% per move
 
     // Never allow the engine to use more than one fifth of the real non-increment time left
     maximumTimeLimit = std::min(safeTime / 5, totalTime * 180 / 1000);
 
-    // Safety for moderately low time
-    if (myTime < 15000) {
-        optimumTimeLimit = myTime * 120 / 1000;
-        maximumTimeLimit = myTime * 200 / 1000;
-    }
-
     // Extra safety for very low time
-    if (myTime < 5000) {
+    if (myTime < 3000) {
         optimumTimeLimit = myTime * 40 / 1000;
         maximumTimeLimit = myTime * 60 / 1000;
     }

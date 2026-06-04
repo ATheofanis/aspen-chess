@@ -25,7 +25,9 @@
 #include <thread>
 
 #include "DataGen.h"
+#include "PseudoMoveGen.h"
 #include "TimeManager.h"
+#include "Parameters.h"
 
 class Position;
 
@@ -122,7 +124,7 @@ long long Perft(Position& pos, int depth)
     //std::cout << "PERFT FOR MOVE:" << std::endl;
     //printMove(move);
 
-    Move moves[256];
+    Move pseudoMoves[256];
     int numOfMoves = 0, i;
     long long nodes = 0;
 
@@ -134,21 +136,32 @@ long long Perft(Position& pos, int depth)
 
     //std::cout << " GENERATING LEGAL MOVES:" << std::endl;
 
-    generateLegalMoves(info, pos, moves, numOfMoves);
+    generatePseudoLegalCapAndPromoMoves(pos, pseudoMoves, numOfMoves);
+    generatePseudoLegalQuietMoves(pos, pseudoMoves, numOfMoves);
 
-    //std::cout << " MADE IT AFTER LEGALITY EXTRACTION AND MOVE GEN PREPARING FOR LOOP WITH " << numOfMoves << " NUM OF MOVES." << std::endl;
+    Move moves[256];
+
+    int pseudoMoveCount = numOfMoves;
+    numOfMoves = 0;
+
+    for (int j = 0; j < pseudoMoveCount; j++)
+    {
+        Move mv = pseudoMoves[j];
+        if (pos.moveIsLegal(info, mv))
+        {
+            moves[numOfMoves++] = mv;
+        }
+    }
+    //generateLegalMoves(info, pos, moves, numOfMoves);
 
     for (i = 0; i < numOfMoves; i++)
     {
-
         //printMove(moves[i]);
         pos.makeMove(moves[i]);
 
 
         nodes += Perft(pos, depth - 1);
         pos.unmakeMove();
-
-
 
     }
     return nodes;
@@ -157,18 +170,30 @@ long long Perft(Position& pos, int depth)
 
 void dividePerft(Position& pos, int depth)
 {
-    Move moves[256];
-    int numOfMvs = 0;
+    Move pseudoMoves[256];
+    int numOfMoves = 0;
 
 
     legalityInformation info = getLegalityInfo(lsbIndex(pos.isWhiteToMove() ? pos.getPieceBitboard(wK) : pos.getPieceBitboard(bK)), pos.isWhiteToMove() ? White : Black, pos);
 
     //std::cout << " GENERATING LEGAL MOVES:" << std::endl;
 
-    generateLegalMoves(info, pos, moves, numOfMvs);
+    generatePseudoLegalCapAndPromoMoves(pos, pseudoMoves, numOfMoves);
+    generatePseudoLegalQuietMoves(pos, pseudoMoves, numOfMoves);
+
+    Move moves[256];
+
+    numOfMoves = 0;
+    for (const Move mv : pseudoMoves)
+    {
+        if (pos.moveIsLegal(info, mv))
+        {
+            moves[numOfMoves++] = mv;
+        }
+    }
 
     long long total = 0;
-    for (int i = 0; i < numOfMvs; i++)
+    for (int i = 0; i < numOfMoves; i++)
     {
         long long nodes = 0;
         pos.makeMove(moves[i]);
@@ -346,7 +371,7 @@ void LoopUCI()
     std::string command;
     Position pos;
 
-    MoveSearcher searcher;
+    MoveSearcher* searcher = new MoveSearcher();
 
     std::thread searcherThread;
 
@@ -378,7 +403,7 @@ void LoopUCI()
             // non fen string ---------
             if (tokens.size() >= 2 && tokens[1] == "startpos")
             {
-                if (tokens[2] == "moves")
+                if (tokens.size() >= 3 && tokens[2] == "moves")
                 {
                     pos = parsePosition(tokens, 3);
                 }
@@ -457,6 +482,11 @@ void LoopUCI()
                     timeManager.disableTimeControl();
                     MAX_NODES = std::atoi(tokens[i+1].c_str());
                 }
+                else if (tokens[i] == "perft")
+                {
+                    int perftDepth = std::atoi(tokens[i+1].c_str());
+                    dividePerft(pos, perftDepth);
+                }
             }
 
             // If time controls were enabled, which is determined based on UCI input, then start the time manager
@@ -472,14 +502,14 @@ void LoopUCI()
                 timeManager.reset();
             }
 
-            searcher.uciStop = true;
+            searcher->uciStop = true;
 
             if (searcherThread.joinable()) searcherThread.join();
 
-            searcher.uciStop = false;
+            searcher->uciStop = false;
 
             // Run the search using the searcher thread so that we can search while also reading UCI commands
-            searcherThread = std::thread([&](){ uciRunSearch(searcher, pos); });
+            searcherThread = std::thread([&](){ uciRunSearch(*searcher, pos); });
 
             globalMTG--;
             if (globalMTG <= 0)
@@ -497,19 +527,19 @@ void LoopUCI()
             std::cout << "id name Aspen 2.3.0\n";
             std::cout << "id author ATheo\n";
             std::cout << "option name Hash type spin default 64 min 1 max 32768\n"; // Default hash table size is 64 megabytes
-            //std::cout << "option name LMR_Base type spin default 100 min 25 max 175\n";
+            Aspen::Parameters::printTunableParameters();
             std::cout << "uciok\n";
         }
         else if (tokens[0] == "ucinewgame")
         {
             // If there is an ongoing search we must cancel to continue with the new game
-            searcher.uciStop = true;
+            searcher->uciStop = true;
 
             if (searcherThread.joinable()) searcherThread.join();
 
             globalMTG = 100;
             clearTranspositionTable();
-            searcher.newGame();
+            searcher->newGame();
         }
         // UCI options
         else if (tokens[0] == "setoption" && tokens.size() >= 5)
@@ -522,18 +552,16 @@ void LoopUCI()
                     int TTSizeMB = std::atoi(tokens[4].c_str());
                     resizeTranspositionTable(TTSizeMB);
                 }
-                // Set search parameter value
-                //if ((tokens[2] == "LMR_Base") && tokens[3] == "value")
-                //{
-                //    int base = std::atoi(tokens[4].c_str());
-                //    LMR_Base = base / 100.f;
-                //}
+                else
+                {
+                    if (tokens.size() >= 4) Aspen::Parameters::setParameter(tokens[2], std::atoi(tokens[4].c_str()));
+                }
             }
         }
         // Quit the program
         else if (tokens[0] == "quit")
         {
-            searcher.uciStop = true;
+            searcher->uciStop = true;
 
             if (searcherThread.joinable()) searcherThread.join();
 
@@ -542,7 +570,7 @@ void LoopUCI()
         // Immediately stop the search
         else if (tokens[0] == "stop")
         {
-            searcher.uciStop = true;
+            searcher->uciStop = true;
 
             if (searcherThread.joinable()) searcherThread.join();
         }

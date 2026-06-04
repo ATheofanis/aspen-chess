@@ -5,7 +5,6 @@
 #include "Zobrist.h"
 
 #include <random>
-
 #include "Position.h"
 #include "PRNG.h"
 
@@ -41,6 +40,25 @@ void initZobrist()
     }
 
     zobristBlackToMove = next();
+}
+
+ZobristHash getKeyAfterMove(Move move, ZobristHash zobrist, const Position& pos)
+{
+    if (move == NO_MOVE)
+    {
+        return zobrist ^ zobristBlackToMove;
+    }
+
+    int fromSquare = getFromSquare(move);
+    int toSquare = getToSquare(move);
+    Piece movingPiece = pos.getPieceFromBoard(fromSquare);
+    Piece capturedPiece = pos.getPieceFromBoard(toSquare);
+
+    ZobristHash newZobrist = zobrist ^ zobristBlackToMove ^ zobristPieces[fromSquare][movingPiece] ^ zobristPieces[toSquare][movingPiece];
+
+    if (capturedPiece != NO_PIECE) newZobrist ^= zobristPieces[toSquare][capturedPiece];
+
+    return newZobrist;
 }
 
 

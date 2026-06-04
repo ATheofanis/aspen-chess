@@ -45,6 +45,9 @@ add_executable(AspenChess src/main.cpp
         src/PseudoMoveGen.h
         src/MovePicker.cpp
         src/MovePicker.h
+        src/History.h
+        src/Parameters.cpp
+        src/Parameters.h
 )
 
 target_compile_options(AspenChess PRIVATE -mavx2)

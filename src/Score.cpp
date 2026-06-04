@@ -4,11 +4,11 @@
 
 #include "Score.h"
 #include "TranspositionTable.h"
-
-//Move counterMoves[64][64]; // [fromSquare][toSquare]
+#include "Search.h"
 
 int pawnHashHIT = 0;
 int pawnHashMISS = 0;
+
 
 
 
@@ -207,10 +207,31 @@ int getBishopPairScore(const Position& pos)
 
 
 // NNUE evaluation of the position
-int scoreBoardNNUE(const Position& pos, Accumulator accumulator)
+int scoreBoardNNUE(const Position& pos, SearchStack* ss)
 {
+    SearchStack* current = ss;
+
+    while (!current->accumulator.isValid)
+    {
+        current--;
+    }
+
+    while (current < ss)
+    {
+        (current+1)->accumulator = current->accumulator;
+
+        if (current->move != NO_MOVE)
+        {
+            (current+1)->accumulator.makeMove(current->move, current->movedPiece, current->capturedPiece); // Make the move
+        }
+
+        (current+1)->accumulator.isValid = true; // It is now valid after we updated it
+
+        current++;
+    }
+
     // Call the NNUE evaluation function
-    int NNUEscore = evaluateNNUE(accumulator, pos.isWhiteToMove() ? White : Black);
+    int NNUEscore = evaluateNNUE(ss->accumulator, pos.isWhiteToMove() ? White : Black);
 
     return NNUEscore;
 }

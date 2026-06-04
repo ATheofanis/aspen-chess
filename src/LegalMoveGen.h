@@ -21,10 +21,10 @@ void generateKingMoves(const legalityInformation& info, Bitboard kingPos, Bitboa
 void generateWhiteKingMoves(const Position& pos, Move moves[], int& numOfMoves);
 void generateBlackKingMoves(const Position& pos, Move moves[], int& numOfMoves);
 
-// move generators. i split move generation into captures and non captures for staged move generation inside the search
-void generateLegalMoves(const legalityInformation& info, Position& pos, Move moves[], int &numOfMoves); // every legal move
-void generateCaptures(const legalityInformation& info, Position& pos, Move moves[], int &numOfMoves); // every legal capture
-void generateQuietMoves(const legalityInformation& info, Position& pos, Move moves[], int &numOfMoves); // every legal non-capture move
+// move generators
+void generateLegalMoves(const legalityInformation& info, const Position& pos, Move moves[], int &numOfMoves); // every legal move
+void generateCaptures(const legalityInformation& info, const Position& pos, Move moves[], int &numOfMoves); // every legal capture
+void generateQuietMoves(const legalityInformation& info, const Position& pos, Move moves[], int &numOfMoves); // every legal non-capture move
 
 
 // converts a move variable to readable format (chess board squares and flag display)
@@ -62,3 +62,6 @@ void generateQuietBlackPawnMoves(const Position& pos, const legalityInformation&
 
 void generateQuietKnightMoves(const legalityInformation& info, Bitboard knightPos, Bitboard occupied, Move moves[], int& numOfMoves);
 void generateQuietBishopMoves(const legalityInformation& info, Bitboard bishopPos, Bitboard occupied, Move moves[], int& numOfMoves);
+
+// Captures And Promotions for the move picker
+void generateCapturesAndPromos(const legalityInformation& info, const Position& pos, Move moves[], int &numOfMoves);
