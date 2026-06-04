@@ -725,6 +725,8 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
         }
         else
         {
+            int historyScore = historyScores[sideToMove][fromSquare][toSquare];
+
             // SEE pruning
             // SEE is computationally expensive so we can limit it strictly to captures where the attacker is more valuable than the victim
             if (!isPv && !isInCheck && moveIsCapture && depth <= 3 && averagePieceScore[movingPiece] > averagePieceScore[capturedPiece])
@@ -753,7 +755,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
             if (!isPv && !isInCheck && moveIsQuiet && depth <= 4)
             {
                 int LMP_Threshold = lateMovePruningThreshold[depth];
-                if (historyScores[sideToMove][fromSquare][toSquare] < -8192) LMP_Threshold -= depth * 2; // Note : Test -depth ----------------------------------------- (!!!)
+                if (historyScore < -8192) LMP_Threshold -= depth * 2;
 
                 if (quietMovesCount >= LMP_Threshold) continue;
             }
@@ -792,6 +794,8 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
                 if (ttData.depth > depth) depthReduction++;
 
                 if (ttHit && !ttData.isPv) depthReduction++;
+
+                //if (historyScore < -8192 && !improving) depthReduction++;
 
                 depthReduction += precomputedLMR[depth][i];
             }
@@ -874,8 +878,6 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
                     // Save the node with beta bound since it exceeds beta
                     save(posZobrist, ttBestMove, score, staticValue, depth, Bound::BOUND_BETA, generation, isPv, ply);
                 }
-
-                Color sideToMove = pos.isWhiteToMove() ? White : Black;
 
                 // The move that caused the cutoff receives a bonus based on current depth
                 const int bonus = std::max(1200, HistoryBonusMultiplier * depth - HistoryBonusSubtractor);
