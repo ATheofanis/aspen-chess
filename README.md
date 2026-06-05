@@ -1,3 +1,6 @@
+<p align="center">
+  <img src="Aspen-Logo.png" alt="Aspen Chess Engine Logo"/>
+</p>
 <h1 align="center">
   Aspen Chess Engine <br/>
   <img src="https://img.shields.io/github/v/release/ATheofanis/AChess?style=flat-square&color=green&style=plastic" alt="Release">
