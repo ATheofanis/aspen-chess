@@ -26,6 +26,7 @@ struct positionInfo
     int gamePhase;
 
     int irreversiblePositionTop{};
+    int halfMoveCounter{};
 
     Piece pieceCaptured;
     Move prevMove{};
@@ -61,6 +62,9 @@ private:
     int enPassantSquare{};
     int positionLogTop;
 
+    int halfMoveCounter{};
+    int fullMoveCounter{};
+
     CastlingRights castleRights{};
 
     bool whiteToMoveFlag{};
@@ -94,7 +98,6 @@ public:
 
     // unmake move functions
     void unmakeMove();
-    void unmakeCapture();
     void unmakeNullMove(int epSq) // undo null move for null move pruning
     {
         whiteToMoveFlag = !whiteToMoveFlag;
@@ -192,6 +195,31 @@ public:
                 }
             }
         }
+        return false;
+    }
+
+    bool isDraw(ZobristHash zobrist)
+    {
+        if (halfMoveCounter >= 100) return true;
+
+        if (checkRepetition(zobrist)) return true;
+
+        /*
+        // Dont check for draw if there are major pieces or pawns on the board
+        if (pieceBitboard[wp] || pieceBitboard[bp] || pieceBitboard[bR] || pieceBitboard[wR] || pieceBitboard[wQ] || pieceBitboard[bQ]) return false;
+
+        // Draw if there are 1 or less minor pieces on both sides
+        int whiteKnights = bitCount(pieceBitboard[wN]);
+        int whiteBishops = bitCount(pieceBitboard[wB]);
+        int whiteMinorPieces = whiteKnights + whiteBishops;
+
+        int blackKnights = bitCount(pieceBitboard[bN]);
+        int blackBishops = bitCount(pieceBitboard[bB]);
+        int blackMinorPieces = blackKnights + blackBishops;
+
+        if (whiteMinorPieces < 2 && blackMinorPieces < 2) return true;
+        */
+
         return false;
     }
 

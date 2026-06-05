@@ -256,9 +256,9 @@ constexpr const int *egPST[6] = {
 
 constexpr int gamephaseInc[12] = {
 // wp, wN, wB, wR, wQ, wK
-    0,  1,  1,  2,  4, 0,
+    0,  1,  3,  10,  20, 0,
 // bp, bN, bB, bR, bQ, bK
-    0,  1,  1,  2,  4, 0
+    0,  1,  3,  10,  20, 0
 };
 
 inline int mgTable[12][64];
