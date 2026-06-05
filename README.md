@@ -8,7 +8,19 @@
   <img src="https://img.shields.io/badge/C++-20-00599C?style=flat-square&logo=c%2B%2B&color=important&style=plastic" alt="C++">
 </h1>
 
-Aspen is a UCI chess engine written in C++. It uses a NNUE to evaluate positions, which was trained exclusively on self-generated data.
+Aspen is a UCI chess engine written in C++. <br/>
+It uses a NNUE to evaluate positions, which was trained exclusively on self-generated data.
+
+## Strength
+| **Version** | [CCRL 40/15](https://computerchess.org.uk/4040/) |
+| :---: | :---: |
+| [2.3.0](https://github.com/ATheofanis/aspen-chess/releases/tag/v2.3.0) | 3250 | 
+| [1.2.3](https://github.com/ATheofanis/aspen-chess/releases/tag/v1.3.0) | 2775 |
+| [1.0.0](https://github.com/ATheofanis/aspen-chess/releases/tag/v1.0.0) | 2817 |
+
+Click [here](https://computerchess.org.uk/4040/cgi/compare_engines.cgi?family=Aspen&print=Rating+list&print=Results+table&print=LOS+table&print=Ponder+hit+table&print=Eval+difference+table&print=Comopp+gamenum+table&print=Overlap+table&print=Score+with+common+opponents) to see every version that has been tested so far
+
+
 
 ## Download
 
