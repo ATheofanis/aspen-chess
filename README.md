@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="Aspen-Logo-2.png" alt="Aspen Chess Engine Logo"/>
+  <img src="Aspen-Logo3.png" alt="Aspen Chess Engine Logo"/>
 </p>
 <h1 align="center">
   Aspen Chess Engine <br/>
