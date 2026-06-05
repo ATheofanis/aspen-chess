@@ -362,7 +362,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
     bool isInCheck = pos.sideToMoveIsInCheck();
 
     // Extend search depth if side to move is in check
-    if (isInCheck && ss->previousExtensions < 4)
+    if (isInCheck && ss->previousExtensions <= 5)
     {
         ss->previousExtensions++;
         depth++;
