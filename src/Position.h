@@ -179,14 +179,14 @@ public:
 
 
     // check if current position has been repeated twice before (3-fold repetition rule)
-    bool checkRepetition(ZobristHash currentPositionZobrist)
+    bool repetition()
     {
 
         int repetitionsCount = 0;
 
         for (int i = numOfPositions - 1; i >= irreversiblePositionTop; i--)
         {
-            if (currentPositionZobrist == previousPositions[i])
+            if (zobristHash == previousPositions[i])
             {
                 repetitionsCount++;
                 if (repetitionsCount == 2)
@@ -198,11 +198,16 @@ public:
         return false;
     }
 
-    bool isDraw(ZobristHash zobrist)
+    bool isDraw()
     {
-        if (halfMoveCounter >= 100) return true;
+        // TODO: Generate king moves to see if checkmate occured right as the 50 move rule was about to happen, for now > instead of >= to account for it
+        if (halfMoveCounter > 100) return true;
+        //{
+        //    Move kingMoves[16];
+        //    generateKingMoves()
+        //}
 
-        if (checkRepetition(zobrist)) return true;
+        if (repetition()) return true;
 
         /*
         // Dont check for draw if there are major pieces or pawns on the board

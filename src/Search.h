@@ -6,6 +6,7 @@
 #include "Position.h"
 #include <math.h>
 
+#include "Parameters.h"
 #include "nnue/Accumulator.h"
 
 class Position;
@@ -87,11 +88,14 @@ extern int precomputedLMR[MAX_PLY][256];
 
 // the LMR formula is computed once at the beginning of the program to avoid calling std::log millions of times in the search
 inline void initLMR() {
+    float LmrBase = Aspen::Parameters::LMR_Base / 100.0f;
+    float LmrDivisor = Aspen::Parameters::LMR_Divisor / 100.0f;
     // for every depth up to the maximum ply
     for (int d = 0; d < MAX_PLY; d++) {
         // for every move up to 256
         for (int i = 0; i < 256; i++) {
-            precomputedLMR[d][i] = 0.88 + std::log(d) * std::log(i) / 2.0;
+            float reduction = LmrBase + std::log(d) * std::log(i) / LmrDivisor;
+            precomputedLMR[d][i] = static_cast<int>(std::round(reduction));
         }
     }
 }

@@ -17,6 +17,7 @@ namespace Aspen::Parameters
     };
 
 
+
     // Below are all the tunable parameters initialized with their default value
 
     // Q-SEARCH PARAMETERS
@@ -24,25 +25,14 @@ namespace Aspen::Parameters
     inline int QS_DeltaCaptureMargin = 200;
     inline int QS_SEE_Threshold = 0;
 
-
-    // LMP PARAMETERS FOR EACH DEPTH
-    inline int lateMovePruningThreshold[5] = {999, 6, 12, 17, 25};
-
-    // LMR PARAMETERS
-    inline int LMR_Base = 88;                   // 0.88 , DIVIDE BY 100
-    inline int LMR_Divisor = 200;               // 2.00 , DIVIDE BY 100
-    inline int LMR_NoHashPenalty = 100;         // -1.00 , DIVIDE BY 100 AND -
-    inline int LMR_HashIsCapPromoPenalty = 100;  // SCALED BY 100 PENALTY FOR WHEN HASH IS TOO GOOD
-    inline int LMR_NotImprovingPenalty = 100;   // -1.00 , DIVIDE BY 100 AND -
-    inline int LMR_KillerBonus = 100;           // 1.00 , DIVIDE BY 100 AND
+    // NEGAMAX
+    inline int CheckExtensionsLimit = 5;
 
     // RFP PARAMETERS
     inline int RFP_MaxDepth = 7;
     inline int RFP_MarginMultiplier = 70;     // NOT SCALED
     inline int RFP_MarginBase = 0;           // BASE VALUE FOR RFP
-    // MARGIN REDUCTION WHEN IMPROVING
-    inline int RFP_ImprovingMultiplier = 15;           // - DEPTH * 15
-    inline int RFP_ImprovingBase = 0;              // Base reduction
+    inline int RFP_ImprovingMarginReduction = 15;
 
 
     // RAZORING PARAM
@@ -51,10 +41,11 @@ namespace Aspen::Parameters
     inline int RazoringMarginBase = 300;   // + 300
 
     // NMP PARAM
-    inline int NMP_MinDepth = 3;
-    inline int NMP_Base = 400;                // SCALED BASE DEPTH REDUCTION BY 100
-    inline int NMP_Divisor = 300;             // DEPTH / 3 , SCALED 100
-    inline int NMP_ImprovingBonus = 100;     // reduce more when improving, SCALED 100
+    inline int NMP_MinDepth = 4;
+    inline int NMP_Base = 4;
+    inline int NMP_Divisor = 3;
+    inline int NMP_ImprovingReduction = 1;     // reduce more when improving
+
 
     // FUTILITY PRUNING AND EXTENDED
     inline int FP_Margin1 = 200;   // MARGIN FOR DEPTH 1 FUTILITY
@@ -75,12 +66,41 @@ namespace Aspen::Parameters
     inline int SE_DoubleThreshold = 20;      // MARGIN FOR +2
 
 
-    // CAPTURE HISTORY PRUNING
+    // SEE & CAPHISTORY PRUNING
+    inline int SEE_MinDepth = 3;
     inline int CapHistPruningThreshold = 8192;
+    inline int SEE_Threshold = 0;
+
+
+    // LMP PARAMETERS
+    inline int LMP_Multiplier = 6;
+    inline int LMP_Base = 0;
+    inline int LMP_HistoryReductionThreshold = 8192;
+    inline int LMP_HistoryReductionMultiplier = 2;
+
+    // LMR PARAMETERS
+    inline int LMR_MinDepth = 2;
+    inline int LMR_MinMoveIndex = 2;
+    inline int LMR_Base = 88;                   // 0.88 , DIVIDE BY 100
+    inline int LMR_Divisor = 200;               // 2.00 , DIVIDE BY 100
+    inline int LMR_HashIsCapPromoPenalty = 1;  // SCALED BY 100 PENALTY FOR WHEN HASH IS TOO GOOD
+    inline int LMR_NotImprovingPenalty = 1;   // -1.00 , DIVIDE BY 100 AND -
+    inline int LMR_KillerBonus = 1;           // 1.00 , DIVIDE BY 100 AND
+    inline int LMR_CutNodeReduction = 1;
+    inline int LMR_LowerThanTTDepthPenalty = 1;
+    inline int LMR_TTNotPvPenalty = 1;
+
+
 
     // HISTORY BONUS -> (300 * depth - 250)
     inline int HistoryBonusMultiplier = 300;
     inline int HistoryBonusSubtractor = 250;
+    inline int HistoryBonusMax = 1200;
+
+    // HISTORY PENALTY
+    inline int HistoryPenaltyMultiplier = 300;
+    inline int HistoryPenaltySubtractor = 250;
+    inline int HistoryPenaltyMax = 1200;
 
 
     // ASPIRATION WINDOW
