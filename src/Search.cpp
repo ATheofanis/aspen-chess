@@ -950,11 +950,12 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
 
 
 
+
+
 // This function initiates the search using iterative deepening and aspiration windows
 Move MoveSearcher::findBestMove(Position pos, int& posEval)
 {
-    // Increment generation for transposition table aging replacement scheme
-    generation++;
+    applyAge();
 
     // Reset killer moves
     memset(killerMoves, 0, sizeof(killerMoves));

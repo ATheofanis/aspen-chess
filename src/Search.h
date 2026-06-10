@@ -81,6 +81,14 @@ public:
         memset(killerMoves, 0, sizeof(killerMoves));
         generation = 0;
     }
+
+    void applyAge()
+    {
+        // Increment generation for transposition table aging replacement scheme
+        generation++;
+
+        // HISTORY AGING WILL BE ADDED HERE , WITH 3 LOOPS PROBABLY
+    }
 };
 
 
