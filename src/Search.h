@@ -88,16 +88,16 @@ public:
         generation++;
 
         // Butterfly history aging, it is expensive but only called once before the search starts
-        for (int i = 0; i < 2; i++)
-        {
-            for (int j = 0; j < 64; j++)
-            {
-                for (int k = 0; k < 64; k++)
-                {
-                    historyScores[i][j][k] /= 2;
-                }
-            }
-        }
+        //for (int i = 0; i < 2; i++)
+        //{
+        //    for (int j = 0; j < 64; j++)
+        //    {
+        //        for (int k = 0; k < 64; k++)
+        //        {
+        //            historyScores[i][j][k] /= 2;
+        //        }
+        //    }
+        //}
     }
 };
 
