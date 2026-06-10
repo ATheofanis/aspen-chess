@@ -48,6 +48,8 @@ add_executable(AspenChess src/main.cpp
         src/History.h
         src/Parameters.cpp
         src/Parameters.h
+        src/Bench.cpp
+        src/Bench.h
 )
 
 target_compile_options(AspenChess PRIVATE -mavx2)
