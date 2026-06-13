@@ -62,14 +62,12 @@ Aspen is a standard UCI chess engine, so you can use any Chess GUI that supports
 ### **Special Thanks**
 - Thank you to the testers: Lars Hallerström, Graham Banks and the CCRL organizers
 - Thank you to Jim Ablett for finding weaknesses in the code and suggesting improvements
-
 ### **Engines**:
 Thank you to the authors of these engines, that served as sources of inspiration for my engine
 - [Chal](https://github.com/namanthanki/chal)
 - [Stockfish](https://stockfishchess.org/)
 - [Berserk](https://github.com/jhonnold/berserk)
-
-## Tools
+### Tools
 The tools that I used to create the engine
 - [Bullet](https://github.com/jw1912/bullet) - NNUE trainer
 - [Incbin](https://github.com/graphitemaster/incbin) - To embed the binary weights file of the network, to the executable
