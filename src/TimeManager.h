@@ -6,10 +6,6 @@
 #include <chrono> // Explicitly include chrono here to ensure steady_clock is available
 #include "Types.h"
 
-// Returns current time - used to calculate elapsed time
-inline TimeMs now() {
-    return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
-}
 
 // Class to handle the engine's time control calculations
 class TimeManager

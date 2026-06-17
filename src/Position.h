@@ -83,7 +83,6 @@ public:
 
     // make move functions
     void makeMove(Move move); // any legal move
-    void makeCapture(Move capture); // any legal capture
 
     void makeNullMove(int epSq) // null move for null move pruning
     {

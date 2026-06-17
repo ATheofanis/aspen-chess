@@ -28,10 +28,9 @@
 #include "PseudoMoveGen.h"
 #include "TimeManager.h"
 #include "Parameters.h"
+#include "Bench.h"
 
 class Position;
-
-constexpr uint64_t MaxValue = std::numeric_limits<uint64_t>::max();
 
 int globalMTG = 40;
 
@@ -343,7 +342,6 @@ void uciRunSearch(MoveSearcher& searcher, const Position& pos)
 }
 
 
-
 inline void initializations()
 {
     initLMR();
@@ -518,6 +516,10 @@ void LoopUCI()
             }
 
         }
+        else if (tokens[0] == "bench")
+        {
+            Aspen::Bench::runBench();
+        }
         else if (tokens[0] == "isready")
         {
             std::cout << "readyok\n" << std::endl;
@@ -527,6 +529,7 @@ void LoopUCI()
             std::cout << "id name Aspen 2.3.0\n";
             std::cout << "id author ATheo\n";
             std::cout << "option name Hash type spin default 64 min 1 max 32768\n"; // Default hash table size is 64 megabytes
+            std::cout << "option name Threads type spin default 1 min 1 max 1\n"; // Threads not supported yet
             Aspen::Parameters::printTunableParameters();
             std::cout << "uciok\n";
         }
@@ -552,6 +555,12 @@ void LoopUCI()
                     int TTSizeMB = std::atoi(tokens[4].c_str());
                     resizeTranspositionTable(TTSizeMB);
                 }
+                // Set number of threads
+                else if ((tokens[2] == "Threads" || tokens[2] == "threads") && tokens[3] == "value")
+                {
+                    // to be continued
+                }
+                // Set parameter value
                 else
                 {
                     if (tokens.size() >= 4) Aspen::Parameters::setParameter(tokens[2], std::atoi(tokens[4].c_str()));

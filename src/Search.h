@@ -65,6 +65,8 @@ public:
     int historyScores[2][64][64]{};
     Move killerMoves[MAX_PLY][2]{};
 
+    int getNodes() { return nodes; }
+
     Move findBestMove(Position pos, int& posEval);
 
     int scoreMove(Move move, const Position& pos, Move hashMove, SearchStack *ss, int ply = -1);

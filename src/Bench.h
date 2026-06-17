@@ -3,3 +3,8 @@
 //
 
 #pragma once
+
+namespace Aspen::Bench
+{
+    void runBench();
+}

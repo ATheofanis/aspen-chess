@@ -19,6 +19,13 @@ using Bitboard = uint64_t;
 using ZobristHash = uint64_t;
 
 using TimeMs = std::chrono::milliseconds::rep;
+constexpr uint64_t MaxValue = std::numeric_limits<uint64_t>::max();
+
+// Returns current time - used to calculate elapsed time
+inline TimeMs now() {
+    return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+}
+
 
 typedef int16_t ContinuationHistory[12][64];
 
