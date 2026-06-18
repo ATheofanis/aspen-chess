@@ -6,7 +6,7 @@
 
 #include <ctime>
 
-// xoshiro256** pseudo random number generator. Code from https://prng.di.unimi.it/xoshiro256starstar.c:
+// Xoshiro256** pseudo random number generator. Code from https://prng.di.unimi.it/xoshiro256starstar.c:
 
 /*
    This is xoshiro256** 1.0, one of our all-purpose, rock-solid
@@ -48,34 +48,36 @@ uint64_t next() {
 
 // splitmix64 pseudo code: https://rosettacode.org/wiki/Pseudo-random_numbers/Splitmix64
 
-// for seeding we use splitmix64
-static uint64_t splitmix64State = 12587915872;
+// State assignment for deterministic build
+static uint64_t splitmix64State = 12587915872; // We assign a random fixed state (seed) for splitmix64 PRNG
 
+// For data generation we need a random state which we get from current time, so that if we pause and then resume data gen,
+// it will not repeat the same games
 #ifdef DATAGEN
-	static uint64_t splitmix64State = static_cast<uint64_t>(std::time(nullptr)); // temporary for datagen
+	static uint64_t splitmix64State = static_cast<uint64_t>(std::time(nullptr));
 #endif
 
 
-// use splitmix64 generator for seeding (to fill s - state)
+// Splitmix64 PRNG
 uint64_t splitmix64()
 {
 	splitmix64State += 0x9e3779b97f4a7c15;
 
 	uint64_t z = splitmix64State;
 
-	z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9; /* xor the variable with the variable right bit shifted 30 then multiply by a constant */
-	z = (z ^ (z >> 27)) * 0x94d049bb133111eb; /* xor the variable with the variable right bit shifted 27 then multiply by a constant */
+	z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9; /* Xor the variable with the variable right bit shifted 30 then multiply by a constant */
+	z = (z ^ (z >> 27)) * 0x94d049bb133111eb; /* Xor the variable with the variable right bit shifted 27 then multiply by a constant */
 
-	return z ^ (z >> 31);					  /* return the variable xor'ed with itself right bit shifted 31 */
+	return z ^ (z >> 31);					  /* Return the variable xor'ed with itself right bit shifted 31 */
 }
 
 
-// seeding for xoshiro256** (s[4])
+// Seeding for xoshiro256** (s[4])
 void seedingForXoshiro256aa()
 {
 	for (int i = 0; i < 4; i++)
 	{
-		s[i] = splitmix64();
+		s[i] = splitmix64(); // Assign a random value passed from splitmix64 to each of xoshiro's 4 states
 	}
 }
 

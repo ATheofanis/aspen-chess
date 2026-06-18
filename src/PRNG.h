@@ -5,8 +5,9 @@
 #pragma once
 #include <cstdint>
 
-// xoshiro256** pseudo random number generator to initialize zobrist hash
+// Xoshiro256** pseudo random number generator for Zobrist Hash initialization
+// Check out: https://prng.di.unimi.it/xoshiro256starstar.c
 uint64_t next();
 
-// seeding for xoshiro256** (s[4])
+// Seeding function for xoshiro256**
 void seedingForXoshiro256aa();
