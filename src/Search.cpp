@@ -1037,7 +1037,7 @@ Move MoveSearcher::findBestMove(Position pos, int& posEval)
         previousMove = bestMove;
 
         // Print search statistics
-        if (!DataGenFlag) printInfo(depth, score); // Only print info if we are not generating self-play data
+        if (!DisableStatistics) printInfo(depth, score); // Only print info if we are not generating self-play data
 
         // If the optimum time limit that the time manager set has expired
         if (uciStop || timeManager.isTimeEnabled() && timeManager.optimumExpired())

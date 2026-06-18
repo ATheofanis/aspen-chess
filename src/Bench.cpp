@@ -78,7 +78,7 @@ namespace Aspen::Bench
         MoveSearcher* searcher = new MoveSearcher();
 
         MAX_NODES = MaxValue;
-        MAX_DEPTH = 15;
+        MAX_DEPTH = 14;
 
         int totalNodes = 0;
 
@@ -101,7 +101,7 @@ namespace Aspen::Bench
 
         TimeMs totalTime = now() - startingTime;
 
-        std::cout << "Bench: " << "nodes " << totalNodes << " nps " << (timeManager.elapsedTime() > 0 ? totalNodes * 1000LL / totalTime : 0);
+        std::cout << totalNodes << " nodes " << (timeManager.elapsedTime() > 0 ? totalNodes * 1000LL / totalTime : 0) << " nps";
     }
 
 

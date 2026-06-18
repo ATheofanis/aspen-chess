@@ -8,9 +8,8 @@
 
 // xoshiro256** pseudo random number generator. Code from https://prng.di.unimi.it/xoshiro256starstar.c:
 
-
-
-/* This is xoshiro256** 1.0, one of our all-purpose, rock-solid
+/*
+   This is xoshiro256** 1.0, one of our all-purpose, rock-solid
    generators. It has excellent (sub-ns) speed, a state (256 bits) that is
    large enough for any parallel application, and it passes all tests we
    are aware of.
@@ -19,7 +18,8 @@
 
    The state must be seeded so that it is not everywhere zero. If you have
    a 64-bit seed, we suggest to seed a splitmix64 generator and use its
-   output to fill s. */
+   output to fill s.
+*/
 
 static uint64_t rotl(const uint64_t x, int k) {
 	return (x << k) | (x >> (64 - k));
@@ -49,8 +49,12 @@ uint64_t next() {
 // splitmix64 pseudo code: https://rosettacode.org/wiki/Pseudo-random_numbers/Splitmix64
 
 // for seeding we use splitmix64
-//static uint64_t splitmix64State = 12587915872;
-static uint64_t splitmix64State = static_cast<uint64_t>(std::time(nullptr)); // temporary for datagen
+static uint64_t splitmix64State = 12587915872;
+
+#ifdef DATAGEN
+	static uint64_t splitmix64State = static_cast<uint64_t>(std::time(nullptr)); // temporary for datagen
+#endif
+
 
 // use splitmix64 generator for seeding (to fill s - state)
 uint64_t splitmix64()

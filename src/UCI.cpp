@@ -389,7 +389,7 @@ void LoopUCI()
 
                 TimeMs startingTime = now();
                 MAX_NODES = dataGenMaxNodes;
-                DataGenFlag = true;
+                DisableStatistics = true;
                 generateData(dataFile);
                 TimeMs totalTime = now() - startingTime;
                 std::cout << "Data generation finished. Generated " << NumberOfGames << "games in " << totalTime << " ms." << std::endl;
@@ -518,6 +518,7 @@ void LoopUCI()
         }
         else if (tokens[0] == "bench")
         {
+            DisableStatistics = true;
             Aspen::Bench::runBench();
         }
         else if (tokens[0] == "isready")

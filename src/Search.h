@@ -16,7 +16,7 @@ inline int MAX_DEPTH = 128;
 
 inline uint64_t MAX_NODES = std::numeric_limits<uint64_t>::max();
 
-inline bool DataGenFlag = false;
+inline bool DisableStatistics = false;
 
 // Search Stack to pass search-related information
 struct SearchStack
