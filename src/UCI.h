@@ -3,4 +3,4 @@
 //
 #pragma once
 
-void LoopUCI();
+void LoopUCI(bool bench);

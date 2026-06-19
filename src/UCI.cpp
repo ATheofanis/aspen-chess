@@ -359,7 +359,7 @@ inline void initializations()
 
 
 
-void LoopUCI()
+void LoopUCI(bool BenchArgumentFlag)
 {
     initializations();
 
@@ -373,216 +373,226 @@ void LoopUCI()
 
     std::thread searcherThread;
 
-    while (getline(std::cin, command))
+    // For open bench, if "bench" argument is passed just run bench
+    if (BenchArgumentFlag)
     {
-        if (command.empty()) continue;
-
-        std::vector<std::string> tokens = tokenize(command);
-
-        // Custom command for data generation
-        if (tokens[0] == "begin")
+        DisableStatistics = true;
+        Aspen::Bench::runBench();
+        DisableStatistics = false;
+    }
+    else
+    {
+        while (getline(std::cin, command))
         {
-            if (tokens.size() >= 2 && tokens[1] == "datagen")
-            {
-                NumberOfGames = std::atoi(tokens[2].c_str());
-                std::string dataFile = tokens[3];
+            if (command.empty()) continue;
 
-                TimeMs startingTime = now();
-                MAX_NODES = dataGenMaxNodes;
-                DisableStatistics = true;
-                generateData(dataFile);
-                TimeMs totalTime = now() - startingTime;
-                std::cout << "Data generation finished. Generated " << NumberOfGames << "games in " << totalTime << " ms." << std::endl;
+            std::vector<std::string> tokens = tokenize(command);
+
+            // Custom command for data generation
+            if (tokens[0] == "begin")
+            {
+                if (tokens.size() >= 2 && tokens[1] == "datagen")
+                {
+                    NumberOfGames = std::atoi(tokens[2].c_str());
+                    std::string dataFile = tokens[3];
+                    MAX_NODES = dataGenMaxNodes;
+
+                    DisableStatistics = true;
+                    generateData(dataFile);
+                    DisableStatistics = false;
+                }
             }
-        }
-        // position command
-        else if (tokens[0] == "position")
-        {
-            // non fen string ---------
-            if (tokens.size() >= 2 && tokens[1] == "startpos")
+            // position command
+            else if (tokens[0] == "position")
             {
-                if (tokens.size() >= 3 && tokens[2] == "moves")
+                // non fen string ---------
+                if (tokens.size() >= 2 && tokens[1] == "startpos")
                 {
-                    pos = parsePosition(tokens, 3);
-                }
-            }// non fen string --------
-
-            // fen string --------------
-            else if (tokens[1] == "fen")
-            {
-                bool movesFlag = false;
-                int movesTokenIndex = 0;
-                std::string fenString;
-                for (int i = 2; i < tokens.size(); i++)
-                {
-                    if (tokens[i] == "moves")
+                    if (tokens.size() >= 3 && tokens[2] == "moves")
                     {
-                        movesTokenIndex = i+1;
-                        movesFlag = true;
-                        break;
+                        pos = parsePosition(tokens, 3);
                     }
-                    fenString += tokens[i];
-                    fenString += ' ';
-                }
-
-                pos.loadFen(fenString);
-                if (movesFlag)
-                {
-                    parseFenPosition(tokens, movesTokenIndex, pos);
-                }
+                }// non fen string --------
 
                 // fen string --------------
-            }
-        }
-        else if (tokens[0] == "go")
-        {
-            MAX_NODES = MaxValue;
-            TimeMs wtime = MaxValue;
-            TimeMs btime = MaxValue;
-            TimeMs winc = 0;
-            TimeMs binc = 0;
-            int movestogo = 40;
-            bool timeEnabled = false;
+                else if (tokens[1] == "fen")
+                {
+                    bool movesFlag = false;
+                    int movesTokenIndex = 0;
+                    std::string fenString;
+                    for (int i = 2; i < tokens.size(); i++)
+                    {
+                        if (tokens[i] == "moves")
+                        {
+                            movesTokenIndex = i+1;
+                            movesFlag = true;
+                            break;
+                        }
+                        fenString += tokens[i];
+                        fenString += ' ';
+                    }
 
-            for (int i = 1; i < tokens.size(); i++)
+                    pos.loadFen(fenString);
+                    if (movesFlag)
+                    {
+                        parseFenPosition(tokens, movesTokenIndex, pos);
+                    }
+
+                    // fen string --------------
+                }
+            }
+            else if (tokens[0] == "go")
             {
-                if (tokens[i] == "wtime") // white remaining time
-                {
-                    timeEnabled = true;
-                    wtime = std::atoi(tokens[i+1].c_str());
-                }
-                else if (tokens[i] == "btime") // black remaining time
-                {
-                    timeEnabled = true;
-                    btime = std::atoi(tokens[i+1].c_str());
-                }
-                else if (tokens[i] == "winc") // white increment
-                {
-                    timeEnabled = true;
-                    winc = std::atoi(tokens[i+1].c_str());
-                }
-                else if (tokens[i] == "binc") // black increment
-                {
-                    timeEnabled = true;
-                    binc = std::atoi(tokens[i+1].c_str());
-                }
-                else if (tokens[i] == "movestogo") // moves to go passed by the GUI
-                {
-                    movestogo = std::atoi(tokens[i+1].c_str());
-                }
-                else if (tokens[i] == "depth") // change the maximum depth if the depth command is passed
-                {
-                    timeManager.disableTimeControl();
-                    MAX_DEPTH = std::atoi(tokens[i+1].c_str());
-                }
-                else if (tokens[i] == "nodes") // set the maximum amount of nodes that can be searched
-                {
-                    timeManager.disableTimeControl();
-                    MAX_NODES = std::atoi(tokens[i+1].c_str());
-                }
-                else if (tokens[i] == "perft")
-                {
-                    int perftDepth = std::atoi(tokens[i+1].c_str());
-                    dividePerft(pos, perftDepth);
-                }
-            }
+                MAX_NODES = MaxValue;
+                TimeMs wtime = MaxValue;
+                TimeMs btime = MaxValue;
+                TimeMs winc = 0;
+                TimeMs binc = 0;
+                int movestogo = 40;
+                bool timeEnabled = false;
 
-            // If time controls were enabled, which is determined based on UCI input, then start the time manager
-            if (timeEnabled) {
-                TimeMs myTime = (pos.isWhiteToMove()) ? wtime : btime;
-                TimeMs myInc = (pos.isWhiteToMove()) ? winc : binc;
-                timeManager.start(myTime, myInc, movestogo); // initialize the time manager for the side to move
-            }
-            // Otherwise reset the time manager, which basically turns time controls off but keeps track of current time
-            // in order to continue printing search statistics, such as NPS and search time
-            else
-            {
-                timeManager.reset();
-            }
-
-            searcher->uciStop = true;
-
-            if (searcherThread.joinable()) searcherThread.join();
-
-            searcher->uciStop = false;
-
-            // Run the search using the searcher thread so that we can search while also reading UCI commands
-            searcherThread = std::thread([&](){ uciRunSearch(*searcher, pos); });
-
-            globalMTG--;
-            if (globalMTG <= 0)
-            {
-                globalMTG = 30;
-            }
-
-        }
-        else if (tokens[0] == "bench")
-        {
-            DisableStatistics = true;
-            Aspen::Bench::runBench();
-        }
-        else if (tokens[0] == "isready")
-        {
-            std::cout << "readyok\n" << std::endl;
-        }
-        else if (tokens[0] == "uci")
-        {
-            std::cout << "id name Aspen 2.3.0\n";
-            std::cout << "id author ATheo\n";
-            std::cout << "option name Hash type spin default 64 min 1 max 32768\n"; // Default hash table size is 64 megabytes
-            std::cout << "option name Threads type spin default 1 min 1 max 1\n"; // Threads not supported yet
-            Aspen::Parameters::printTunableParameters();
-            std::cout << "uciok\n";
-        }
-        else if (tokens[0] == "ucinewgame")
-        {
-            // If there is an ongoing search we must cancel to continue with the new game
-            searcher->uciStop = true;
-
-            if (searcherThread.joinable()) searcherThread.join();
-
-            globalMTG = 100;
-            clearTranspositionTable();
-            searcher->newGame();
-        }
-        // UCI options
-        else if (tokens[0] == "setoption" && tokens.size() >= 5)
-        {
-            if (tokens[1] == "name")
-            {
-                // Resize TT size option
-                if ((tokens[2] == "Hash" || tokens[2] == "hash") && tokens[3] == "value")
+                for (int i = 1; i < tokens.size(); i++)
                 {
-                    int TTSizeMB = std::atoi(tokens[4].c_str());
-                    resizeTranspositionTable(TTSizeMB);
+                    if (tokens[i] == "wtime") // white remaining time
+                    {
+                        timeEnabled = true;
+                        wtime = std::atoi(tokens[i+1].c_str());
+                    }
+                    else if (tokens[i] == "btime") // black remaining time
+                    {
+                        timeEnabled = true;
+                        btime = std::atoi(tokens[i+1].c_str());
+                    }
+                    else if (tokens[i] == "winc") // white increment
+                    {
+                        timeEnabled = true;
+                        winc = std::atoi(tokens[i+1].c_str());
+                    }
+                    else if (tokens[i] == "binc") // black increment
+                    {
+                        timeEnabled = true;
+                        binc = std::atoi(tokens[i+1].c_str());
+                    }
+                    else if (tokens[i] == "movestogo") // moves to go passed by the GUI
+                    {
+                        movestogo = std::atoi(tokens[i+1].c_str());
+                    }
+                    else if (tokens[i] == "depth") // change the maximum depth if the depth command is passed
+                    {
+                        timeManager.disableTimeControl();
+                        MAX_DEPTH = std::atoi(tokens[i+1].c_str());
+                    }
+                    else if (tokens[i] == "nodes") // set the maximum amount of nodes that can be searched
+                    {
+                        timeManager.disableTimeControl();
+                        MAX_NODES = std::atoi(tokens[i+1].c_str());
+                    }
+                    else if (tokens[i] == "perft")
+                    {
+                        int perftDepth = std::atoi(tokens[i+1].c_str());
+                        dividePerft(pos, perftDepth);
+                    }
                 }
-                // Set number of threads
-                else if ((tokens[2] == "Threads" || tokens[2] == "threads") && tokens[3] == "value")
-                {
-                    // to be continued
+
+                // If time controls were enabled, which is determined based on UCI input, then start the time manager
+                if (timeEnabled) {
+                    TimeMs myTime = (pos.isWhiteToMove()) ? wtime : btime;
+                    TimeMs myInc = (pos.isWhiteToMove()) ? winc : binc;
+                    timeManager.start(myTime, myInc, movestogo); // initialize the time manager for the side to move
                 }
-                // Set parameter value
+                // Otherwise reset the time manager, which basically turns time controls off but keeps track of current time
+                // in order to continue printing search statistics, such as NPS and search time
                 else
                 {
-                    if (tokens.size() >= 4) Aspen::Parameters::setParameter(tokens[2], std::atoi(tokens[4].c_str()));
+                    timeManager.reset();
+                }
+
+                searcher->uciStop = true;
+
+                if (searcherThread.joinable()) searcherThread.join();
+
+                searcher->uciStop = false;
+
+                // Run the search using the searcher thread so that we can search while also reading UCI commands
+                searcherThread = std::thread([&](){ uciRunSearch(*searcher, pos); });
+
+                globalMTG--;
+                if (globalMTG <= 0)
+                {
+                    globalMTG = 30;
+                }
+
+            }
+            // Run bench if it was passed in the UCI loop
+            else if (tokens[0] == "bench")
+            {
+                DisableStatistics = true;
+                Aspen::Bench::runBench();
+                DisableStatistics = false;
+            }
+            else if (tokens[0] == "isready")
+            {
+                std::cout << "readyok\n" << std::endl;
+            }
+            else if (tokens[0] == "uci")
+            {
+                std::cout << "id name Aspen 2.3.0\n";
+                std::cout << "id author ATheo\n";
+                std::cout << "option name Hash type spin default 64 min 1 max 32768\n"; // Default hash table size is 64 megabytes
+                std::cout << "option name Threads type spin default 1 min 1 max 1\n"; // Threads not supported yet
+                Aspen::Parameters::printTunableParameters();
+                std::cout << "uciok\n";
+            }
+            else if (tokens[0] == "ucinewgame")
+            {
+                // If there is an ongoing search we must cancel to continue with the new game
+                searcher->uciStop = true;
+
+                if (searcherThread.joinable()) searcherThread.join();
+
+                globalMTG = 100;
+                clearTranspositionTable();
+                searcher->newGame();
+            }
+            // UCI options
+            else if (tokens[0] == "setoption" && tokens.size() >= 5)
+            {
+                if (tokens[1] == "name")
+                {
+                    // Resize TT size option
+                    if ((tokens[2] == "Hash" || tokens[2] == "hash") && tokens[3] == "value")
+                    {
+                        int TTSizeMB = std::atoi(tokens[4].c_str());
+                        resizeTranspositionTable(TTSizeMB);
+                    }
+                    // Set number of threads
+                    else if ((tokens[2] == "Threads" || tokens[2] == "threads") && tokens[3] == "value")
+                    {
+                        // to be continued
+                    }
+                    // Set parameter value
+                    else
+                    {
+                        if (tokens.size() >= 4) Aspen::Parameters::setParameter(tokens[2], std::atoi(tokens[4].c_str()));
+                    }
                 }
             }
-        }
-        // Quit the program
-        else if (tokens[0] == "quit")
-        {
-            searcher->uciStop = true;
+            // Quit the program
+            else if (tokens[0] == "quit")
+            {
+                searcher->uciStop = true;
 
-            if (searcherThread.joinable()) searcherThread.join();
+                if (searcherThread.joinable()) searcherThread.join();
 
-            break;
-        }
-        // Immediately stop the search
-        else if (tokens[0] == "stop")
-        {
-            searcher->uciStop = true;
+                break;
+            }
+            // Immediately stop the search
+            else if (tokens[0] == "stop")
+            {
+                searcher->uciStop = true;
 
-            if (searcherThread.joinable()) searcherThread.join();
+                if (searcherThread.joinable()) searcherThread.join();
+            }
         }
     }
 }
