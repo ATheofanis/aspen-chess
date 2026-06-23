@@ -26,7 +26,7 @@ namespace Aspen::Parameters
     inline int QS_SEE_Threshold = 0;
 
     // NEGAMAX
-    inline int CheckExtensionsLimit = 5;
+    inline int CheckExtensionsLimit = 3; // 3-6
 
     // RFP PARAMETERS
     inline int RFP_MaxDepth = 7;
@@ -104,6 +104,7 @@ namespace Aspen::Parameters
 
 
     // ASPIRATION WINDOW
+    inline int AspirationMinimum = 4;
     inline int AspirationWindowBase = 15;
 
     // TIME EXTENSION AFTER SUDDEN SCORE DROP

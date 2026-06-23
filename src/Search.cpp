@@ -356,7 +356,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
     constexpr auto nextNodeType = isPv ? NodeType::PV : NodeType::NonPV;
 
     // Return 0 for draw if 3-fold repetition is detected
-    if (ply > 0 && pos.isDraw()) return 0;
+    if (ply > 0 && pos.isDraw(ply)) return 0;
 
     // Find out if the side to move is currently in check
     bool isInCheck = pos.sideToMoveIsInCheck();
@@ -991,7 +991,8 @@ Move MoveSearcher::findBestMove(Position pos, int& posEval)
             break;
         }
 
-        if (depth < 4)
+        // 4
+        if (depth < AspirationMinimum)
         {
             score = negaMaxAlphaBeta<NodeType::Root>(pos, alpha, beta, depth, bmDummy, 0, depth, false, ss, false);
         }

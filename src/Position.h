@@ -162,7 +162,7 @@ public:
     constexpr int getMGPstAndMaterialScore() const { return mgPstAndMaterialScore; }
     constexpr int getEGPstAndMaterialScore() const { return egPstAndMaterialScore; }
 
-    // return total PST and static eval using phases and mg and eg evaluations
+    // Return total PST and static eval using phases and mg and eg evaluations
     int getTotalPSTAndMaterialScore() const
     {
         int mgPhase = gamePhase;
@@ -173,59 +173,37 @@ public:
         return (mgPstAndMaterialScore * mgPhase + egPstAndMaterialScore * egPhase) / 24;
     }
 
-    // manual computation of zobrist hash for loading fen and for debugging incremental zobrist
+    // Manual computation of zobrist hash for loading fen and for debugging incremental zobrist
     ZobristHash computeZobristHash();
 
 
-    // check if current position has been repeated twice before (3-fold repetition rule)
-    bool repetition()
+    // Check if current position has been repeated twice before (3-fold repetition rule)
+    bool repetition(int ply)
     {
+        for (int i = numOfPositions + ply - 2; i >= numOfPositions; i -= 2)
+        {
+            if (previousPositions[i] == zobristHash) return true;
+        }
 
         int repetitionsCount = 0;
 
-        for (int i = numOfPositions - 1; i >= irreversiblePositionTop; i--)
+        // Different starting index depending on the ply so that we don't skip positions incorrectly
+        int startingIndexAddition = ply & 1;
+
+        for (int i = numOfPositions - 2 + startingIndexAddition; i >= 0 && i >= irreversiblePositionTop; i -= 2)
         {
-            if (zobristHash == previousPositions[i])
+            if (previousPositions[i] == zobristHash)
             {
                 repetitionsCount++;
-                if (repetitionsCount == 2)
-                {
-                    return true;
-                }
+                if (repetitionsCount >= 2) return true;
             }
         }
-        return false;
-    }
-
-    bool isDraw()
-    {
-        // TODO: Generate king moves to see if checkmate occured right as the 50 move rule was about to happen, for now > instead of >= to account for it
-        if (halfMoveCounter > 100) return true;
-        //{
-        //    Move kingMoves[16];
-        //    generateKingMoves()
-        //}
-
-        if (repetition()) return true;
-
-        /*
-        // Dont check for draw if there are major pieces or pawns on the board
-        if (pieceBitboard[wp] || pieceBitboard[bp] || pieceBitboard[bR] || pieceBitboard[wR] || pieceBitboard[wQ] || pieceBitboard[bQ]) return false;
-
-        // Draw if there are 1 or less minor pieces on both sides
-        int whiteKnights = bitCount(pieceBitboard[wN]);
-        int whiteBishops = bitCount(pieceBitboard[wB]);
-        int whiteMinorPieces = whiteKnights + whiteBishops;
-
-        int blackKnights = bitCount(pieceBitboard[bN]);
-        int blackBishops = bitCount(pieceBitboard[bB]);
-        int blackMinorPieces = blackKnights + blackBishops;
-
-        if (whiteMinorPieces < 2 && blackMinorPieces < 2) return true;
-        */
 
         return false;
     }
+
+
+    bool isDraw(int ply);
 
     Bitboard getAllAttackersToSquare(int targetSquare) const;
 

@@ -9,10 +9,10 @@
 #include "PRNG.h"
 
 
-ZobristHash zobristPieces[64][12];
-ZobristHash zobristCastleRights[4];
-ZobristHash zobristEnpassantFile[8];
-ZobristHash zobristBlackToMove;
+alignas(64) ZobristHash zobristPieces[64][12];
+alignas(64) ZobristHash zobristCastleRights[4];
+alignas(64) ZobristHash zobristEnpassantFile[8];
+alignas(64) ZobristHash zobristBlackToMove;
 
 
 // initialize 64 squares for every piece type (12) with a random 64bit number, same for :

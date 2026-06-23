@@ -9,6 +9,7 @@
 #include "LegalMoveGen.h"
 #include "Zobrist.h"
 
+
 // clears everything regarding a position
 void Position::clearPosition()
 {
@@ -847,6 +848,18 @@ ZobristHash Position::computeZobristHash()
     }
 
     return hash;
+}
+
+
+bool Position::isDraw(int ply)
+{
+    // 50 move rule check
+    if (halfMoveCounter >= 100) return true;
+
+    // Draw by repetition check
+    if (repetition(ply)) return true;
+
+    return false;
 }
 
 

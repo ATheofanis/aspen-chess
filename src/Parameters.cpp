@@ -88,6 +88,7 @@ namespace Aspen::Parameters
         {"HistoryPenaltyMax", &HistoryPenaltyMax, 500, 4000},
 
         // Aspiration Window
+        {"AspirationMinimum", &AspirationMinimum, 1, 10},
         {"AspirationWindowBase", &AspirationWindowBase, 5, 50},
 
         // Time Controls
