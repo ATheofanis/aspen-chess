@@ -12,7 +12,7 @@ TimeManager timeManager;
 // The optimum time limit is a general guide to tell the engine when a search should probably stop.
 // In tricky positions the engine is allowed to go past the optimum time limit. For this reason we also have the maximum time limit
 // which the engine is not allowed to surpass at any point, in order to prevenet flagging
-void TimeManager::start(TimeMs myTime, TimeMs myInc, int movesToGo)
+void TimeManager::start(TimeMs myTime, TimeMs myInc, int movesToGo, int movesPlayed)
 {
     // ---- This improved time management algorithm was kindly provided by Jim Ablett. ----
     shouldStop = false;
@@ -29,15 +29,29 @@ void TimeManager::start(TimeMs myTime, TimeMs myInc, int movesToGo)
     // Time left without increment to prevent the engine from flagging when it thinks it has time left because of increment
     TimeMs safeTime = myTime;
 
+    int extraTime = 0;
+
+    // First 10 plies are early game - then the other 20 plies are middlegame usually
+    if (movesPlayed > 10 && movesPlayed <= 50)
+    {
+        extraTime += 5;
+    }
+
+    // If real time is more than 5 minutes then give more time
+    if (safeTime > 300000)
+    {
+        extraTime += 5;
+    }
+
     // Use a fraction of the available time
-    optimumTimeLimit = std::min(safeTime / 10, totalTime * 40 / 1000); // ~4% per move
+    optimumTimeLimit = std::min(safeTime / 10, (totalTime * (40 + extraTime)) / 1000); // ~4% per move
 
     // Never allow the engine to use more than one fifth of the real non-increment time left
-    maximumTimeLimit = std::min(safeTime / 5, totalTime * 180 / 1000);
+    maximumTimeLimit = std::min(safeTime / 5, (totalTime * (180 + extraTime)) / 1000);
 
     // Extra safety for very low time
     if (myTime < 3000) {
-        optimumTimeLimit = myTime * 40 / 1000;
-        maximumTimeLimit = myTime * 60 / 1000;
+        optimumTimeLimit = (myTime * (40 + extraTime)) / 1000;
+        maximumTimeLimit = (myTime * (60 + extraTime)) / 1000;
     }
 }

@@ -20,7 +20,7 @@ private:
     bool timeEnabled = true;      // Time is disabled for certain UCI commands
 public:
     // Called once at the start of every search to set the values of startingTime, optimum limit and maximum limit (and also reset the shouldStop flag)
-    void start(TimeMs myTime, TimeMs myInc, int movesToGo = 25);
+    void start(TimeMs myTime, TimeMs myInc, int movesToGo = 25, int movesPlayed = -1);
 
     // Sets should stop flag to true
     void stopSearch() { shouldStop = true; }

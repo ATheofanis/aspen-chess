@@ -135,6 +135,11 @@ public:
         return zobristHash;
     }
 
+    [[nodiscard]] constexpr int getHalfMoveCounter() const
+    {
+        return halfMoveCounter;
+    }
+
     [[nodiscard]] constexpr int getNumOfMoves() const
     {
         return numOfPositions;

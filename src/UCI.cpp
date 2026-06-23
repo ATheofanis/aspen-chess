@@ -498,7 +498,7 @@ void LoopUCI(bool BenchArgumentFlag)
                 if (timeEnabled) {
                     TimeMs myTime = (pos.isWhiteToMove()) ? wtime : btime;
                     TimeMs myInc = (pos.isWhiteToMove()) ? winc : binc;
-                    timeManager.start(myTime, myInc, movestogo); // initialize the time manager for the side to move
+                    timeManager.start(myTime, myInc, movestogo, pos.getHalfMoveCounter()); // initialize the time manager for the side to move
                 }
                 // Otherwise reset the time manager, which basically turns time controls off but keeps track of current time
                 // in order to continue printing search statistics, such as NPS and search time
