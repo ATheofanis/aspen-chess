@@ -930,7 +930,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
                         }
 
                         // Call the update capture history function but with a negative bonus
-                        updateCaptureHistory(captured, cToSquare, pos.getPieceFromBoard(cFromSquare), penalty);
+                        updateCaptureHistory(captured, cToSquare, pos.getPieceFromBoard(cFromSquare), -penalty);
                     }
                 }
 
