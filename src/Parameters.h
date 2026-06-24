@@ -67,8 +67,11 @@ namespace Aspen::Parameters
 
 
     // SEE & CAPHISTORY PRUNING
+    // Min Depth 3
     inline int SEE_MinDepth = 3;
+    // 8192
     inline int CapHistPruningThreshold = 8192;
+    // 0
     inline int SEE_Threshold = 0;
 
 

@@ -727,10 +727,10 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
         {
             // SEE pruning
             // SEE is computationally expensive so we can limit it strictly to captures where the attacker is more valuable than the victim
-            if (!isPv && !isInCheck && moveIsCapture && depth <= SEE_MinDepth && averagePieceScore[movingPiece] > averagePieceScore[capturedPiece])
+            if (!isPv && !isInCheck && moveIsCapture && depth <= SEE_MinDepth && (averagePieceScore[movingPiece] > averagePieceScore[capturedPiece]))
             {
                 // Skip move if SEE returns less than 0 meaning losing series of captures
-                if ((captureHistory[capturedPiece][toSquare][movingPiece] < CapHistPruningThreshold) && pos.SEE(toSquare, capturedPiece, fromSquare, movingPiece) < SEE_Threshold) continue;
+                if ((captureHistory[capturedPiece][toSquare][movingPiece] < -CapHistPruningThreshold) && pos.SEE(toSquare, capturedPiece, fromSquare, movingPiece) < SEE_Threshold) continue;
             }
 
             // |===================================================================================================|
