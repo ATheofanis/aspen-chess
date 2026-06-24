@@ -50,7 +50,7 @@ void TimeManager::start(TimeMs myTime, TimeMs myInc, int movesToGo, int movesPla
     maximumTimeLimit = std::min(safeTime / 5, (totalTime * (180 + extraTime)) / 1000);
 
     // Extra safety for very low time
-    if (myTime < 3000) {
+    if (myTime < 1500) {
         optimumTimeLimit = (myTime * (40 + extraTime)) / 1000;
         maximumTimeLimit = (myTime * (60 + extraTime)) / 1000;
     }

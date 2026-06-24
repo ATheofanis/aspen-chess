@@ -11,7 +11,7 @@
 
 class Accumulator;
 
-struct NetworkStruct
+struct alignas(64) NetworkStruct
 {
     int16_t featureWeights[InputSize][HiddenSize];
     int16_t featureBiases[HiddenSize];

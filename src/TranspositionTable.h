@@ -40,7 +40,7 @@ struct TTData
 
 
 // the transposition table contains hash entries that have specific information stored about a position
-struct TTEntry
+struct alignas(16) TTEntry
 {
     ZobristHash entryZobristKey = 0; // the position's zobrist key
     Move entryBestMove = 0;          // the best move of the position
