@@ -69,8 +69,8 @@ namespace Aspen::Parameters
     // SEE & CAPHISTORY PRUNING
     // Min Depth 3
     inline int SEE_MinDepth = 3;
-    // 8192
-    inline int CapHistPruningThreshold = 8192;
+    // 4096
+    inline int CapHistPruningThreshold = 4096;
     // 0
     inline int SEE_Threshold = 0;
 
@@ -78,7 +78,8 @@ namespace Aspen::Parameters
     // LMP PARAMETERS
     inline int LMP_Multiplier = 6;
     inline int LMP_Base = 0;
-    inline int LMP_HistoryReductionThreshold = 8192;
+    // 4096
+    inline int LMP_HistoryReductionThreshold = 4096;
     inline int LMP_HistoryReductionMultiplier = 2;
 
     // LMR PARAMETERS

@@ -194,7 +194,7 @@ int MoveSearcher::quiescence(Position& pos, int alpha, int beta, Move ttBestMove
         generateCaptures(info, pos, moves, numOfMoves);
     }
 
-    int moveScores[numOfMoves];
+    int moveScores[256];
 
     // Get the score of every move for move ordering
     for (int i = 0; i < numOfMoves; i++)
@@ -589,7 +589,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
     int quietMoves[256];
     int captures[64];
 
-    int moveScores[numOfMoves];
+    int moveScores[256];
 
     for (int i = 0; i < numOfMoves; i++)
     {
@@ -624,6 +624,8 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
         }
 
         Move move = moves[i];
+
+        if (move == ss->excludedMove) continue;
 
         int fromSquare = getFromSquare(move);
         int toSquare = getToSquare(move);
@@ -878,8 +880,8 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
                 sideToMove = pos.isWhiteToMove() ? White : Black;
 
                 // The move that caused the cutoff receives a bonus based on current depth
-                const int bonus = std::max(HistoryBonusMax, HistoryBonusMultiplier * depth - HistoryBonusSubtractor);
-                const int penalty = std::max(HistoryPenaltyMax, HistoryPenaltyMultiplier * depth - HistoryPenaltySubtractor);
+                const int bonus = std::clamp(HistoryBonusMultiplier * depth - HistoryBonusSubtractor, 0, HistoryBonusMax);
+                const int penalty = std::clamp(HistoryPenaltyMultiplier * depth - HistoryPenaltySubtractor, 0, HistoryPenaltyMax);
 
                 // If the move is quiet update its history score
                 if (moveIsQuiet)
