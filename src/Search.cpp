@@ -727,11 +727,9 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
         }
         else
         {
-            bool givesCheck = pos.enemyKingInCheck();
-
             // SEE pruning
             // SEE is computationally expensive so we can limit it strictly to captures where the attacker is more valuable than the victim
-            if (!isPv && !isInCheck && !givesCheck && moveIsCapture && depth <= SEE_MinDepth && (averagePieceScore[movingPiece] > averagePieceScore[capturedPiece]))
+            if (!isPv && !isInCheck && moveIsCapture && depth <= SEE_MinDepth && (averagePieceScore[movingPiece] > averagePieceScore[capturedPiece]))
             {
                 // Skip move if SEE returns less than 0 meaning losing series of captures
                 if ((captureHistory[capturedPiece][toSquare][movingPiece] < -CapHistPruningThreshold) && pos.SEE(toSquare, capturedPiece, fromSquare, movingPiece) < SEE_Threshold) continue;
@@ -745,7 +743,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
             // |  Extended Futility Pruning: Same concept as normal futility pruning but applied at higher depths  |
             // |    depths. Aspen uses a larger margin here to safely account for the additional search depth.     |
             // |===================================================================================================|
-            if (moveIsQuiet && !givesCheck && (move != ttBestMove) && (canFutilityPrune || canExtendedFutilityPrune)) // Do not prune the move it is the hash move
+            if (moveIsQuiet && (move != ttBestMove) && (canFutilityPrune || canExtendedFutilityPrune)) // Do not prune the move it is the hash move
             {
                 continue;
             }
@@ -754,7 +752,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
             // | Late Move Pruning: At shallow depths, skip quiet moves if a threshold     |
             // |            number of quiet moves have already been searched.              |
             // |===========================================================================|
-            if (!isPv && !givesCheck && !isInCheck && moveIsQuiet && depth <= 4)
+            if (!isPv && !isInCheck && moveIsQuiet && depth <= 4)
             {
                 int LMP_Threshold = depth * LMP_Multiplier + LMP_Base;
                 if (historyScores[sideToMove][fromSquare][toSquare] < -LMP_HistoryReductionThreshold) LMP_Threshold -= depth * LMP_HistoryReductionMultiplier;
@@ -779,7 +777,7 @@ int MoveSearcher::negaMaxAlphaBeta(Position& pos, int alpha, int beta, int depth
             // |  at which later moves are searched. To keep the search stable, we limit   |
             // |      the reductions strictly to quiet moves that do not give check.       |
             // |===========================================================================|
-            if (depth > LMR_MinDepth && i > LMR_MinMoveIndex && !isInCheck &&  !givesCheck && moveIsQuiet)
+            if (depth > LMR_MinDepth && i > LMR_MinMoveIndex && !isInCheck && moveIsQuiet)
             {
                 // Reduce the depth of the current move is the hash move is a capture or a promotion
                 // because it probably means the hash move line is much stronger than the current
