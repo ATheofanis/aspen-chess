@@ -64,6 +64,7 @@ Aspen is a standard UCI chess engine, so you can use any Chess GUI that supports
 - Thank you to Jim Ablett for finding weaknesses in the code and suggesting improvements
 ### **Engines**:
 Thank you to the authors of these engines, that served as sources of inspiration for my engine
+- [Stormphrax](https://github.com/Ciekce/Stormphrax) 
 - [Chal](https://github.com/namanthanki/chal)
 - [Stockfish](https://stockfishchess.org/)
 - [Berserk](https://github.com/jhonnold/berserk)
