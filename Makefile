@@ -36,3 +36,8 @@ FILES = $(wildcard src/*.cpp) $(wildcard src/nnue/*.cpp)
 $(EXE): $(FILES)
 	$(CXX) $(ENGINE_FLAGS) $(FILES) -o $(EXE)
 
+NATIVE:
+	$(MAKE) TYPE=NATIVE
+
+AVX2:
+	$(MAKE) TYPE=AVX2
