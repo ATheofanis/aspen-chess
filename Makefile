@@ -1,15 +1,33 @@
+# Operating System detection (Linux and Windows)
+ifeq ($(OS),Windows_NT)
+	# Windows
+    OS := Windows
+    SUFFIX := .exe
+    MKDIR := if not exist NetworkFiles mkdir NetworkFiles
+    CP := copy
+else
+	# Linux
+    OS := Linux
+    SUFFIX :=
+    MKDIR := mkdir -p NetworkFiles
+    CP := cp
+endif
+
 ifndef EXE
-    EXE = aspen
+    EXE = aspen$(SUFFIX)
 endif
 
 # If a different eval file is passed then copy it over to the default network path
 ifdef EVALFILE
-    _:=$(shell mkdir -p NetworkFiles && cp $(EVALFILE) NetworkFiles/aspen-net562-8.bin)
+	ifeq ($(OS),Windows)
+    	_:=$(shell $(MKDIR) && $(CP) $(subst /,\,$(EVALFILE)) NetworkFiles\aspen-net562-8.bin)
+    else
+    	_:=$(shell $(MKDIR) && $(CP) $(EVALFILE) NetworkFiles/aspen-net562-8.bin)
+	endif
 endif
 
 # Default build is native (march=native flag)
 TYPE ?= NATIVE
-
 NATIVE_FLAGS = -march=native
 AVX2_FLAGS = -march=x86-64-v3
 
