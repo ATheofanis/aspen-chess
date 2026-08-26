@@ -14,7 +14,7 @@ It uses a NNUE to evaluate positions, which was trained exclusively on self-gene
 ## Strength
 | **Version** | [CCRL 40/15](https://computerchess.org.uk/4040/) | [CCRL Blitz](https://computerchess.org.uk/404/) |
 | :---: | :---: | :--: |
-| [2.3.0](https://github.com/ATheofanis/aspen-chess/releases/tag/v2.3.0) | 3250 | 3315 |
+| [2.3.0](https://github.com/ATheofanis/aspen-chess/releases/tag/v2.3.0) | 3250 | 3271 |
 | [1.2.3](https://github.com/ATheofanis/aspen-chess/releases/tag/v1.3.0) | 2775 |  -   |
 | [1.0.0](https://github.com/ATheofanis/aspen-chess/releases/tag/v1.0.0) | 2817 | 2758 |
 
